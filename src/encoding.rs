@@ -1,4 +1,3 @@
-
 use stylus_sdk::alloy_primitives::*;
 
 use borsh::{BorshDeserialize, BorshSerialize};
@@ -7,6 +6,9 @@ macro_rules! borsh_encoding {
     ( $( ($type:ty, $size:expr, $from_fn:path, $to_fn:expr) ),* $(,)? ) => {
         $(
             paste::paste! {
+                #[derive(Clone)]
+                #[cfg_attr(not(target_arch = "wasm32"), derive(Debug))]
+                #[derive(PartialEq, Eq)]
                 pub struct [<B$type>] {
                     pub x: $type,
                 }
@@ -36,6 +38,19 @@ macro_rules! borsh_encoding {
                 impl Into<$type> for [<B$type>] {
                     fn into(self) -> $type {
                         self.x
+                    }
+                }
+
+                #[cfg_attr(not(target_arch = "wasm32"), derive(Debug, PartialEq, Eq))]
+                #[allow(unused)]
+                pub struct [<BStrErr$type>] {}
+
+                #[cfg(not(target_arch = "wasm32"))]
+                impl std::str::FromStr for [<B$type>] {
+                    type Err = [<BStrErr$type>];
+
+                    fn from_str(s: &str) -> Result<Self, [<BStrErr$type>]> {
+                        $type::from_str(s).map_err(|_| [<BStrErr$type>]{}).map(|x|  [<B$type>]{x})
                     }
                 }
             }

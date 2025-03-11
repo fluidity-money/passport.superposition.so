@@ -14,17 +14,14 @@ pub enum ErrorDiscriminant {
 #[derive(BorshSerialize, BorshDeserialize, PartialEq)]
 pub struct Error {
     typ: ErrorDiscriminant,
-    msg: u32
 }
 
 pub type R = Result<Res, Error>;
 
 pub fn err_singl(x: ErrorDiscriminant) -> Error {
-    Error {typ: x, msg: 0}
+    Error { typ: x }
 }
+
+pub const NOTHING: R = Ok(Res::NOTHING);
 
 pub const DONE: R = Ok(Res::DONE);
-
-pub fn ok_count(x: U256) -> R {
-    Ok(Res::COUNT(BU256{x}))
-}

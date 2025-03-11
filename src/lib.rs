@@ -1,33 +1,29 @@
-
-#![no_main]
-#![no_std]
+#![cfg_attr(target_arch = "wasm32", no_main, no_std)]
 
 extern crate alloc;
-
-use alloc::vec::Vec;
 
 pub mod entry;
 pub mod error;
 pub mod result;
 
 pub mod encoding;
+pub mod ops;
 pub mod storage;
 
 pub use encoding::*;
 pub use entry::*;
+pub use error::*;
 pub use result::*;
 
-use lzss::{Lzss, SliceReader, VecWriter};
+pub use ops::*;
 
-use stylus_sdk::alloy_primitives::*;
+#[allow(unused)]
+use {
+    borsh::BorshDeserialize,
+    stylus_sdk::alloy_sol_types::{sol, SolError},
+};
 
-use borsh::{BorshDeserialize, BorshSerialize};
-
-#[derive(BorshSerialize, BorshDeserialize)]
-pub enum Op {
-    Spend { spendable: Vec<(BAddress, BU256)> },
-    Delegate,
-}
+sol!("src/IErrors.sol");
 
 #[no_mangle]
 pub unsafe fn mark_used() {
@@ -35,20 +31,34 @@ pub unsafe fn mark_used() {
     panic!();
 }
 
-type OurLzss = Lzss<12, 11, 0, { 1 << 12 }, { 2 << 12 }>;
-
 #[no_mangle]
+#[cfg(target_arch = "wasm32")]
 pub extern "C" fn user_entrypoint(len: usize) -> usize {
+    type OurLzss = lzss::Lzss<12, 11, 0, { 1 << 12 }, { 2 << 12 }>;
     let args = OurLzss::decompress_stack(
-        SliceReader::new(&stylus_sdk::contract::args(len)),
-        VecWriter::with_capacity(1024 * 10),
+        lzss::SliceReader::new(&stylus_sdk::contract::args(len)),
+        lzss::VecWriter::with_capacity(1024 * 10),
     )
     .unwrap();
-    let mut store =
-        unsafe { <StoragePassport as stylus_sdk::storage::StorageType>::new(U256::ZERO, 0) };
+    let mut store = unsafe {
+        <StoragePassport as stylus_sdk::storage::StorageType>::new(
+            stylus_sdk::alloy_primitives::U256::ZERO,
+            0,
+        )
+    };
     let r = match Op::deserialize(&mut (&args as &[u8])).unwrap() {
-        Op::Spend { spendable } => store.spend(spendable),
-        _ => unimplemented!(),
+        Op::Dummy => store.dummy(),
+        Op::SimSpend {
+            allowlist,
+            spendable,
+            cds,
+        } => store.sim_spend(allowlist, spendable, cds),
+        Op::Spend {
+            allowlist,
+            spendable,
+            sig,
+            cds,
+        } => store.spend(allowlist, spendable, sig, cds),
     };
     stylus_sdk::storage::StorageCache::flush();
     let rd = match r {
@@ -57,7 +67,10 @@ pub extern "C" fn user_entrypoint(len: usize) -> usize {
     };
     stylus_sdk::contract::output(&match r {
         Ok(v) => borsh::to_vec(&v).unwrap(),
-        Err(v) => borsh::to_vec(&v).unwrap(),
+        Err(v) => PassportError {
+            _0: borsh::to_vec(&v).unwrap().into(),
+        }
+        .abi_encode(),
     });
     rd
 }
