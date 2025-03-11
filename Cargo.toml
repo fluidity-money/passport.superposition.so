@@ -8,7 +8,32 @@ name = "libpassport"
 edition = "2021"
 
 [[bin]]
-name = "passport-superposition-so"
+name = "contract"
+path = "src/contract-main/main.rs"
+
+[[bin]]
+name = "webapp"
+path = "src/webapp-main/main.rs"
+
+[[bin]]
+name = "generator"
+path = "src/gen-main/main.rs"
+
+[profile.release]
+codegen-units = 1
+opt-level = "z"
+strip = true
+lto = true
+debug = false
+rpath = false
+debug-assertions = false
+incremental = false
+
+[profile.dev]
+codegen-units = 1
+panic = "unwind"
+opt-level = "z"
+incremental = false
 
 [dependencies]
 stylus-sdk = "=0.7.0"
@@ -45,22 +70,6 @@ getrandom = "0.2.15"
 alloy-primitives = { version = "0.7.6", features = ["getrandom"] }
 rust_decimal = { version =  "1.36.0", default-features = false, features = ["maths", "proptest"] }
 prettytable-rs = "0.10.0"
-
-[profile.release]
-codegen-units = 1
-opt-level = "z"
-strip = true
-lto = true
-debug = false
-rpath = false
-debug-assertions = false
-incremental = false
-
-[profile.dev]
-codegen-units = 1
-panic = "unwind"
-opt-level = "z"
-incremental = false
 
 [features]
 harness-stylus-interpreter = []
