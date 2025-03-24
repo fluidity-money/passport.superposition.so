@@ -3,8 +3,8 @@
 
 use libpassport::*;
 
-#[no_mangle]
-pub fn encode_dummy() -> Vec<u8> {
+#[unsafe(no_mangle)]
+pub unsafe fn encode_dummy() -> Vec<u8> {
     borsh::to_vec(&Op::Dummy).unwrap()
 }
 

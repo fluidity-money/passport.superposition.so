@@ -6,9 +6,7 @@ macro_rules! borsh_encoding {
     ( $( ($type:ty, $size:expr, $from_fn:path, $to_fn:expr) ),* $(,)? ) => {
         $(
             paste::paste! {
-                #[derive(Clone)]
-                #[cfg_attr(not(target_arch = "wasm32"), derive(Debug))]
-                #[derive(PartialEq, Eq)]
+                #[derive(Clone, PartialEq, Eq, Debug)]
                 pub struct [<B$type>] {
                     pub x: $type,
                 }

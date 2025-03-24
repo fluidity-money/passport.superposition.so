@@ -9,6 +9,11 @@ pub mod result;
 pub mod encoding;
 pub mod ops;
 pub mod storage;
+pub mod signatures;
+
+mod utils;
+
+mod erc20_call;
 
 pub use encoding::*;
 pub use entry::*;
@@ -48,17 +53,8 @@ pub extern "C" fn user_entrypoint(len: usize) -> usize {
     };
     let r = match Op::deserialize(&mut (&args as &[u8])).unwrap() {
         Op::Dummy => store.dummy(),
-        Op::SimSpend {
-            allowlist,
-            spendable,
-            cds,
-        } => store.sim_spend(allowlist, spendable, cds),
-        Op::Spend {
-            allowlist,
-            spendable,
-            sig,
-            cds,
-        } => store.spend(allowlist, spendable, sig, cds),
+        Op::SetAddress(SetAddress{x, y}) => store.set_addr(x, y),
+        Op::Match(reqs, set_addrs, permits) => store.simple_match(reqs, set_addrs, permits)
     };
     stylus_sdk::storage::StorageCache::flush();
     let rd = match r {

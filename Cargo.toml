@@ -38,7 +38,7 @@ opt-level = "z"
 incremental = false
 
 [dependencies]
-stylus-sdk = "=0.7.0"
+mini-alloc = "0.7.0"
 tiny-keccak = "2.0.2"
 num-traits = { version = "0.2.19", default-features = false }
 alloy-sol-types = { version = "=0.8.14", default-features = false }
@@ -56,6 +56,19 @@ strum = { version = "0.26.3", default-features = false, features = ["derive"] }
 mutants = "0.0.3"
 borsh = { version = "1.5.5", default-features = false, features = ["derive"] }
 lzss = { version = "0.9.1", features = ["alloc"], default-features = false }
+allocator-api2 = { version = "0.2.21", default-features = false, features = ["alloc"] }
+ed25519-dalek = { version = "2.1.1", default-features = false, features = ["alloc", "fast"] }
+sha2 = { version = "0.10.8", default-features = false }
+
+[dependencies.stylus-sdk]
+version = "=0.7.0"
+default-features = false
+features = ["mini-alloc", "hostio-caching"]
+
+[dependencies.hashbrown]
+version = "0.15.2"
+default-features = false
+features = ["allocator-api2", "default-hasher", "equivalent", "raw-entry"]
 
 [dev-dependencies]
 proptest = "1.5.0"

@@ -20,7 +20,7 @@ RELEASE_WASM_OPT_9LIVES := \
 		--strip-debug \
 		--enable-bulk-memory \
 		--strip-producers \
-		-Oz target/wasm32-unknown-unknown/release/passport-superposition-so.wasm \
+		-Oz target/wasm32-unknown-unknown/release/contract.wasm \
 		-o
 
 CARGO_BUILD_GENERATOR := \

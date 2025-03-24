@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 1beb67a87d867c48ab1ad55ce5e9c3fbd54b9943a3a3212ad1612be7b5d0f3eb # shrinks to r = MatchReq { sender: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], spend_token: BAddress { x: 0x0000000000000000000000000000000000000000 }, spend_amt: BU256 { x: 296060316706924372612584 }, goal_token: BAddress { x: 0x0000000000000000000000000000000000000000 }, goal_amt: BU256 { x: 281317903575654742880310 }, nonce: BU256 { x: 1017836879135211773651521 }, deadline: 0 }

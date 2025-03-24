@@ -1,3 +1,5 @@
 *.wasm
 target
 generator.out
+out
+cache
