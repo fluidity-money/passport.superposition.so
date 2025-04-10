@@ -4,6 +4,9 @@
 
 extern crate alloc;
 
+pub mod bonding;
+pub mod ecrecover;
+
 pub mod entry;
 pub mod error;
 pub mod result;
@@ -72,4 +75,18 @@ pub extern "C" fn user_entrypoint(len: usize) -> usize {
         .abi_encode(),
     });
     rd
+}
+
+// We need this function due to a bug in the SDK if this is compiled for
+// the native host.
+#[cfg(not(target_arch = "wasm32"))]
+#[no_mangle]
+pub unsafe extern "C" fn native_keccak256(bytes: *const u8, len: usize, output: *mut u8) {
+    use core::slice;
+    use tiny_keccak::{Hasher, Keccak};
+    let mut hasher = Keccak::v256();
+    let data = unsafe { slice::from_raw_parts(bytes, len) };
+    hasher.update(data);
+    let output = unsafe { slice::from_raw_parts_mut(output, 32) };
+    hasher.finalize(output);
 }

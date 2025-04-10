@@ -8,8 +8,7 @@ extern crate alloc;
 #[mutants::skip]
 #[panic_handler]
 fn panic(info: &core::panic::PanicInfo) -> ! {
-    let msg = alloc::format!("{}", info);
-    stylus_sdk::console!(msg);
+    stylus_sdk::console!(alloc::format!("{}", info));
     core::arch::wasm32::unreachable()
 }
 

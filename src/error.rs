@@ -2,6 +2,8 @@ use alloc::{vec, vec::Vec};
 
 use borsh::{BorshDeserialize, BorshSerialize};
 
+use stylus_sdk::prelude::calls::errors::Error as StylusErr;
+
 pub use crate::result::Res;
 
 #[derive(BorshSerialize, BorshDeserialize, PartialEq)]
@@ -26,12 +28,24 @@ pub enum ErrorDiscriminant {
 
     /// The deadline is out of date.
     BadDeadline,
+
+    /// An unpack returned errorneously.
+    BadUnpack,
+
+    /// Bad signer of a ecrecover call.
+    BadEcrecoverSigner,
 }
 
 #[derive(BorshSerialize, BorshDeserialize, PartialEq)]
 pub struct Error {
     pub typ: ErrorDiscriminant,
     pub cd: Vec<u8>,
+}
+
+impl From<ErrorDiscriminant> for Error {
+    fn from(typ: ErrorDiscriminant) -> Self {
+        Error { typ, cd: vec![] }
+    }
 }
 
 pub type R = Result<Res, Error>;
@@ -42,6 +56,40 @@ pub fn err_cd(typ: ErrorDiscriminant, cd: Vec<u8>) -> R {
 
 pub fn err_cd_curry(typ: ErrorDiscriminant) -> impl FnOnce(Vec<u8>) -> R {
     move |cd| Err(Error { typ, cd })
+}
+
+pub fn map_stylus_err(
+    call_unp: ErrorDiscriminant,
+    unpack_unp: ErrorDiscriminant,
+    x: StylusErr,
+) -> Error {
+    match x {
+        StylusErr::AbiDecodingFailed(_) => Error {
+            typ: unpack_unp,
+            cd: vec![],
+        },
+        StylusErr::Revert(x) => Error {
+            typ: call_unp,
+            cd: x,
+        },
+    }
+}
+
+impl From<StylusErr> for Error {
+    fn from(x: StylusErr) -> Error {
+        map_stylus_err(ErrorDiscriminant::BadCall, ErrorDiscriminant::BadUnpack, x)
+    }
+}
+
+impl From<alloy_sol_types::Error> for Error {
+    fn from(x: alloy_sol_types::Error) -> Error {
+        // It's likely we're using this for a failed decoding, so that's what
+        // we're always assuming.
+        Error {
+            typ: ErrorDiscriminant::BadUnpack,
+            cd: vec![],
+        }
+    }
 }
 
 pub fn err(x: ErrorDiscriminant) -> R {

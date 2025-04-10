@@ -4,7 +4,7 @@ use stylus_sdk::{alloy_primitives::*, prelude::*};
 
 pub use crate::storage::*;
 
-use crate::{utils::*, *};
+use crate::*;
 
 impl StoragePassport {
     pub fn dummy(&self) -> R {
@@ -53,7 +53,20 @@ impl StoragePassport {
             s,
             v,
         } in bonding
-        {}
+        {
+            let bonding_nonce = self.bonding_nonces.get(eth_addr.x);
+            let hash = bonding::hash(&ed_addr, eth_addr.x, bonding_nonce, deadline);
+            let signer_addr = ecrecover::ecrecover(self.vm(), &hash, &r, &s, v)?;
+            require!(signer_addr == eth_addr.x, BadEcrecoverSigner);
+            // Now that we've validated who owns this address, we can set it
+            // internally the association.
+            self.bonding_nonces
+                .setter(eth_addr.x)
+                .set(bonding_nonce + U256::from(1));
+            self.owners
+                .setter(FixedBytes::<32>::from(ed_addr))
+                .set(eth_addr.into());
+        }
         let mut last_token = None;
         let mut last_amt = U256::ZERO;
         for (req, sig) in requests.iter() {

@@ -2,7 +2,7 @@ use crate::*;
 
 use sha2::{Digest, Sha256};
 
-use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
+use ed25519_dalek::{Signer, SigningKey};
 
 pub fn validate_req(verifier: &[u8], req: &MatchReq, sig: &EdSig) -> bool {
     true
