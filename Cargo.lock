@@ -19,11 +19,11 @@ checksum = "683d7910e743518b0e34f1186f92494becacb047c7b6bf616c96772180fef923"
 
 [[package]]
 name = "alloy-core"
-version = "0.8.14"
+version = "0.8.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c3d14d531c99995de71558e8e2206c27d709559ee8e5a0452b965ea82405a013"
+checksum = "074e41c92e2a3cc36448d4a9b94ba05b8faac466d7981d158ed68fd88e22d3b7"
 dependencies = [
- "alloy-primitives 0.8.14",
+ "alloy-primitives 0.8.20",
 ]
 
 [[package]]
@@ -51,15 +51,14 @@ dependencies = [
 
 [[package]]
 name = "alloy-primitives"
-version = "0.8.14"
+version = "0.8.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9db948902dfbae96a73c2fbf1f7abec62af034ab883e4c777c3fd29702bd6e2c"
+checksum = "bc1360603efdfba91151e623f13a4f4d3dc4af4adc1cbd90bf37c81e84db4c77"
 dependencies = [
  "bytes",
  "cfg-if",
  "const-hex",
  "derive_more 1.0.0",
- "hex-literal",
  "itoa",
  "paste",
  "ruint",
@@ -78,9 +77,9 @@ dependencies = [
 
 [[package]]
 name = "alloy-sol-macro"
-version = "0.8.14"
+version = "0.8.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3bfd7853b65a2b4f49629ec975fee274faf6dff15ab8894c620943398ef283c0"
+checksum = "13f28f2131dc3a7b8e2cda882758ad4d5231ca26281b9861d4b18c700713e2da"
 dependencies = [
  "alloy-sol-macro-expander",
  "alloy-sol-macro-input",
@@ -92,9 +91,9 @@ dependencies = [
 
 [[package]]
 name = "alloy-sol-macro-expander"
-version = "0.8.14"
+version = "0.8.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "82ec42f342d9a9261699f8078e57a7a4fda8aaa73c1a212ed3987080e6a9cd13"
+checksum = "1ee2da033256a3b27131c030933eab0460a709fbcc4d4bd57bf9a5650b2441c5"
 dependencies = [
  "alloy-sol-macro-input",
  "const-hex",
@@ -110,9 +109,9 @@ dependencies = [
 
 [[package]]
 name = "alloy-sol-macro-input"
-version = "0.8.14"
+version = "0.8.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ed2c50e6a62ee2b4f7ab3c6d0366e5770a21cad426e109c2f40335a1b3aff3df"
+checksum = "4e9d9918b0abb632818bf27e2dfb86b209be8433baacf22100b190bbc0904bd4"
 dependencies = [
  "const-hex",
  "dunce",
@@ -125,11 +124,11 @@ dependencies = [
 
 [[package]]
 name = "alloy-sol-types"
-version = "0.8.14"
+version = "0.8.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c9dc0fffe397aa17628160e16b89f704098bf3c9d74d5d369ebc239575936de5"
+checksum = "75f306fc801b3aa2e3c4785b7b5252ec8b19f77b30e3b75babfd23849c81bd8c"
 dependencies = [
- "alloy-primitives 0.8.14",
+ "alloy-primitives 0.8.20",
  "alloy-sol-macro",
  "const-hex",
 ]
@@ -742,6 +741,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "92773504d58c093f6de2459af4af33faa518c13451eb8f2b5698ed3d36e7c813"
 
 [[package]]
+name = "dyn-clone"
+version = "1.0.19"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1c7a8fb8a9fbf66c1f703fe16184d10ca0ee9d23be5b4436400408ba54a95005"
+
+[[package]]
 name = "ecdsa"
 version = "0.16.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1160,6 +1165,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "mini-alloc"
+version = "0.8.3"
+dependencies = [
+ "cfg-if",
+]
+
+[[package]]
 name = "mutants"
 version = "0.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1235,7 +1247,7 @@ dependencies = [
  "allocator-api2",
  "alloy-core",
  "alloy-primitives 0.7.7",
- "alloy-primitives 0.8.14",
+ "alloy-primitives 0.8.20",
  "alloy-sol-macro",
  "alloy-sol-macro-expander",
  "alloy-sol-macro-input",
@@ -1251,9 +1263,8 @@ dependencies = [
  "keccak-const",
  "lzss",
  "map-macro",
- "mini-alloc",
+ "mini-alloc 0.7.0",
  "mutants",
- "num-traits",
  "paste",
  "prettytable-rs",
  "proptest",
@@ -1261,6 +1272,7 @@ dependencies = [
  "rust_decimal_macros",
  "sha2",
  "strum",
+ "stylus-core",
  "stylus-sdk",
  "tiny-keccak",
 ]
@@ -1815,12 +1827,20 @@ dependencies = [
 ]
 
 [[package]]
-name = "stylus-proc"
-version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "38b0ee8d057be480a457704f982a38254e13a2a7d42bb4531132d3d440e371a6"
+name = "stylus-core"
+version = "0.8.3"
 dependencies = [
- "alloy-primitives 0.8.14",
+ "alloy-primitives 0.8.20",
+ "alloy-sol-types",
+ "cfg-if",
+ "dyn-clone",
+]
+
+[[package]]
+name = "stylus-proc"
+version = "0.8.3"
+dependencies = [
+ "alloy-primitives 0.8.20",
  "alloy-sol-types",
  "cfg-if",
  "convert_case 0.6.0",
@@ -1837,18 +1857,18 @@ dependencies = [
 
 [[package]]
 name = "stylus-sdk"
-version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fec9700e00e9dfa862aad80e6b27e02e9fb0c6745f3f97f616368936faefad5f"
+version = "0.8.3"
 dependencies = [
- "alloy-primitives 0.8.14",
+ "alloy-primitives 0.8.20",
  "alloy-sol-types",
  "cfg-if",
+ "clap",
  "derivative",
  "hex",
  "keccak-const",
  "lazy_static",
- "mini-alloc",
+ "mini-alloc 0.8.3",
+ "stylus-core",
  "stylus-proc",
 ]
 

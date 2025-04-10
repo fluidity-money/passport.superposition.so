@@ -1,16 +1,9 @@
-use stylus_sdk::{alloy_primitives::*, msg, block};
+use stylus_sdk::alloy_primitives::{Address, FixedBytes, U256};
 
 #[cfg(not(target_arch = "wasm32"))]
 use proptest::{prelude::Rng, strategy::Strategy};
 
-pub fn msg_sender() -> Address {
-    msg::sender()
-}
-
-pub fn block_timestamp() -> u64 {
-    block::timestamp()
-}
-
+#[cfg(not(target_arch = "wasm32"))]
 #[derive(PartialEq)]
 pub enum Uintsize {
     Small,

@@ -12,10 +12,6 @@ pub struct EdSig {
     pub s: [u8; 32],
 }
 
-/// EIP signed transaction that sets up the special account that one of the users will use.
-#[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq, Debug)]
-pub struct Eip712SetAddrSig {}
-
 #[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq, Debug)]
 pub struct MatchReq {
     pub sender: [u8; 32],
@@ -27,6 +23,16 @@ pub struct MatchReq {
     pub deadline: u64,
 }
 
+#[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq, Debug)]
+pub struct BondingReq {
+    pub ed_addr: [u8; 32],
+    pub eth_addr: BAddress,
+    pub deadline: u64,
+    pub r: [u8; 32],
+    pub s: [u8; 32],
+    pub v: u8,
+}
+
 /// Blob sent when a permit takes place when someone funds the smart
 /// account using the degraded experience.
 #[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq, Debug)]
@@ -34,9 +40,9 @@ pub struct PermitReq {
     pub token: BAddress,
     pub value: BU256,
     pub deadline: BU256,
-    pub v: u8,
     pub r: [u8; 32],
     pub s: [u8; 32],
+    pub v: u8,
 }
 
 #[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq)]
@@ -44,11 +50,8 @@ pub struct PermitReq {
 pub enum Op {
     /// Dummy operation.
     Dummy,
-    /// Set the associated address after validating the signature given. Uses the message sender
-    /// as the source of truth for this.
-    SetAddress(([u8; 32], BAddress)),
     /// A pair of requests to match by taking amounts from both sides.
-    Match(Vec<(MatchReq, EdSig)>, Vec<PermitReq>),
+    Match(Vec<(MatchReq, EdSig)>, Vec<BondingReq>, Vec<PermitReq>),
 }
 
 #[cfg(not(target_arch = "wasm32"))]

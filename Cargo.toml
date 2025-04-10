@@ -38,32 +38,39 @@ opt-level = "z"
 incremental = false
 
 [dependencies]
-mini-alloc = "0.7.0"
-tiny-keccak = "2.0.2"
-num-traits = { version = "0.2.19", default-features = false }
-alloy-sol-types = { version = "=0.8.14", default-features = false }
-alloy-sol-macro = { version = "=0.8.14", default-features = false }
-alloy-core = { version = "=0.8.14", default-features = false }
-alloy-primitives = { version = "=0.8.14", default-features = false }
+allocator-api2 = { version = "0.2.21", default-features = false, features = ["alloc"] }
+alloy-core = { version = "=0.8.20", default-features = false }
+alloy-primitives = { version = "=0.8.20", default-features = false }
+alloy-sol-macro-expander = "=0.8.20"
+alloy-sol-macro-input = "=0.8.20"
+alloy-sol-macro = { version = "=0.8.20", default-features = false }
+alloy-sol-types = { version = "=0.8.20", default-features = false }
 array-concat = "0.5.3"
+borsh = { version = "1.5.5", default-features = false, features = ["derive"] }
 const-hex = { version = "1.12.0", default-features = false }
+ed25519-dalek = { version = "2.1.1", default-features = false, features = ["alloc", "fast"] }
+keccak-const = "0.2.0"
+lzss = { version = "0.9.1", features = ["alloc"], default-features = false }
+mini-alloc = "0.7.0"
+mutants = "0.0.3"
 paste = "1.0.15"
 rust_decimal = { version =  "1.36.0", default-features = false, features = ["maths"] }
-keccak-const = "0.2.0"
-alloy-sol-macro-expander = "=0.8.14"
-alloy-sol-macro-input = "=0.8.14"
-strum = { version = "0.26.3", default-features = false, features = ["derive"] }
-mutants = "0.0.3"
-borsh = { version = "1.5.5", default-features = false, features = ["derive"] }
-lzss = { version = "0.9.1", features = ["alloc"], default-features = false }
-allocator-api2 = { version = "0.2.21", default-features = false, features = ["alloc"] }
-ed25519-dalek = { version = "2.1.1", default-features = false, features = ["alloc", "fast"] }
 sha2 = { version = "0.10.8", default-features = false }
+strum = { version = "0.26.3", default-features = false, features = ["derive"] }
+tiny-keccak = "2.0.2"
 
 [dependencies.stylus-sdk]
-version = "=0.7.0"
+# This version of the SDK is considered insecure, but we can't upgrade due to stylus-core
+# having a hardstuck dependency on the std.
+version = "=0.8.3"
 default-features = false
-features = ["mini-alloc", "hostio-caching"]
+features = ["mini-alloc"]
+path = "/home/user/Downloads/stylus-sdk-rs/stylus-sdk"
+
+[dependencies.stylus-core]
+version = "=0.8.3"
+default-features = false
+path = "/home/user/Downloads/stylus-sdk-rs/stylus-core"
 
 [dependencies.hashbrown]
 version = "0.15.2"

@@ -1,4 +1,6 @@
 #![cfg_attr(target_arch = "wasm32", no_main, no_std)]
+// We don't instantiate the VM context so this is needed.
+#![allow(deprecated)]
 
 extern crate alloc;
 
@@ -8,8 +10,8 @@ pub mod result;
 
 pub mod encoding;
 pub mod ops;
-pub mod storage;
 pub mod signatures;
+pub mod storage;
 
 mod utils;
 
@@ -40,6 +42,7 @@ pub unsafe fn mark_used() {
 #[cfg(target_arch = "wasm32")]
 pub extern "C" fn user_entrypoint(len: usize) -> usize {
     type OurLzss = lzss::Lzss<12, 11, 0, { 1 << 12 }, { 2 << 12 }>;
+    let vm = stylus_sdk::host::VM(stylus_sdk::host::WasmVM {});
     let args = OurLzss::decompress_stack(
         lzss::SliceReader::new(&stylus_sdk::contract::args(len)),
         lzss::VecWriter::with_capacity(1024 * 10),
@@ -49,12 +52,12 @@ pub extern "C" fn user_entrypoint(len: usize) -> usize {
         <StoragePassport as stylus_sdk::storage::StorageType>::new(
             stylus_sdk::alloy_primitives::U256::ZERO,
             0,
+            vm,
         )
     };
     let r = match Op::deserialize(&mut (&args as &[u8])).unwrap() {
         Op::Dummy => store.dummy(),
-        Op::SetAddress(SetAddress{x, y}) => store.set_addr(x, y),
-        Op::Match(reqs, set_addrs, permits) => store.simple_match(reqs, set_addrs, permits)
+        Op::Match(reqs, bonding, permits) => store.simple_match(reqs, bonding, permits),
     };
     stylus_sdk::storage::StorageCache::flush();
     let rd = match r {
