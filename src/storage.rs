@@ -2,17 +2,17 @@ use stylus_sdk::{alloy_primitives::*, prelude::*, storage::*};
 
 use alloc::{vec, vec::Vec};
 
+pub type KeyEdAddr = FixedBytes<32>;
+
 #[storage]
 pub struct StoragePassport {
     // Owners of these addresses, based on the ed25519 signature.
-    pub owners: StorageMap<FixedBytes<32>, StorageAddress>,
+    pub owners: StorageMap<KeyEdAddr, StorageAddress>,
 
-    // Nonces per ed25519 signature. If the nonce is 0, we assume it doesn't
-    // exist, and we bump the nonce.
-    pub nonces: StorageMap<FixedBytes<32>, StorageU256>,
-
-    // Nonces needed to do bonding of ed25519 accounts.
-    pub bonding_nonces: StorageMap<Address, StorageU256>,
+    // Balances that the EOAs have access to. Spent into using Permit
+    // signatures and Matches that're brought together. Spent down
+    // by the EOA offramping from from the passport contract.
+    pub balances: StorageMap<Address, StorageMap<Address, U256>>,
 }
 
 #[cfg(not(target_arch = "wasm32"))]

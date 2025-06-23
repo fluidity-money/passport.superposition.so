@@ -4,9 +4,6 @@
 
 extern crate alloc;
 
-pub mod bonding;
-pub mod ecrecover;
-
 pub mod entry;
 pub mod error;
 pub mod result;
@@ -60,7 +57,7 @@ pub extern "C" fn user_entrypoint(len: usize) -> usize {
     };
     let r = match Op::deserialize(&mut (&args as &[u8])).unwrap() {
         Op::Dummy => store.dummy(),
-        Op::Match(reqs, bonding, permits) => store.simple_match(reqs, bonding, permits),
+        Op::Solve() =>
     };
     stylus_sdk::storage::StorageCache::flush();
     let rd = match r {
