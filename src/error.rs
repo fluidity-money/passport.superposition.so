@@ -82,10 +82,13 @@ impl From<StylusErr> for Error {
 }
 
 impl From<alloy_sol_types::Error> for Error {
-    fn from(x: alloy_sol_types::Error) -> Error {
+    fn from(_: alloy_sol_types::Error) -> Error {
         // It's likely we're using this for a failed decoding, so that's what
         // we're always assuming.
-        Error { typ: x, cd: vec![] }
+        Error {
+            typ: ErrorDiscriminant::BadUnpack,
+            cd: vec![],
+        }
     }
 }
 

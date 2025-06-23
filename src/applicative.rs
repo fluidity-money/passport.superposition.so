@@ -1,6 +1,14 @@
 // Applicative form of the state machine, that gets converted to an
 // internal representation during the program's simulation.
 
+use borsh::{BorshSerialize, BorshDeserialize};
+
+use alloc::boxed::Box;
+
+use crate::encoding::*;
+
+pub type Sig = [u8; 32];
+
 /// Balance should be the amount that the user has uncommitted in
 /// their entirety.
 #[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq, Debug)]
@@ -18,7 +26,7 @@ pub struct ArgsBalance {
 /// created.
 #[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq, Debug)]
 pub struct ArgsOrder {
-    from: StateBalance,
+    from_asset: BAddress,
     from_amt: BU256,
     desired_asset: BAddress,
     desired_chain: u32,
@@ -38,8 +46,10 @@ pub enum Applicative {
     Order(ArgsOrder, Sig, Box<Applicative>),
     /// When this type is used, the internal balances are converted to the
     /// derived type that we use to generate the rebalancing of amounts to users.
+    /// The first signature argument is the user's signature, and the second is the
+    /// matching engine's signature.
     // Order * Order => Commit
-    Commit(Sig, Box<Applicative>, Box<Applicative>),
+    Commit(Sig, Sig, Box<Applicative>, Box<Applicative>),
     /// A degraded case. This happens if the user does not submit their calldata
     /// in a while. We need to begin anew using another form here that resets
     /// a Commit to a Balance, but only for the left side. In practice, this is

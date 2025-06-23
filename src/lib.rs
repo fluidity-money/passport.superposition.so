@@ -8,14 +8,14 @@ pub mod entry;
 pub mod error;
 pub mod result;
 
+pub mod applicative;
+pub mod state_machine;
+
 pub mod encoding;
 pub mod ops;
-pub mod signatures;
 pub mod storage;
 
 mod utils;
-
-mod erc20_call;
 
 pub use encoding::*;
 pub use entry::*;
@@ -57,7 +57,8 @@ pub extern "C" fn user_entrypoint(len: usize) -> usize {
     };
     let r = match Op::deserialize(&mut (&args as &[u8])).unwrap() {
         Op::Dummy => store.dummy(),
-        Op::Solve() =>
+        Op::DepositLiquidity(l) => store.deposit_liquidity(l),
+        Op::Solve(args) => store.solve(args)
     };
     stylus_sdk::storage::StorageCache::flush();
     let rd = match r {

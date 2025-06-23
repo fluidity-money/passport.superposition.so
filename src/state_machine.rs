@@ -1,4 +1,8 @@
 
+use crate::encoding::*;
+
+use alloc::boxed::Box;
+
 // Creates a spendable Balance UTXO, without the sending of the Permit
 // blob to provide the liquidity to create this type.
 #[derive(Clone, PartialEq, Debug)]
@@ -11,6 +15,7 @@ pub struct CreateBalance {
 
 // Gets translated into from ArgsBalance compared to what we know about
 // the user.
+#[derive(Clone, PartialEq, Debug)]
 pub enum CreateBalanceOrigin {
     /// Smply creating a balance using a Permit signature on-chain!
     Single(CreateBalance),
@@ -21,7 +26,7 @@ pub enum CreateBalanceOrigin {
 #[derive(Clone, PartialEq, Debug)]
 pub struct SplitBalance {
     /// The input balance.
-    input: CreateBalanceOrigin,
+    input: Box<CreateBalanceOrigin>,
     /// The balance that would be spent in a recursive use of this state.
     spendable: CreateBalance,
     /// The excess balance that should be reused later.
@@ -43,7 +48,7 @@ pub struct OrderCreated {
 }
 
 /// The committed outcome for one side of a trade for a user.
-#[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct Commit {
     /// The input order that filled the left side.
     left: OrderCreated,
@@ -59,7 +64,9 @@ pub struct Commit {
     excess_right: Option<OrderCreated>,
 }
 
-/// Simple view of the Commit structure to send recipients of the trade outcomes.
+/// Simple view of the Commit structure to send recipients of the trade
+/// outcomes.
+#[derive(Clone, PartialEq, Debug)]
 pub struct Outcome {
     asset: BAddress,
     recipient: BAddress,
@@ -69,7 +76,7 @@ pub struct Outcome {
 /// The emissions of the trade that took place here, in the form of a view.
 /// Aka the inverted form of the request, or just the left side's fulfilled balance
 /// flipped around slash the right side.
-#[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct Emissions {
     commit: Commit,
     left_outcome: Outcome,
