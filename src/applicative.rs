@@ -45,7 +45,7 @@ pub enum Applicative {
     /// Withdraw a Balance from the system. The solver signature is needed
     /// alongside the user's signature to be able to testify there are no
     /// unspent UTXOs.
-    Withdraw(Sig, Sig, Box<Applicative>)
+    Withdraw(Sig, Sig, Box<Applicative>),
     // Only (Balance | CommitToBalance*) => Order as the argument here.
     Order(ArgsOrder, Sig, Box<Applicative>),
     /// Cancel an order using a user's signature as well as the matching
