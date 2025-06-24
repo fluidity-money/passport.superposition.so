@@ -42,22 +42,23 @@ pub enum Applicative {
     // uncommitted amounts they've deposited that haven't been converted to a
     // Balance.
     Balance(ArgsBalance),
+    /// Withdraw a Balance from the system. The solver signature is needed
+    /// alongside the user's signature to be able to testify there are no
+    /// unspent UTXOs.
+    Withdraw(Sig, Sig, Box<Applicative>)
     // Only (Balance | CommitToBalance*) => Order as the argument here.
     Order(ArgsOrder, Sig, Box<Applicative>),
+    /// Cancel an order using a user's signature as well as the matching
+    /// engine's signature.
+    Cancel(Sig, Sig, Box<Applicative>),
     /// When this type is used, the internal balances are converted to the
     /// derived type that we use to generate the rebalancing of amounts to users.
     /// The first signature argument is the user's signature, and the second is the
     /// matching engine's signature.
     // Order * Order => Commit
-    Commit(Sig, Sig, Box<Applicative>, Box<Applicative>),
-    /// A degraded case. This happens if the user does not submit their calldata
-    /// in a while. We need to begin anew using another form here that resets
-    /// a Commit to a Balance, but only for the left side. In practice, this is
-    /// deriving CreateBalanceOrigin for the left side.
-    CommitToBalanceLeft(Sig, Box<Applicative>),
-    // Let's convert the Commit on the right to a temporarily spendable balance
-    // here.
-    CommitToBalanceRight(Sig, Box<Applicative>),
+    Commit(Sig, Box<Applicative>, Box<Applicative>),
+    // Convert a commit to a balance, to be reused.
+    CommitToBalance(Sig, Box<Applicative>),
 }
 
 /*
