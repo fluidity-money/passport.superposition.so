@@ -57,8 +57,10 @@ pub enum Applicative {
     /// matching engine's signature.
     // Order * Order => Commit
     Commit(Sig, Box<Applicative>, Box<Applicative>),
-    // Convert a commit to a balance, to be reused.
-    CommitToBalance(Sig, Box<Applicative>),
+    // Convert the left side of a Commit to a balance, to be reused.
+    CommitToBalanceLeft(Sig, Box<Applicative>),
+    // Commit the right side of the Commit results to a balance.
+    CommitToBalanceRight(Sig, Box<Applicative>)
 }
 
 /*
