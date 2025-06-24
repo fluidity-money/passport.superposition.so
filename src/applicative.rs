@@ -41,7 +41,7 @@ pub enum Applicative {
     // When this step is used, it's only admissable if the user has
     // uncommitted amounts they've deposited that haven't been converted to a
     // Balance.
-    Balance(ArgsBalance),
+    Balance(Sig, ArgsBalance),
     /// Withdraw a Balance from the system. The solver signature is needed
     /// alongside the user's signature to be able to testify there are no
     /// unspent UTXOs.
