@@ -4,8 +4,7 @@
 Superposition Passport is a UTXO-based system of spending signatures given to the matching
 engine, which are then provided on-chain if the constraints are validated to the Solver
 engine. Balances are created with a timestamp, which is then hashed to create a snowflake,
-which is then incremented to create partial orders based on the side that created an
-emission or leftover amounts.
+which is then used to create new snowflakes as a derivative.
 
 The conversion taking place internally is the conversion from the applicative from in
 `src/applicative.rs`, to `src/state_machine.rs`, with the application taking place using a
@@ -83,7 +82,6 @@ flowchart TD
         StateMachine -->|"apply() . Creates state"| Emissions
         Emissions -->|Given to entrypoint/emitted as logs| Entry
     end
-
 ```
 
 So, solve is used as the entrypoint, which then kicks off validation of the signatures in
@@ -93,3 +91,92 @@ persisted as state after conversion internally.
 Each Balance is the creation of a snowflake for a user. It must be the timestamp it was
 made from the user's point of view, and their address, hashed. The Solver contract
 maintains an idea of the state of the Snowflake.
+
+## Identifying the balances and their created derivatives
+
+Identification is done using a Snowflake-like system of taking the user's timestamp and
+their address, then keccak hashing it, then using the number as the snowflake as a
+identifier.
+
+When a recursively created derivative of a Balance creates a new Balance, a snowflake is
+made. From the source:
+
+```rust
+/// Balances are identifiable in their descended form using the
+/// concatenation of the previous hash, the timestamp of the change, and
+/// the nonce here.
+#[repr(C)]
+pub enum SnowflakeNonce {
+    CREATE_BALANCE,
+    SPLIT_BALANCE_EXCESS,
+    COMMIT_FULFILLED_LEFT,
+    COMMIT_FULFILLED_RIGHT,
+    COMMIT_EXCESS_LEFT,
+    COMMIT_EXCESS_RIGHT,
+}
+```
+
+So, a create balance would have the nonce of 0, and be created using `keccak256(address .
+0 . nano timestamp)`. A split balance would have 1, and be of the form `keccak256(previous hash
+. 1 . excess amount)` and so on.
+
+## User stories
+
+### Balance forking
+
+#### Just the balance
+
+Ivan goes to make a trade from ARB to OP. He asks for a price of $10, and has 5 ARB which
+he wants to swap to OP, but last second he'll change his mind and only use 3 ARB. ARB and
+OP are priced the same. Ivan creates the following Applicative structure:
+
+	(Balance
+	 <ivan sig>
+	 (balance 'ARB 55244 5 'Ivan 1751349713))
+
+This would be converted to this structure:
+
+	(CreateBalance 'Ivan 'ARB 55244 5)
+
+This results in a Snowflake of
+`keccak256(abi.encodePacked(0x6221a9c005f6e47eb398fd867784cacfdcfff4e7,
+uint128(1751349827449)))`. The result for the Solver contract to use to identify the state
+of the Balance is `0x1177859b6194535e9e420abf7509a1dc4baee217eeae881188e09b4dfa54bc1f`.
+
+#### Balance and orders
+
+Ivan goes to place his newly created Balance on the market:
+
+	(Order
+	 (order 'ARB 3 'OP 55244 3)
+	 <ivan sig>
+	 (Balance
+	  <ivan sig>
+	  (balance 'ARB 55244 5 'Ivan 1751349713)))
+
+This would be converted by the Solver to this structure during the `convert()` stage:
+
+	(OrderCreated 'OP 55244 3
+	  (SplitBalanceSpendable
+	   (CreateBalance 'Ivan 'ARB 55244 5)	# This makes up the input.
+	   (CreateBalance 'Ivan 'ARB 55244 3)	# This is the spendable output from this.
+	   (CreateBalance 'Ivan 'ARB 55244 2)))	# This is the amount that could be reused.
+
+In this situation, a new identifier would be made for the excess amount, which could be
+reused to create a new balance like so. This would have the snowflake of
+`keccak256(abi.encodePacked(bytes32(0x1177859b6194535e9e420abf7509a1dc4baee217eeae881188e09b4dfa54bc1f),
+uint8(1), uint256(2)))`, aka
+`0x2a48fd44c873f293067f14a14497ab3a7d54a6f4eef83d945ef277e1ad7d40f8`:
+
+	(CreateBalanceOrigin
+	 (SplitBalanceSpendExcess
+	  (SplitBalance
+	   (CreateBalance 'Ivan 'ARB 55244 5)
+	   (CreateBalance 'Ivan 'ARB 55244 3)
+	   (CreateBalance 'Ivan 'ARB 55244 2))))	# This amount constitutes the balance of the CreateBalance here.
+
+The solver knows the amount to fork off by keeping in mind the amounts available to be
+spent by the Balance that were split in the past and being permissive, assuming that the
+matching engine knows the correct amounts that can be spent (though it will check the
+balances available to it assuming it has enough from what's committed in the past). This
+translates into the matching engine knowing how much is available to be consumed.

@@ -1,4 +1,3 @@
-
 use crate::encoding::*;
 
 use alloc::boxed::Box;
@@ -11,7 +10,20 @@ pub struct CreateBalance {
     asset: BAddress,
     chain: u32,
     amount: BU256,
-    ms_ts: BU256
+    ms_ts: u128,
+}
+
+/// Balances are identifiable in their descended form using the
+/// concatenation of the previous hash, the timestamp of the change, and
+/// the nonce here.
+#[repr(C)]
+pub enum SnowflakeNonce {
+    CREATE_BALANCE,
+    SPLIT_BALANCE_EXCESS,
+    COMMIT_FULFILLED_LEFT,
+    COMMIT_FULFILLED_RIGHT,
+    COMMIT_EXCESS_LEFT,
+    COMMIT_EXCESS_RIGHT,
 }
 
 // Gets translated into from ArgsBalance compared to what we know about
@@ -20,37 +32,48 @@ pub struct CreateBalance {
 pub enum CreateBalanceOrigin {
     /// Smply creating a balance using a Permit signature on-chain!
     Single(CreateBalance),
-    /// The right side commitment here is the result of the Commit on the left.
+    /// A commit took place and we're transforming the result!
     Commit(Commit, CreateBalance),
 }
 
 #[derive(Clone, PartialEq, Debug)]
-pub enum Withdrawal {
-    from: CreateBalanceOrigin
+pub struct Withdrawal {
+    from: CreateBalanceOrigin,
 }
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct SplitBalance {
     /// The input balance.
-    input: Box<CreateBalanceOrigin>,
+    pub input: Box<CreateBalanceOrigin>,
     /// The balance that would be spent in a recursive use of this state.
-    spendable: CreateBalance,
+    pub spendable: CreateBalance,
     /// The excess balance that should be reused later.
-    excess: CreateBalance,
+    pub excess: CreateBalance,
+}
+
+#[derive(Clone, PartialEq, Debug)]
+pub struct SplitBalanceSpendable {
+  pub from: SplitBalance
+}
+
+#[derive(Clone, PartialEq, Debug)]
+pub struct SplitBalanceSpendExcess {
+  pub from: SplitBalance
 }
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum StateBalance {
-    Split(SplitBalance),
+    SplitExcess(SplitBalanceSpendExcess),
+    SplitSpendable(SplitBalanceSpendable),
     Single(CreateBalance),
 }
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct OrderCreated {
-    from: StateBalance,
     desired_asset: BAddress,
     desired_chain: u32,
     desired_amt: BU256,
+    from: StateBalance
 }
 
 /// The committed outcome for one side of a trade for a user.

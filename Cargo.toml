@@ -62,15 +62,9 @@ tiny-keccak = "2.0.2"
 [dependencies.stylus-sdk]
 # This version of the SDK is considered insecure, but we can't upgrade due to stylus-core
 # having a hardstuck dependency on the std.
-version = "=0.8.3"
+version = "=0.9.0"
 default-features = false
 features = ["mini-alloc"]
-path = "/home/user/Downloads/stylus-sdk-rs/stylus-sdk"
-
-[dependencies.stylus-core]
-version = "=0.8.3"
-default-features = false
-path = "/home/user/Downloads/stylus-sdk-rs/stylus-core"
 
 [dependencies.hashbrown]
 version = "0.15.2"
@@ -88,10 +82,9 @@ getrandom = "0.2.15"
 clap = { version = "4.5.32", features = ["derive"] }
 
 [dev-dependencies.stylus-sdk]
-version = "=0.8.3"
+version = "=0.9.0"
 default-features = false
 features = ["mini-alloc", "stylus-test"]
-path = "/home/user/Downloads/stylus-sdk-rs/stylus-sdk"
 
 [features]
 harness-stylus-interpreter = []

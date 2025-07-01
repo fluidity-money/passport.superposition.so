@@ -20,14 +20,16 @@ digraph {
       "CreateBalanceOrigin.Single"
       "CreateBalanceOrigin.Commit"
     } -> CreateBalanceOrigin -> "SplitBalance.input" -> SplitBalance
-    CreateBalance -> {
+    SplitBalance -> {
       "SplitBalance.spendable"
       "SplitBalance.excess"
     }
+    "SplitBalance.spendable" -> SplitBalanceSpendable -> "StateBalance.SplitSpendable"
+    "SplitBalance.excess" -> SplitBalanceExcess -> "StateBalance.SplitExcess"
     {
-      "SplitBalance.spendable"
-      "SplitBalance.excess"
-    } -> SplitBalance -> "StateBalance.Split" -> StateBalance
+      "StateBalance.SplitSpendable"
+      "StateBalance.SplitExcess"
+    } -> StateBalance
     CreateBalanceOrigin -> Withdrawal
     CreateBalance -> "StateBalance.Single" -> StateBalance -> "OrderCreated.from" -> OrderCreated -> {
       "Commit.left"
