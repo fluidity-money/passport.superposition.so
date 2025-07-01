@@ -2,10 +2,10 @@
 # Superposition Passport
 
 Superposition Passport is a UTXO-based system of spending signatures given to the matching
-engine, which are then matched if the constraints are validated, on-chain. Balances are
-created with a timestamp, which is then hashed to create a snowflake, which is then
-incremented to create partial orders based on the side that created an emission or
-leftover amounts.
+engine, which are then provided on-chain if the constraints are validated to the Solver
+engine. Balances are created with a timestamp, which is then hashed to create a snowflake,
+which is then incremented to create partial orders based on the side that created an
+emission or leftover amounts.
 
 The conversion taking place internally is the conversion from the applicative from in
 `src/applicative.rs`, to `src/state_machine.rs`, with the application taking place using a
@@ -23,9 +23,13 @@ the applicative form conversion to `StateBalance`.
 A few reasons, namely:
 
 1. Immediate offramping using only signatures to any chain
+
 2. Easy explicit parallelism
+
 3. Easy privacy later using the same approach with inclusion proofs
+
 4. Super affordable compression that can be scaled to include a optimistic approach
+
 5. Simple once you understand
 
 ## Diagram
@@ -34,7 +38,10 @@ The actual behaviour of the state transition looks like this:
 
 ![Diagram of the state transition](diagrams/state-transition.svg)
 
-The applicative form conversion follows the following diagram:
+Emissions are consumed by the contract to produce side effects related to balances.
+Storage is the contract itself. The Applicative type is provided to the contract to do the
+conversion internally to the StateMachine. Conversions should only happen inside the
+Solver contract. The applicative form conversion follows the following diagram:
 
 ![Diagram of the form conversion](diagrams/applicative-and-state-machine.svg)
 
