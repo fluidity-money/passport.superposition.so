@@ -1,7 +1,8 @@
 digraph {
   rankdir=TD
   subgraph cluster_Applicative { label="Applicative model"; style=dotted
-    Balance -> Withdraw -> Order [label="Withdraws"]
+    Balance -> Withdraw [label="Withdraws"]
+    Balance -> Order [label="Create order"]
     Order -> Cancel -> Balance [label="Cancel order"]
     Order -> Commit -> {
       {
@@ -13,37 +14,39 @@ digraph {
     }
   }
   subgraph cluster_StateMachine { label="State machine"; style=dotted
-    CreateBalance -> "CreateBalanceOrigin.Single"
-    "StateMachine.Commit" -> "CreateBalanceOrigin.Commit"
-    {
+    "StateMachine.commit" [label="Commit"]
+    "StateMachine.commit" -> "CreateBalanceOrigin.commit"
+    CreateBalance -> {
       "CreateBalanceOrigin.Single"
       "CreateBalanceOrigin.Commit"
+    } -> CreateBalanceOrigin -> "SplitBalance.input" -> SplitBalance
+    CreateBalance -> {
+      "SplitBalance.spendable"
+      "SplitBalance.excess"
     }
-      -> CreateBalanceOrigin
-      -> "SplitBalance.Input"
-      "SplitBalance.Input"
-    "CreateBalance" -> "SplitBalance.Spendable"
-    "CreateBalance" -> "SplitBalance.Excess"
     {
-      "SplitBalance.Spendable"
-      "SplitBalance.Excess"
-      "SplitBalance.Input"
-    } -> "SplitBalance"
-    SplitBalance -> "StateBalance.Split"
-    CreateBalance -> "StateBalance.Single"
-    {
-      "StateBalance.Split"
-      "StateBalance.Single"
-    } -> "StateBalance"
-    "OrderCreated" -> {
-      "Commit.Left"
-      "Commit.Right"
-      "Commit.Left_fulfilled"
-      "Commit.Right_fulfilled"
-      "Option<OrderCreated>" -> {
-        "Commit.Excess_left"
-        "Commit.Excess_right"
-      }
+      "SplitBalance.spendable"
+      "SplitBalance.excess"
+    } -> SplitBalance -> "StateBalance.Split" -> StateBalance
+    CreateBalanceOrigin -> Withdrawal
+    CreateBalance -> "StateBalance.Single" -> StateBalance -> "OrderCreated.from" -> OrderCreated -> {
+      "Commit.left"
+      "Commit.right"
+      "Commit.left_fulfilled"
+      "Commit.right_fulfilled"
     }
+    CreateBalance -> {
+      "Commit.excess_left"
+      "Commit.excess_right"
+    } [style=dotted]
+    {
+      "Commit.left"
+      "Commit.right"
+      "Commit.left_fulfilled"
+      "Commit.right_fulfilled"
+      "Commit.excess_left"
+      "Commit.excess_right"
+    } -> "StateMachine.commit"
+    "StateMachine.commit" -> "CreateBalanceOrigin.Commit"
   }
 }

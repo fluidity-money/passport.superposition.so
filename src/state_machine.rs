@@ -11,7 +11,7 @@ pub struct CreateBalance {
     asset: BAddress,
     chain: u32,
     amount: BU256,
-    snowflake: BU256
+    ms_ts: BU256
 }
 
 // Gets translated into from ArgsBalance compared to what we know about
@@ -22,6 +22,11 @@ pub enum CreateBalanceOrigin {
     Single(CreateBalance),
     /// The right side commitment here is the result of the Commit on the left.
     Commit(Commit, CreateBalance),
+}
+
+#[derive(Clone, PartialEq, Debug)]
+pub enum Withdrawal {
+    from: CreateBalanceOrigin
 }
 
 #[derive(Clone, PartialEq, Debug)]

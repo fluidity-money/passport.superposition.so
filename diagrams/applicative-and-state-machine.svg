@@ -1,421 +1,481 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="2485pt" height="903pt" viewBox="0.00 0.00 2485.00 903.40">
-<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 899.4)">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1609pt" height="1478pt" viewBox="0.00 0.00 1609.00 1477.60">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 1473.6)">
 <title>%0</title>
-<polygon fill="#ffffff" stroke="transparent" points="-4,4 -4,-899.4 2481,-899.4 2481,4 -4,4"/>
+<polygon fill="#ffffff" stroke="transparent" points="-4,4 -4,-1473.6 1605,-1473.6 1605,4 -4,4"/>
 <g id="clust1" class="cluster">
 <title>cluster_Applicative</title>
-<polygon fill="none" stroke="#000000" stroke-dasharray="1,5" points="8,-230 8,-887.4 886,-887.4 886,-230 8,-230"/>
-<text text-anchor="middle" x="447" y="-870.8" font-family="Times,serif" font-size="14.00" fill="#000000">Applicative model</text>
+<polygon fill="none" stroke="#000000" stroke-dasharray="1,5" points="8,-896 8,-1461.6 886,-1461.6 886,-896 8,-896"/>
+<text text-anchor="middle" x="447" y="-1445" font-family="Times,serif" font-size="14.00" fill="#000000">Applicative model</text>
 </g>
 <g id="clust4" class="cluster">
 <title>cluster_StateMachine</title>
-<polygon fill="none" stroke="#000000" stroke-dasharray="1,5" points="894,-8 894,-887.4 2469,-887.4 2469,-8 894,-8"/>
-<text text-anchor="middle" x="1681.5" y="-870.8" font-family="Times,serif" font-size="14.00" fill="#000000">State machine</text>
+<polygon fill="none" stroke="#000000" stroke-dasharray="1,5" points="894,-8 894,-1461.6 1593,-1461.6 1593,-8 894,-8"/>
+<text text-anchor="middle" x="1243.5" y="-1445" font-family="Times,serif" font-size="14.00" fill="#000000">State machine</text>
 </g>
 <!-- Balance -->
 <g id="node1" class="node">
 <title>Balance</title>
-<ellipse fill="none" stroke="#000000" cx="480" cy="-836.6" rx="42.2719" ry="18"/>
-<text text-anchor="middle" x="480" y="-832.4" font-family="Times,serif" font-size="14.00" fill="#000000">Balance</text>
+<ellipse fill="none" stroke="#000000" cx="427" cy="-1410.8" rx="42.2719" ry="18"/>
+<text text-anchor="middle" x="427" y="-1406.6" font-family="Times,serif" font-size="14.00" fill="#000000">Balance</text>
 </g>
 <!-- Withdraw -->
 <g id="node2" class="node">
 <title>Withdraw</title>
-<ellipse fill="none" stroke="#000000" cx="480" cy="-709.8" rx="49.7981" ry="18"/>
-<text text-anchor="middle" x="480" y="-705.6" font-family="Times,serif" font-size="14.00" fill="#000000">Withdraw</text>
+<ellipse fill="none" stroke="#000000" cx="66" cy="-1284" rx="49.7981" ry="18"/>
+<text text-anchor="middle" x="66" y="-1279.8" font-family="Times,serif" font-size="14.00" fill="#000000">Withdraw</text>
 </g>
 <!-- Balance&#45;&gt;Withdraw -->
 <g id="edge1" class="edge">
 <title>Balance-&gt;Withdraw</title>
-<path fill="none" stroke="#000000" d="M480,-818.4327C480,-797.4352 480,-762.6261 480,-738.079"/>
-<polygon fill="#000000" stroke="#000000" points="483.5001,-737.9336 480,-727.9336 476.5001,-737.9337 483.5001,-737.9336"/>
-<text text-anchor="middle" x="510.7111" y="-769" font-family="Times,serif" font-size="14.00" fill="#000000">Withdraws</text>
+<path fill="none" stroke="#000000" d="M385.3931,-1407.2342C297.1417,-1399.2532 97.5906,-1378.8337 77.5778,-1355.8 67.3155,-1343.9887 64.2756,-1326.788 63.8705,-1312.1832"/>
+<polygon fill="#000000" stroke="#000000" points="67.3709,-1312.1576 63.9756,-1302.1216 60.3713,-1312.0845 67.3709,-1312.1576"/>
+<text text-anchor="middle" x="107.7111" y="-1343.2" font-family="Times,serif" font-size="14.00" fill="#000000">Withdraws</text>
 </g>
 <!-- Order -->
 <g id="node3" class="node">
 <title>Order</title>
-<ellipse fill="none" stroke="#000000" cx="470" cy="-493.8" rx="33.6054" ry="18"/>
-<text text-anchor="middle" x="470" y="-489.6" font-family="Times,serif" font-size="14.00" fill="#000000">Order</text>
+<ellipse fill="none" stroke="#000000" cx="519" cy="-1284" rx="33.6054" ry="18"/>
+<text text-anchor="middle" x="519" y="-1279.8" font-family="Times,serif" font-size="14.00" fill="#000000">Order</text>
 </g>
-<!-- Withdraw&#45;&gt;Order -->
+<!-- Balance&#45;&gt;Order -->
 <g id="edge2" class="edge">
-<title>Withdraw-&gt;Order</title>
-<path fill="none" stroke="#000000" d="M479.1646,-691.7555C477.4256,-654.1938 473.4053,-567.3541 471.3153,-522.2103"/>
-<polygon fill="#000000" stroke="#000000" points="474.7989,-521.7725 470.84,-511.9451 467.8064,-522.0963 474.7989,-521.7725"/>
-<text text-anchor="middle" x="505.7111" y="-597.6" font-family="Times,serif" font-size="14.00" fill="#000000">Withdraws</text>
+<title>Balance-&gt;Order</title>
+<path fill="none" stroke="#000000" d="M439.5993,-1393.4349C455.359,-1371.7139 482.467,-1334.3519 500.5618,-1309.4127"/>
+<polygon fill="#000000" stroke="#000000" points="503.5131,-1311.3048 506.5529,-1301.1554 497.8473,-1307.194 503.5131,-1311.3048"/>
+<text text-anchor="middle" x="511.7837" y="-1343.2" font-family="Times,serif" font-size="14.00" fill="#000000">Create order</text>
 </g>
 <!-- Cancel -->
 <g id="node4" class="node">
 <title>Cancel</title>
-<ellipse fill="none" stroke="#000000" cx="504" cy="-367" rx="37.6986" ry="18"/>
-<text text-anchor="middle" x="504" y="-362.8" font-family="Times,serif" font-size="14.00" fill="#000000">Cancel</text>
+<ellipse fill="none" stroke="#000000" cx="425" cy="-1068" rx="37.6986" ry="18"/>
+<text text-anchor="middle" x="425" y="-1063.8" font-family="Times,serif" font-size="14.00" fill="#000000">Cancel</text>
 </g>
 <!-- Order&#45;&gt;Cancel -->
 <g id="edge3" class="edge">
 <title>Order-&gt;Cancel</title>
-<path fill="none" stroke="#000000" d="M472.7749,-475.6212C475.1964,-460.9977 479.1025,-439.9944 484.0932,-422 486.59,-412.9974 489.8632,-403.3622 493.0323,-394.7117"/>
-<polygon fill="#000000" stroke="#000000" points="496.4009,-395.6979 496.652,-385.106 489.8505,-393.2295 496.4009,-395.6979"/>
-<text text-anchor="middle" x="519.9534" y="-426.2" font-family="Times,serif" font-size="14.00" fill="#000000">Cancel order</text>
+<path fill="none" stroke="#000000" d="M506.6587,-1267.1645C494.2627,-1249.6239 475.2964,-1220.9836 463.0932,-1194 448.4437,-1161.6073 437.5317,-1122.0546 431.2245,-1096.0058"/>
+<polygon fill="#000000" stroke="#000000" points="434.5818,-1094.993 428.8821,-1086.062 427.7683,-1096.5982 434.5818,-1094.993"/>
+<text text-anchor="middle" x="498.9534" y="-1171.8" font-family="Times,serif" font-size="14.00" fill="#000000">Cancel order</text>
 </g>
 <!-- Commit -->
 <g id="node5" class="node">
 <title>Commit</title>
-<ellipse fill="none" stroke="#000000" cx="405" cy="-367" rx="42.8945" ry="18"/>
-<text text-anchor="middle" x="405" y="-362.8" font-family="Times,serif" font-size="14.00" fill="#000000">Commit</text>
+<ellipse fill="none" stroke="#000000" cx="590" cy="-1068" rx="42.8945" ry="18"/>
+<text text-anchor="middle" x="590" y="-1063.8" font-family="Times,serif" font-size="14.00" fill="#000000">Commit</text>
 </g>
 <!-- Order&#45;&gt;Commit -->
 <g id="edge9" class="edge">
 <title>Order-&gt;Commit</title>
-<path fill="none" stroke="#000000" d="M461.0983,-476.4349C450.1843,-455.1441 431.567,-418.826 418.7941,-393.9091"/>
-<polygon fill="#000000" stroke="#000000" points="421.8896,-392.2751 414.2132,-384.9728 415.6604,-395.4684 421.8896,-392.2751"/>
+<path fill="none" stroke="#000000" d="M522.4289,-1265.7663C527.3241,-1240.9998 537.1623,-1195.5122 550,-1158 557.4274,-1136.2968 568.0552,-1112.6242 576.4894,-1095.0067"/>
+<polygon fill="#000000" stroke="#000000" points="579.6951,-1096.4175 580.915,-1085.8931 573.3983,-1093.3596 579.6951,-1096.4175"/>
 </g>
 <!-- Cancel&#45;&gt;Balance -->
 <g id="edge4" class="edge">
 <title>Cancel-&gt;Balance</title>
-<path fill="none" stroke="#000000" d="M540.2233,-372.3096C592.5276,-381.0113 683,-400.399 683,-430.4 683,-773.2 683,-773.2 683,-773.2 683,-804.9615 591.3126,-822.6672 531.1763,-830.8643"/>
-<polygon fill="#000000" stroke="#000000" points="530.5382,-827.418 521.0801,-832.1924 531.4512,-834.3582 530.5382,-827.418"/>
-<text text-anchor="middle" x="718.9534" y="-597.6" font-family="Times,serif" font-size="14.00" fill="#000000">Cancel order</text>
+<path fill="none" stroke="#000000" d="M421.0405,-1085.9248C412.8963,-1125.138 395.7081,-1221.4735 404.0932,-1302 406.9967,-1329.8838 413.9784,-1361.1472 419.4765,-1382.9809"/>
+<polygon fill="#000000" stroke="#000000" points="416.1447,-1384.0773 422.032,-1392.8857 422.9227,-1382.3284 416.1447,-1384.0773"/>
+<text text-anchor="middle" x="439.9534" y="-1279.8" font-family="Times,serif" font-size="14.00" fill="#000000">Cancel order</text>
 </g>
 <!-- Commit&#45;&gt;Balance -->
 <g id="edge10" class="edge">
 <title>Commit-&gt;Balance</title>
-<path fill="none" stroke="#000000" d="M407.6142,-384.9936C409.2311,-397.6614 411,-415.032 411,-430.4 411,-773.2 411,-773.2 411,-773.2 411,-792.554 425.9017,-807.6119 441.8548,-818.1867"/>
-<polygon fill="#000000" stroke="#000000" points="440.377,-821.3848 450.7378,-823.5993 444.0193,-815.407 440.377,-821.3848"/>
+<path fill="none" stroke="#000000" d="M618.1381,-1081.6293C649.2403,-1098.8942 695,-1131.8051 695,-1176 695,-1347.4 695,-1347.4 695,-1347.4 695,-1391.2701 557.2861,-1404.8232 479.2956,-1408.9811"/>
+<polygon fill="#000000" stroke="#000000" points="478.983,-1405.4923 469.1698,-1409.4862 479.3318,-1412.4836 478.983,-1405.4923"/>
 </g>
 <!-- CommitToBalanceLeft -->
 <g id="node6" class="node">
 <title>CommitToBalanceLeft</title>
-<ellipse fill="none" stroke="#000000" cx="337" cy="-256" rx="100.7172" ry="18"/>
-<text text-anchor="middle" x="337" y="-251.8" font-family="Times,serif" font-size="14.00" fill="#000000">CommitToBalanceLeft</text>
+<ellipse fill="none" stroke="#000000" cx="117" cy="-922" rx="100.7172" ry="18"/>
+<text text-anchor="middle" x="117" y="-917.8" font-family="Times,serif" font-size="14.00" fill="#000000">CommitToBalanceLeft</text>
 </g>
 <!-- Commit&#45;&gt;CommitToBalanceLeft -->
 <g id="edge11" class="edge">
 <title>Commit-&gt;CommitToBalanceLeft</title>
-<path fill="none" stroke="#000000" d="M394.0746,-349.1659C383.0863,-331.229 366.0096,-303.3539 353.3963,-282.7646"/>
-<polygon fill="#000000" stroke="#000000" points="356.3325,-280.8573 348.1242,-274.1586 350.3635,-284.5141 356.3325,-280.8573"/>
+<path fill="none" stroke="#000000" d="M555.6514,-1057.108C548.1871,-1054.7537 540.3314,-1052.2855 533,-1050 406.9179,-1010.6956 259.0947,-965.3979 177.9831,-940.6101"/>
+<polygon fill="#000000" stroke="#000000" points="178.5351,-937.119 167.9488,-937.5442 176.4896,-943.8135 178.5351,-937.119"/>
 </g>
 <!-- CommitToBalanceRight -->
 <g id="node7" class="node">
 <title>CommitToBalanceRight</title>
-<ellipse fill="none" stroke="#000000" cx="562" cy="-256" rx="105.9768" ry="18"/>
-<text text-anchor="middle" x="562" y="-251.8" font-family="Times,serif" font-size="14.00" fill="#000000">CommitToBalanceRight</text>
+<ellipse fill="none" stroke="#000000" cx="342" cy="-922" rx="105.9768" ry="18"/>
+<text text-anchor="middle" x="342" y="-917.8" font-family="Times,serif" font-size="14.00" fill="#000000">CommitToBalanceRight</text>
 </g>
 <!-- Commit&#45;&gt;CommitToBalanceRight -->
 <g id="edge12" class="edge">
 <title>Commit-&gt;CommitToBalanceRight</title>
-<path fill="none" stroke="#000000" d="M427.1613,-351.3318C453.6621,-332.5956 498.2682,-301.0588 528.869,-279.4238"/>
-<polygon fill="#000000" stroke="#000000" points="530.9571,-282.234 537.1019,-273.6031 526.916,-276.5182 530.9571,-282.234"/>
+<path fill="none" stroke="#000000" d="M581.0246,-1050.2704C578.2753,-1044.5164 575.3571,-1038.0545 573,-1032 560.5051,-999.9056 575.8834,-980.7205 550,-958 547.5764,-955.8725 484.9019,-945.1958 428.9839,-936.0172"/>
+<polygon fill="#000000" stroke="#000000" points="429.4335,-932.5443 418.9993,-934.3823 428.3023,-939.4523 429.4335,-932.5443"/>
 </g>
 <!-- ExcessToBalanceLeft -->
 <g id="node8" class="node">
 <title>ExcessToBalanceLeft</title>
-<ellipse fill="none" stroke="#000000" cx="782" cy="-256" rx="95.5221" ry="18"/>
-<text text-anchor="middle" x="782" y="-251.8" font-family="Times,serif" font-size="14.00" fill="#000000">ExcessToBalanceLeft</text>
+<ellipse fill="none" stroke="#000000" cx="562" cy="-922" rx="95.5221" ry="18"/>
+<text text-anchor="middle" x="562" y="-917.8" font-family="Times,serif" font-size="14.00" fill="#000000">ExcessToBalanceLeft</text>
 </g>
 <!-- Commit&#45;&gt;ExcessToBalanceLeft -->
 <g id="edge13" class="edge">
 <title>Commit-&gt;ExcessToBalanceLeft</title>
-<path fill="none" stroke="#000000" d="M437.6417,-355.3965C444.0394,-353.2085 450.7144,-350.9856 457,-349 546.5592,-320.7086 651.1533,-291.4453 716.9854,-273.4813"/>
-<polygon fill="#000000" stroke="#000000" points="718.0811,-276.8104 726.8101,-270.8057 716.2418,-270.0564 718.0811,-276.8104"/>
+<path fill="none" stroke="#000000" d="M586.681,-1049.8582C583.3027,-1031.4823 577.8828,-1002.2473 573,-977 571.3174,-968.2999 569.4411,-958.8353 567.7214,-950.2491"/>
+<polygon fill="#000000" stroke="#000000" points="571.1279,-949.4355 565.725,-940.3219 564.2653,-950.8157 571.1279,-949.4355"/>
 </g>
 <!-- ExcessToBalanceRight -->
 <g id="node9" class="node">
 <title>ExcessToBalanceRight</title>
-<ellipse fill="none" stroke="#000000" cx="117" cy="-256" rx="101.2815" ry="18"/>
-<text text-anchor="middle" x="117" y="-251.8" font-family="Times,serif" font-size="14.00" fill="#000000">ExcessToBalanceRight</text>
+<ellipse fill="none" stroke="#000000" cx="777" cy="-922" rx="101.2815" ry="18"/>
+<text text-anchor="middle" x="777" y="-917.8" font-family="Times,serif" font-size="14.00" fill="#000000">ExcessToBalanceRight</text>
 </g>
 <!-- Commit&#45;&gt;ExcessToBalanceRight -->
 <g id="edge14" class="edge">
 <title>Commit-&gt;ExcessToBalanceRight</title>
-<path fill="none" stroke="#000000" d="M373.3551,-354.8035C324.0788,-335.8116 228.5033,-298.9752 168.9949,-276.0397"/>
-<polygon fill="#000000" stroke="#000000" points="169.9956,-272.6745 159.4059,-272.3439 167.4781,-279.2061 169.9956,-272.6745"/>
+<path fill="none" stroke="#000000" d="M610.3683,-1052.0975C643.1061,-1026.5375 707.6454,-976.1485 746.0867,-946.1355"/>
+<polygon fill="#000000" stroke="#000000" points="748.6075,-948.6079 754.3358,-939.6951 744.2997,-943.0903 748.6075,-948.6079"/>
 </g>
 <!-- CommitToBalanceLeft&#45;&gt;Balance -->
 <g id="edge5" class="edge">
 <title>CommitToBalanceLeft-&gt;Balance</title>
-<path fill="none" stroke="#000000" d="M309.9203,-273.5304C298.5879,-283.1366 288,-296.2045 288,-311.5 288,-773.2 288,-773.2 288,-773.2 288,-803.0038 372.4735,-821.1638 429.3581,-830.0139"/>
-<polygon fill="#000000" stroke="#000000" points="428.8721,-833.4801 439.2817,-831.5079 429.9142,-826.5581 428.8721,-833.4801"/>
-<text text-anchor="middle" x="340.0989" y="-489.6" font-family="Times,serif" font-size="14.00" fill="#000000">Results to Balance</text>
+<path fill="none" stroke="#000000" d="M130.8164,-939.9556C137.4593,-950.3432 144,-963.9989 144,-977.5 144,-1347.4 144,-1347.4 144,-1347.4 144,-1370.9388 295.0076,-1393.9185 376.4078,-1404.5957"/>
+<polygon fill="#000000" stroke="#000000" points="376.0861,-1408.0832 386.453,-1405.8973 376.9857,-1401.1412 376.0861,-1408.0832"/>
+<text text-anchor="middle" x="196.0989" y="-1171.8" font-family="Times,serif" font-size="14.00" fill="#000000">Results to Balance</text>
 </g>
 <!-- CommitToBalanceRight&#45;&gt;Balance -->
 <g id="edge6" class="edge">
 <title>CommitToBalanceRight-&gt;Balance</title>
-<path fill="none" stroke="#000000" d="M561.5,-274.4985C561.25,-285.2897 561,-299.1647 561,-311.5 561,-403.5 561,-403.5 561,-403.5 561,-443.6358 560,-453.6642 560,-493.8 560,-773.2 560,-773.2 560,-773.2 560,-795.0771 541.3968,-810.5979 522.1323,-820.8055"/>
-<polygon fill="#000000" stroke="#000000" points="520.4543,-817.7297 513.0009,-825.2595 523.5232,-824.0212 520.4543,-817.7297"/>
-<text text-anchor="middle" x="612.0989" y="-489.6" font-family="Times,serif" font-size="14.00" fill="#000000">Results to Balance</text>
+<path fill="none" stroke="#000000" d="M308.9338,-939.1359C295.9087,-948.4223 284,-961.3333 284,-977.5 284,-1347.4 284,-1347.4 284,-1347.4 284,-1368.8331 338.3653,-1387.9387 380.0542,-1399.4387"/>
+<polygon fill="#000000" stroke="#000000" points="379.2362,-1402.843 389.8017,-1402.0552 381.051,-1396.0823 379.2362,-1402.843"/>
+<text text-anchor="middle" x="336.0989" y="-1171.8" font-family="Times,serif" font-size="14.00" fill="#000000">Results to Balance</text>
 </g>
 <!-- ExcessToBalanceLeft&#45;&gt;Balance -->
 <g id="edge7" class="edge">
 <title>ExcessToBalanceLeft-&gt;Balance</title>
-<path fill="none" stroke="#000000" d="M778,-274.4044C776,-285.1642 774,-299.0392 774,-311.5 774,-773.2 774,-773.2 774,-773.2 774,-797.7609 615.1868,-820.4662 531.0063,-830.7762"/>
-<polygon fill="#000000" stroke="#000000" points="530.3869,-827.3255 520.8794,-832.0008 531.2273,-834.2749 530.3869,-827.3255"/>
-<text text-anchor="middle" x="826.0989" y="-489.6" font-family="Times,serif" font-size="14.00" fill="#000000">Results to Balance</text>
+<path fill="none" stroke="#000000" d="M557.5124,-940.0795C551.6453,-964.7363 541.6825,-1010.3781 538,-1050 530.4658,-1131.0653 572,-1148.5853 572,-1230 572,-1347.4 572,-1347.4 572,-1347.4 572,-1369.1475 516.5506,-1388.2428 474.2308,-1399.6496"/>
+<polygon fill="#000000" stroke="#000000" points="473.1267,-1396.3207 464.3411,-1402.2422 474.9018,-1403.0919 473.1267,-1396.3207"/>
+<text text-anchor="middle" x="620.0989" y="-1171.8" font-family="Times,serif" font-size="14.00" fill="#000000">Results to Balance</text>
 </g>
 <!-- ExcessToBalanceRight&#45;&gt;Balance -->
 <g id="edge8" class="edge">
 <title>ExcessToBalanceRight-&gt;Balance</title>
-<path fill="none" stroke="#000000" d="M125,-274.1233C129,-284.7894 133,-298.6644 133,-311.5 133,-773.2 133,-773.2 133,-773.2 133,-802.8545 331.6436,-823.9291 428.339,-832.4311"/>
-<polygon fill="#000000" stroke="#000000" points="428.2236,-835.9341 438.4884,-833.3102 428.8277,-828.9602 428.2236,-835.9341"/>
-<text text-anchor="middle" x="185.0989" y="-489.6" font-family="Times,serif" font-size="14.00" fill="#000000">Results to Balance</text>
+<path fill="none" stroke="#000000" d="M764.8594,-939.9193C758.9066,-950.4047 753,-964.1679 753,-977.5 753,-1347.4 753,-1347.4 753,-1347.4 753,-1375.0202 570.3592,-1396.8128 478.4898,-1406.0276"/>
+<polygon fill="#000000" stroke="#000000" points="477.8951,-1402.5692 468.2881,-1407.0365 478.5841,-1409.5352 477.8951,-1402.5692"/>
+<text text-anchor="middle" x="805.0989" y="-1171.8" font-family="Times,serif" font-size="14.00" fill="#000000">Results to Balance</text>
 </g>
-<!-- CreateBalance -->
+<!-- StateMachine.commit -->
 <g id="node10" class="node">
-<title>CreateBalance</title>
-<ellipse fill="none" stroke="#000000" cx="2394" cy="-836.6" rx="67.1695" ry="18"/>
-<text text-anchor="middle" x="2394" y="-832.4" font-family="Times,serif" font-size="14.00" fill="#000000">CreateBalance</text>
+<title>StateMachine.commit</title>
+<ellipse fill="none" stroke="#000000" cx="976" cy="-1068" rx="42.8945" ry="18"/>
+<text text-anchor="middle" x="976" y="-1063.8" font-family="Times,serif" font-size="14.00" fill="#000000">Commit</text>
 </g>
-<!-- CreateBalanceOrigin.Single -->
+<!-- CreateBalanceOrigin.commit -->
 <g id="node11" class="node">
-<title>CreateBalanceOrigin.Single</title>
-<ellipse fill="none" stroke="#000000" cx="2301" cy="-709.8" rx="119.7772" ry="18"/>
-<text text-anchor="middle" x="2301" y="-705.6" font-family="Times,serif" font-size="14.00" fill="#000000">CreateBalanceOrigin.Single</text>
+<title>CreateBalanceOrigin.commit</title>
+<ellipse fill="none" stroke="#000000" cx="1106" cy="-922" rx="124.432" ry="18"/>
+<text text-anchor="middle" x="1106" y="-917.8" font-family="Times,serif" font-size="14.00" fill="#000000">CreateBalanceOrigin.commit</text>
 </g>
-<!-- CreateBalance&#45;&gt;CreateBalanceOrigin.Single -->
+<!-- StateMachine.commit&#45;&gt;CreateBalanceOrigin.commit -->
 <g id="edge15" class="edge">
-<title>CreateBalance-&gt;CreateBalanceOrigin.Single</title>
-<path fill="none" stroke="#000000" d="M2419.478,-819.7039C2425.213,-813.7598 2428.6579,-806.7653 2425,-799.6 2409.3646,-768.9721 2377.863,-746.3662 2350.525,-731.4965"/>
-<polygon fill="#000000" stroke="#000000" points="2351.9263,-728.2797 2341.4425,-726.7499 2348.6841,-734.4836 2351.9263,-728.2797"/>
-</g>
-<!-- SplitBalance.Spendable -->
-<g id="node16" class="node">
-<title>SplitBalance.Spendable</title>
-<ellipse fill="none" stroke="#000000" cx="2358" cy="-601.8" rx="103.0475" ry="18"/>
-<text text-anchor="middle" x="2358" y="-597.6" font-family="Times,serif" font-size="14.00" fill="#000000">SplitBalance.Spendable</text>
-</g>
-<!-- CreateBalance&#45;&gt;SplitBalance.Spendable -->
-<g id="edge20" class="edge">
-<title>CreateBalance-&gt;SplitBalance.Spendable</title>
-<path fill="none" stroke="#000000" d="M2415.3953,-819.2836C2420.9029,-813.8408 2426.3099,-807.4471 2430,-800.6 2453.1576,-757.6299 2463.2971,-737.054 2445,-691.8 2434.189,-665.0614 2411.2054,-641.8582 2391.5757,-625.711"/>
-<polygon fill="#000000" stroke="#000000" points="2393.7004,-622.9288 2383.6937,-619.4478 2389.3455,-628.4093 2393.7004,-622.9288"/>
-</g>
-<!-- SplitBalance.Excess -->
-<g id="node17" class="node">
-<title>SplitBalance.Excess</title>
-<ellipse fill="none" stroke="#000000" cx="2236" cy="-547.8" rx="89.7206" ry="18"/>
-<text text-anchor="middle" x="2236" y="-543.6" font-family="Times,serif" font-size="14.00" fill="#000000">SplitBalance.Excess</text>
-</g>
-<!-- CreateBalance&#45;&gt;SplitBalance.Excess -->
-<g id="edge21" class="edge">
-<title>CreateBalance-&gt;SplitBalance.Excess</title>
-<path fill="none" stroke="#000000" d="M2407.0055,-818.4981C2426.185,-789.3748 2457.0159,-731.382 2430,-691.8 2417.6237,-673.6671 2259.597,-637.0365 2246,-619.8 2236.4704,-607.7197 2233.7497,-590.815 2233.5138,-576.4212"/>
-<polygon fill="#000000" stroke="#000000" points="2237.0218,-576.1009 2233.7462,-566.0251 2230.0235,-575.9444 2237.0218,-576.1009"/>
-</g>
-<!-- StateBalance.Single -->
-<g id="node20" class="node">
-<title>StateBalance.Single</title>
-<ellipse fill="none" stroke="#000000" cx="1922" cy="-655.8" rx="88.5767" ry="18"/>
-<text text-anchor="middle" x="1922" y="-651.6" font-family="Times,serif" font-size="14.00" fill="#000000">StateBalance.Single</text>
-</g>
-<!-- CreateBalance&#45;&gt;StateBalance.Single -->
-<g id="edge26" class="edge">
-<title>CreateBalance-&gt;StateBalance.Single</title>
-<path fill="none" stroke="#000000" d="M2328.7485,-832.0558C2207.2816,-822.0934 1953.9735,-793.7389 1901,-727.8 1890.6675,-714.9386 1895.7069,-697.1712 1903.4332,-682.5046"/>
-<polygon fill="#000000" stroke="#000000" points="1906.4685,-684.2474 1908.4777,-673.8448 1900.4199,-680.724 1906.4685,-684.2474"/>
-</g>
-<!-- CreateBalanceOrigin -->
-<g id="node14" class="node">
-<title>CreateBalanceOrigin</title>
-<ellipse fill="none" stroke="#000000" cx="2124" cy="-493.8" rx="92.59" ry="18"/>
-<text text-anchor="middle" x="2124" y="-489.6" font-family="Times,serif" font-size="14.00" fill="#000000">CreateBalanceOrigin</text>
-</g>
-<!-- CreateBalanceOrigin.Single&#45;&gt;CreateBalanceOrigin -->
-<g id="edge17" class="edge">
-<title>CreateBalanceOrigin.Single-&gt;CreateBalanceOrigin</title>
-<path fill="none" stroke="#000000" d="M2273.0736,-692.2576C2237.1484,-668.2001 2175.4082,-621.5433 2142,-565.8 2134.0827,-552.5896 2129.6346,-536.0186 2127.1422,-522.1053"/>
-<polygon fill="#000000" stroke="#000000" points="2130.5796,-521.4311 2125.5923,-512.0835 2123.6618,-522.5009 2130.5796,-521.4311"/>
-</g>
-<!-- StateMachine.Commit -->
-<g id="node12" class="node">
-<title>StateMachine.Commit</title>
-<ellipse fill="none" stroke="#000000" cx="1871" cy="-836.6" rx="98.4103" ry="18"/>
-<text text-anchor="middle" x="1871" y="-832.4" font-family="Times,serif" font-size="14.00" fill="#000000">StateMachine.Commit</text>
+<title>StateMachine.commit-&gt;CreateBalanceOrigin.commit</title>
+<path fill="none" stroke="#000000" d="M986.8424,-1050.4058C1001.3708,-1027.6192 1028.736,-987.3494 1058,-958 1062.1464,-953.8415 1066.7943,-949.7688 1071.5218,-945.9457"/>
+<polygon fill="#000000" stroke="#000000" points="1073.7204,-948.6698 1079.4784,-939.7762 1069.4311,-943.1379 1073.7204,-948.6698"/>
 </g>
 <!-- CreateBalanceOrigin.Commit -->
-<g id="node13" class="node">
+<g id="node14" class="node">
 <title>CreateBalanceOrigin.Commit</title>
-<ellipse fill="none" stroke="#000000" cx="2037" cy="-709.8" rx="126.7391" ry="18"/>
-<text text-anchor="middle" x="2037" y="-705.6" font-family="Times,serif" font-size="14.00" fill="#000000">CreateBalanceOrigin.Commit</text>
+<ellipse fill="none" stroke="#000000" cx="1375" cy="-922" rx="126.7391" ry="18"/>
+<text text-anchor="middle" x="1375" y="-917.8" font-family="Times,serif" font-size="14.00" fill="#000000">CreateBalanceOrigin.Commit</text>
 </g>
-<!-- StateMachine.Commit&#45;&gt;CreateBalanceOrigin.Commit -->
+<!-- StateMachine.commit&#45;&gt;CreateBalanceOrigin.Commit -->
+<g id="edge45" class="edge">
+<title>StateMachine.commit-&gt;CreateBalanceOrigin.Commit</title>
+<path fill="none" stroke="#000000" d="M994.3247,-1051.5171C1001.1329,-1045.3907 1008.921,-1038.3798 1016,-1032 1052.4666,-999.1356 1053.39,-978.4897 1098,-958 1155.4092,-931.6315 1176.352,-948.1446 1239,-940 1249.869,-938.587 1261.2252,-937.1003 1272.5421,-935.6121"/>
+<polygon fill="#000000" stroke="#000000" points="1273.0064,-939.0813 1282.4639,-934.3057 1272.0925,-932.1412 1273.0064,-939.0813"/>
+</g>
+<!-- CreateBalance -->
+<g id="node12" class="node">
+<title>CreateBalance</title>
+<ellipse fill="none" stroke="#000000" cx="1321" cy="-1410.8" rx="67.1695" ry="18"/>
+<text text-anchor="middle" x="1321" y="-1406.6" font-family="Times,serif" font-size="14.00" fill="#000000">CreateBalance</text>
+</g>
+<!-- CreateBalanceOrigin.Single -->
+<g id="node13" class="node">
+<title>CreateBalanceOrigin.Single</title>
+<ellipse fill="none" stroke="#000000" cx="1242" cy="-1176" rx="119.7772" ry="18"/>
+<text text-anchor="middle" x="1242" y="-1171.8" font-family="Times,serif" font-size="14.00" fill="#000000">CreateBalanceOrigin.Single</text>
+</g>
+<!-- CreateBalance&#45;&gt;CreateBalanceOrigin.Single -->
 <g id="edge16" class="edge">
-<title>StateMachine.Commit-&gt;CreateBalanceOrigin.Commit</title>
-<path fill="none" stroke="#000000" d="M1875.7522,-818.363C1878.0759,-811.9261 1881.393,-804.9629 1886,-799.6 1912.3199,-768.9612 1951.8163,-745.9911 1983.8138,-730.9544"/>
-<polygon fill="#000000" stroke="#000000" points="1985.4097,-734.0733 1993.0504,-726.7336 1982.5003,-727.7065 1985.4097,-734.0733"/>
+<title>CreateBalance-&gt;CreateBalanceOrigin.Single</title>
+<path fill="none" stroke="#000000" d="M1322.0182,-1392.7486C1322.9739,-1364.673 1322.3224,-1309.2744 1306,-1266 1296.987,-1242.1045 1280.0262,-1218.7094 1265.8285,-1201.7634"/>
+<polygon fill="#000000" stroke="#000000" points="1268.3075,-1199.2785 1259.1277,-1193.9886 1263.005,-1203.8485 1268.3075,-1199.2785"/>
+</g>
+<!-- CreateBalance&#45;&gt;CreateBalanceOrigin.Commit -->
+<g id="edge17" class="edge">
+<title>CreateBalance-&gt;CreateBalanceOrigin.Commit</title>
+<path fill="none" stroke="#000000" d="M1319.3807,-1392.7988C1315.9561,-1358.4174 1306.9541,-1285.1208 1291,-1266 1263.6637,-1233.2377 1139.2356,-1227.6502 1113,-1194 1093.1355,-1168.5215 1103,-1154.3072 1103,-1122 1103,-1122 1103,-1122 1103,-977.5 1103,-968.2274 1201.3246,-950.0423 1279.7407,-937.0138"/>
+<polygon fill="#000000" stroke="#000000" points="1280.3879,-940.4544 1289.6838,-935.3715 1279.2471,-933.548 1280.3879,-940.4544"/>
+</g>
+<!-- SplitBalance.spendable -->
+<g id="node18" class="node">
+<title>SplitBalance.spendable</title>
+<ellipse fill="none" stroke="#000000" cx="1477" cy="-1122" rx="101.3221" ry="18"/>
+<text text-anchor="middle" x="1477" y="-1117.8" font-family="Times,serif" font-size="14.00" fill="#000000">SplitBalance.spendable</text>
+</g>
+<!-- CreateBalance&#45;&gt;SplitBalance.spendable -->
+<g id="edge22" class="edge">
+<title>CreateBalance-&gt;SplitBalance.spendable</title>
+<path fill="none" stroke="#000000" d="M1361,-1396.1127C1381,-1385.9336 1401,-1370.0836 1401,-1347.4 1401,-1347.4 1401,-1347.4 1401,-1230 1401,-1196.7162 1425.4399,-1166.4511 1446.601,-1146.4843"/>
+<polygon fill="#000000" stroke="#000000" points="1449.1328,-1148.9134 1454.1975,-1139.6075 1444.435,-1143.7239 1449.1328,-1148.9134"/>
+</g>
+<!-- SplitBalance.excess -->
+<g id="node19" class="node">
+<title>SplitBalance.excess</title>
+<ellipse fill="none" stroke="#000000" cx="1463" cy="-1014" rx="87.9951" ry="18"/>
+<text text-anchor="middle" x="1463" y="-1009.8" font-family="Times,serif" font-size="14.00" fill="#000000">SplitBalance.excess</text>
+</g>
+<!-- CreateBalance&#45;&gt;SplitBalance.excess -->
+<g id="edge23" class="edge">
+<title>CreateBalance-&gt;SplitBalance.excess</title>
+<path fill="none" stroke="#000000" d="M1349.9455,-1394.4138C1365.2886,-1383.3888 1381,-1367.2524 1381,-1347.4 1381,-1347.4 1381,-1347.4 1381,-1230 1381,-1201.9683 1364.4184,-1129.9578 1375,-1104 1386.0204,-1076.9658 1409.5037,-1053.6377 1429.4411,-1037.5098"/>
+<polygon fill="#000000" stroke="#000000" points="1431.7122,-1040.1771 1437.4382,-1031.2628 1427.4029,-1034.6607 1431.7122,-1040.1771"/>
+</g>
+<!-- StateBalance.Single -->
+<g id="node23" class="node">
+<title>StateBalance.Single</title>
+<ellipse fill="none" stroke="#000000" cx="1496" cy="-1230" rx="88.5767" ry="18"/>
+<text text-anchor="middle" x="1496" y="-1225.8" font-family="Times,serif" font-size="14.00" fill="#000000">StateBalance.Single</text>
+</g>
+<!-- CreateBalance&#45;&gt;StateBalance.Single -->
+<g id="edge29" class="edge">
+<title>CreateBalance-&gt;StateBalance.Single</title>
+<path fill="none" stroke="#000000" d="M1366.7228,-1397.3846C1380.36,-1391.8887 1394.6745,-1384.4885 1406,-1374.8 1444.1169,-1342.1926 1471.2084,-1289.3013 1485.1681,-1257.2709"/>
+<polygon fill="#000000" stroke="#000000" points="1488.3981,-1258.6188 1489.0764,-1248.0457 1481.9527,-1255.8881 1488.3981,-1258.6188"/>
+</g>
+<!-- Commit.excess_left -->
+<g id="node30" class="node">
+<title>Commit.excess_left</title>
+<ellipse fill="none" stroke="#000000" cx="990" cy="-1284" rx="88.0163" ry="18"/>
+<text text-anchor="middle" x="990" y="-1279.8" font-family="Times,serif" font-size="14.00" fill="#000000">Commit.excess_left</text>
+</g>
+<!-- CreateBalance&#45;&gt;Commit.excess_left -->
+<g id="edge37" class="edge">
+<title>CreateBalance-&gt;Commit.excess_left</title>
+<path fill="none" stroke="#000000" stroke-dasharray="1,5" d="M1282.3823,-1396.0063C1222.567,-1373.0921 1107.4891,-1329.0079 1040.9365,-1303.5128"/>
+<polygon fill="#000000" stroke="#000000" points="1042.072,-1300.1999 1031.4817,-1299.8909 1039.5679,-1306.7366 1042.072,-1300.1999"/>
+</g>
+<!-- Commit.excess_right -->
+<g id="node31" class="node">
+<title>Commit.excess_right</title>
+<ellipse fill="none" stroke="#000000" cx="1189" cy="-1284" rx="93.2569" ry="18"/>
+<text text-anchor="middle" x="1189" y="-1279.8" font-family="Times,serif" font-size="14.00" fill="#000000">Commit.excess_right</text>
+</g>
+<!-- CreateBalance&#45;&gt;Commit.excess_right -->
+<g id="edge38" class="edge">
+<title>CreateBalance-&gt;Commit.excess_right</title>
+<path fill="none" stroke="#000000" stroke-dasharray="1,5" d="M1302.9227,-1393.4349C1280.1731,-1371.5814 1240.9418,-1333.8956 1214.9812,-1308.9577"/>
+<polygon fill="#000000" stroke="#000000" points="1217.3463,-1306.3764 1207.7099,-1301.9728 1212.4969,-1311.4246 1217.3463,-1306.3764"/>
+</g>
+<!-- CreateBalanceOrigin -->
+<g id="node15" class="node">
+<title>CreateBalanceOrigin</title>
+<ellipse fill="none" stroke="#000000" cx="1402" cy="-811" rx="92.59" ry="18"/>
+<text text-anchor="middle" x="1402" y="-806.8" font-family="Times,serif" font-size="14.00" fill="#000000">CreateBalanceOrigin</text>
+</g>
+<!-- CreateBalanceOrigin.Single&#45;&gt;CreateBalanceOrigin -->
+<g id="edge18" class="edge">
+<title>CreateBalanceOrigin.Single-&gt;CreateBalanceOrigin</title>
+<path fill="none" stroke="#000000" d="M1249.8715,-1158.0183C1266.3699,-1122.2839 1307.9103,-1041.839 1366,-996 1420.2322,-953.205 1471.9287,-996.9735 1511,-940 1538.4219,-900.0136 1484.9347,-857.8592 1443.6246,-833.0226"/>
+<polygon fill="#000000" stroke="#000000" points="1445.164,-829.8684 1434.7646,-827.8429 1441.6311,-835.9115 1445.164,-829.8684"/>
 </g>
 <!-- CreateBalanceOrigin.Commit&#45;&gt;CreateBalanceOrigin -->
-<g id="edge18" class="edge">
-<title>CreateBalanceOrigin.Commit-&gt;CreateBalanceOrigin</title>
-<path fill="none" stroke="#000000" d="M2044.2679,-691.7555C2059.4929,-653.9556 2094.8185,-566.2506 2112.9009,-521.3564"/>
-<polygon fill="#000000" stroke="#000000" points="2116.202,-522.5286 2116.6916,-511.9451 2109.7088,-519.9133 2116.202,-522.5286"/>
-</g>
-<!-- SplitBalance.Input -->
-<g id="node15" class="node">
-<title>SplitBalance.Input</title>
-<ellipse fill="none" stroke="#000000" cx="2129" cy="-367" rx="83.3636" ry="18"/>
-<text text-anchor="middle" x="2129" y="-362.8" font-family="Times,serif" font-size="14.00" fill="#000000">SplitBalance.Input</text>
-</g>
-<!-- CreateBalanceOrigin&#45;&gt;SplitBalance.Input -->
 <g id="edge19" class="edge">
-<title>CreateBalanceOrigin-&gt;SplitBalance.Input</title>
-<path fill="none" stroke="#000000" d="M2124.7164,-475.6327C2125.5444,-454.6352 2126.917,-419.8261 2127.8849,-395.279"/>
-<polygon fill="#000000" stroke="#000000" points="2131.3881,-395.2638 2128.285,-385.1336 2124.3936,-394.9879 2131.3881,-395.2638"/>
+<title>CreateBalanceOrigin.Commit-&gt;CreateBalanceOrigin</title>
+<path fill="none" stroke="#000000" d="M1379.4585,-903.6706C1383.7441,-886.0521 1390.2795,-859.1843 1395.2117,-838.9073"/>
+<polygon fill="#000000" stroke="#000000" points="1398.6617,-839.5323 1397.6245,-828.9883 1391.86,-837.8777 1398.6617,-839.5323"/>
+</g>
+<!-- SplitBalance.input -->
+<g id="node16" class="node">
+<title>SplitBalance.input</title>
+<ellipse fill="none" stroke="#000000" cx="1308" cy="-700" rx="82.8012" ry="18"/>
+<text text-anchor="middle" x="1308" y="-695.8" font-family="Times,serif" font-size="14.00" fill="#000000">SplitBalance.input</text>
+</g>
+<!-- CreateBalanceOrigin&#45;&gt;SplitBalance.input -->
+<g id="edge20" class="edge">
+<title>CreateBalanceOrigin-&gt;SplitBalance.input</title>
+<path fill="none" stroke="#000000" d="M1386.8973,-793.1659C1371.4115,-774.8795 1347.1784,-746.2638 1329.6534,-725.5695"/>
+<polygon fill="#000000" stroke="#000000" points="1332.1987,-723.1592 1323.0652,-717.7898 1326.8568,-727.683 1332.1987,-723.1592"/>
+</g>
+<!-- Withdrawal -->
+<g id="node22" class="node">
+<title>Withdrawal</title>
+<ellipse fill="none" stroke="#000000" cx="1465" cy="-700" rx="56.7387" ry="18"/>
+<text text-anchor="middle" x="1465" y="-695.8" font-family="Times,serif" font-size="14.00" fill="#000000">Withdrawal</text>
+</g>
+<!-- CreateBalanceOrigin&#45;&gt;Withdrawal -->
+<g id="edge28" class="edge">
+<title>CreateBalanceOrigin-&gt;Withdrawal</title>
+<path fill="none" stroke="#000000" d="M1412.4032,-792.6706C1422.5864,-774.7288 1438.2135,-747.1952 1449.7904,-726.7979"/>
+<polygon fill="#000000" stroke="#000000" points="1452.8982,-728.4128 1454.7904,-717.9883 1446.8104,-724.9576 1452.8982,-728.4128"/>
 </g>
 <!-- SplitBalance -->
-<g id="node18" class="node">
+<g id="node17" class="node">
 <title>SplitBalance</title>
-<ellipse fill="none" stroke="#000000" cx="2209" cy="-256" rx="60.2672" ry="18"/>
-<text text-anchor="middle" x="2209" y="-251.8" font-family="Times,serif" font-size="14.00" fill="#000000">SplitBalance</text>
+<ellipse fill="none" stroke="#000000" cx="1494" cy="-589" rx="60.2672" ry="18"/>
+<text text-anchor="middle" x="1494" y="-584.8" font-family="Times,serif" font-size="14.00" fill="#000000">SplitBalance</text>
 </g>
-<!-- SplitBalance.Input&#45;&gt;SplitBalance -->
-<g id="edge22" class="edge">
-<title>SplitBalance.Input-&gt;SplitBalance</title>
-<path fill="none" stroke="#000000" d="M2141.8534,-349.1659C2154.9161,-331.0413 2175.2923,-302.7695 2190.1742,-282.1207"/>
-<polygon fill="#000000" stroke="#000000" points="2193.171,-283.9488 2196.1785,-273.7898 2187.4922,-279.856 2193.171,-283.9488"/>
-</g>
-<!-- SplitBalance.Spendable&#45;&gt;SplitBalance -->
-<g id="edge23" class="edge">
-<title>SplitBalance.Spendable-&gt;SplitBalance</title>
-<path fill="none" stroke="#000000" d="M2354.4477,-583.5356C2350.5986,-562.1243 2345,-525.5274 2345,-493.8 2345,-493.8 2345,-493.8 2345,-311.5 2345,-293.7673 2304.8635,-278.9219 2268.1988,-269.0601"/>
-<polygon fill="#000000" stroke="#000000" points="2269.0426,-265.6632 2258.4838,-266.5372 2267.283,-272.4385 2269.0426,-265.6632"/>
-</g>
-<!-- SplitBalance.Excess&#45;&gt;SplitBalance -->
-<g id="edge24" class="edge">
-<title>SplitBalance.Excess-&gt;SplitBalance</title>
-<path fill="none" stroke="#000000" d="M2236,-529.7707C2236,-511.5057 2236,-482.4389 2236,-457.3 2236,-457.3 2236,-457.3 2236,-311.5 2236,-301.5852 2232.4726,-291.5869 2227.9676,-282.8609"/>
-<polygon fill="#000000" stroke="#000000" points="2230.8532,-280.8592 2222.8164,-273.9556 2224.794,-284.3643 2230.8532,-280.8592"/>
+<!-- SplitBalance.input&#45;&gt;SplitBalance -->
+<g id="edge21" class="edge">
+<title>SplitBalance.input-&gt;SplitBalance</title>
+<path fill="none" stroke="#000000" d="M1336.6549,-682.8995C1369.2082,-663.4725 1422.3925,-631.7335 1457.7903,-610.609"/>
+<polygon fill="#000000" stroke="#000000" points="1460.0329,-613.3466 1466.8265,-605.2165 1456.4457,-607.3356 1460.0329,-613.3466"/>
 </g>
 <!-- StateBalance.Split -->
-<g id="node19" class="node">
+<g id="node20" class="node">
 <title>StateBalance.Split</title>
-<ellipse fill="none" stroke="#000000" cx="2091" cy="-145" rx="82.2137" ry="18"/>
-<text text-anchor="middle" x="2091" y="-140.8" font-family="Times,serif" font-size="14.00" fill="#000000">StateBalance.Split</text>
+<ellipse fill="none" stroke="#000000" cx="1483" cy="-478" rx="82.2137" ry="18"/>
+<text text-anchor="middle" x="1483" y="-473.8" font-family="Times,serif" font-size="14.00" fill="#000000">StateBalance.Split</text>
 </g>
 <!-- SplitBalance&#45;&gt;StateBalance.Split -->
-<g id="edge25" class="edge">
+<g id="edge26" class="edge">
 <title>SplitBalance-&gt;StateBalance.Split</title>
-<path fill="none" stroke="#000000" d="M2190.5625,-238.6563C2170.8483,-220.1115 2139.4234,-190.5508 2117.1571,-169.6054"/>
-<polygon fill="#000000" stroke="#000000" points="2119.3794,-166.8907 2109.6975,-162.5883 2114.5832,-171.9894 2119.3794,-166.8907"/>
+<path fill="none" stroke="#000000" d="M1492.1836,-570.6706C1490.4559,-553.2373 1487.8309,-526.7482 1485.8292,-506.5489"/>
+<polygon fill="#000000" stroke="#000000" points="1489.2883,-505.9627 1484.8191,-496.3566 1482.3224,-506.6531 1489.2883,-505.9627"/>
+</g>
+<!-- SplitBalance.spendable&#45;&gt;SplitBalance -->
+<g id="edge24" class="edge">
+<title>SplitBalance.spendable-&gt;SplitBalance</title>
+<path fill="none" stroke="#000000" d="M1502.6592,-1104.5744C1527.3621,-1085.5082 1561,-1052.4809 1561,-1014 1561,-1014 1561,-1014 1561,-644.5 1561,-629.5277 1550.9547,-617.8291 1538.6434,-609.1138"/>
+<polygon fill="#000000" stroke="#000000" points="1540.1758,-605.9417 1529.8537,-603.5532 1536.4334,-611.8573 1540.1758,-605.9417"/>
+</g>
+<!-- SplitBalance.excess&#45;&gt;SplitBalance -->
+<g id="edge25" class="edge">
+<title>SplitBalance.excess-&gt;SplitBalance</title>
+<path fill="none" stroke="#000000" d="M1509.7238,-998.5094C1526.3357,-989.8323 1541,-976.948 1541,-958.5 1541,-958.5 1541,-958.5 1541,-644.5 1541,-632.2683 1534.2696,-621.3464 1525.9026,-612.4946"/>
+<polygon fill="#000000" stroke="#000000" points="1528.2632,-609.9096 1518.6012,-605.5626 1523.4435,-614.9861 1528.2632,-609.9096"/>
 </g>
 <!-- StateBalance -->
 <g id="node21" class="node">
 <title>StateBalance</title>
-<ellipse fill="none" stroke="#000000" cx="1992" cy="-34" rx="61.3896" ry="18"/>
-<text text-anchor="middle" x="1992" y="-29.8" font-family="Times,serif" font-size="14.00" fill="#000000">StateBalance</text>
+<ellipse fill="none" stroke="#000000" cx="1483" cy="-367" rx="61.3896" ry="18"/>
+<text text-anchor="middle" x="1483" y="-362.8" font-family="Times,serif" font-size="14.00" fill="#000000">StateBalance</text>
 </g>
 <!-- StateBalance.Split&#45;&gt;StateBalance -->
 <g id="edge27" class="edge">
 <title>StateBalance.Split-&gt;StateBalance</title>
-<path fill="none" stroke="#000000" d="M2075.0939,-127.1659C2058.6153,-108.6899 2032.7321,-79.6693 2014.2334,-58.9284"/>
-<polygon fill="#000000" stroke="#000000" points="2016.8084,-56.5572 2007.5402,-51.4238 2011.5843,-61.2165 2016.8084,-56.5572"/>
+<path fill="none" stroke="#000000" d="M1483,-459.6706C1483,-442.2373 1483,-415.7482 1483,-395.5489"/>
+<polygon fill="#000000" stroke="#000000" points="1486.5001,-395.3566 1483,-385.3566 1479.5001,-395.3567 1486.5001,-395.3566"/>
+</g>
+<!-- OrderCreated.from -->
+<g id="node24" class="node">
+<title>OrderCreated.from</title>
+<ellipse fill="none" stroke="#000000" cx="1441" cy="-256" rx="84.5294" ry="18"/>
+<text text-anchor="middle" x="1441" y="-251.8" font-family="Times,serif" font-size="14.00" fill="#000000">OrderCreated.from</text>
+</g>
+<!-- StateBalance&#45;&gt;OrderCreated.from -->
+<g id="edge31" class="edge">
+<title>StateBalance-&gt;OrderCreated.from</title>
+<path fill="none" stroke="#000000" d="M1476.0646,-348.6706C1469.3369,-330.8904 1459.0451,-303.6906 1451.349,-283.3509"/>
+<polygon fill="#000000" stroke="#000000" points="1454.6189,-282.1025 1447.8064,-273.9883 1448.0719,-284.5798 1454.6189,-282.1025"/>
 </g>
 <!-- StateBalance.Single&#45;&gt;StateBalance -->
-<g id="edge28" class="edge">
+<g id="edge30" class="edge">
 <title>StateBalance.Single-&gt;StateBalance</title>
-<path fill="none" stroke="#000000" d="M1930.3567,-637.4996C1939.2334,-616.356 1952,-580.2981 1952,-547.8 1952,-547.8 1952,-547.8 1952,-89.5 1952,-78.2241 1957.5012,-67.6787 1964.4233,-58.8727"/>
-<polygon fill="#000000" stroke="#000000" points="1967.0997,-61.1292 1971.0628,-51.3035 1961.8373,-56.5131 1967.0997,-61.1292"/>
+<path fill="none" stroke="#000000" d="M1523.3614,-1212.5074C1549.194,-1193.6171 1584,-1160.9398 1584,-1122 1584,-1122 1584,-1122 1584,-422.5 1584,-400.9855 1566.1799,-387.7528 1545.5101,-379.6404"/>
+<polygon fill="#000000" stroke="#000000" points="1546.4613,-376.2652 1535.8664,-376.2621 1544.1469,-382.8715 1546.4613,-376.2652"/>
 </g>
 <!-- OrderCreated -->
-<g id="node22" class="node">
-<title>OrderCreated</title>
-<ellipse fill="none" stroke="#000000" cx="1491" cy="-836.6" rx="63.66" ry="18"/>
-<text text-anchor="middle" x="1491" y="-832.4" font-family="Times,serif" font-size="14.00" fill="#000000">OrderCreated</text>
-</g>
-<!-- Commit.Left -->
-<g id="node23" class="node">
-<title>Commit.Left</title>
-<ellipse fill="none" stroke="#000000" cx="1811" cy="-709.8" rx="61.3919" ry="18"/>
-<text text-anchor="middle" x="1811" y="-705.6" font-family="Times,serif" font-size="14.00" fill="#000000">Commit.Left</text>
-</g>
-<!-- OrderCreated&#45;&gt;Commit.Left -->
-<g id="edge31" class="edge">
-<title>OrderCreated-&gt;Commit.Left</title>
-<path fill="none" stroke="#000000" d="M1552.9946,-832.5637C1615.0535,-827.6317 1705.5684,-817.7483 1736,-800.6 1762.3781,-785.7359 1783.335,-757.6852 1796.3162,-736.6775"/>
-<polygon fill="#000000" stroke="#000000" points="1799.4449,-738.2638 1801.5468,-727.8795 1793.428,-734.6865 1799.4449,-738.2638"/>
-</g>
-<!-- Commit.Right -->
-<g id="node24" class="node">
-<title>Commit.Right</title>
-<ellipse fill="none" stroke="#000000" cx="969" cy="-709.8" rx="66.6511" ry="18"/>
-<text text-anchor="middle" x="969" y="-705.6" font-family="Times,serif" font-size="14.00" fill="#000000">Commit.Right</text>
-</g>
-<!-- OrderCreated&#45;&gt;Commit.Right -->
-<g id="edge32" class="edge">
-<title>OrderCreated-&gt;Commit.Right</title>
-<path fill="none" stroke="#000000" d="M1442.3603,-824.7848C1346.3686,-801.4673 1132.8492,-749.6009 1028.5922,-724.2757"/>
-<polygon fill="#000000" stroke="#000000" points="1029.3952,-720.869 1018.8516,-721.9095 1027.7428,-727.6712 1029.3952,-720.869"/>
-</g>
-<!-- Commit.Left_fulfilled -->
 <g id="node25" class="node">
-<title>Commit.Left_fulfilled</title>
-<ellipse fill="none" stroke="#000000" cx="1151" cy="-709.8" rx="97.2642" ry="18"/>
-<text text-anchor="middle" x="1151" y="-705.6" font-family="Times,serif" font-size="14.00" fill="#000000">Commit.Left_fulfilled</text>
+<title>OrderCreated</title>
+<ellipse fill="none" stroke="#000000" cx="1316" cy="-145" rx="63.66" ry="18"/>
+<text text-anchor="middle" x="1316" y="-140.8" font-family="Times,serif" font-size="14.00" fill="#000000">OrderCreated</text>
 </g>
-<!-- OrderCreated&#45;&gt;Commit.Left_fulfilled -->
-<g id="edge33" class="edge">
-<title>OrderCreated-&gt;Commit.Left_fulfilled</title>
-<path fill="none" stroke="#000000" d="M1452.3287,-822.1779C1391.4465,-799.4724 1273.1057,-755.3383 1204.2347,-729.6534"/>
-<polygon fill="#000000" stroke="#000000" points="1205.0378,-726.2175 1194.4451,-726.0025 1202.5917,-732.7762 1205.0378,-726.2175"/>
+<!-- OrderCreated.from&#45;&gt;OrderCreated -->
+<g id="edge32" class="edge">
+<title>OrderCreated.from-&gt;OrderCreated</title>
+<path fill="none" stroke="#000000" d="M1421.1934,-238.4117C1400.1646,-219.7382 1366.7842,-190.0963 1343.2758,-169.2209"/>
+<polygon fill="#000000" stroke="#000000" points="1345.5154,-166.5289 1335.714,-162.506 1340.8674,-171.763 1345.5154,-166.5289"/>
 </g>
-<!-- Commit.Right_fulfilled -->
+<!-- Commit.left -->
 <g id="node26" class="node">
-<title>Commit.Right_fulfilled</title>
-<ellipse fill="none" stroke="#000000" cx="1369" cy="-709.8" rx="102.5238" ry="18"/>
-<text text-anchor="middle" x="1369" y="-705.6" font-family="Times,serif" font-size="14.00" fill="#000000">Commit.Right_fulfilled</text>
+<title>Commit.left</title>
+<ellipse fill="none" stroke="#000000" cx="960" cy="-34" rx="57.9598" ry="18"/>
+<text text-anchor="middle" x="960" y="-29.8" font-family="Times,serif" font-size="14.00" fill="#000000">Commit.left</text>
 </g>
-<!-- OrderCreated&#45;&gt;Commit.Right_fulfilled -->
-<g id="edge34" class="edge">
-<title>OrderCreated-&gt;Commit.Right_fulfilled</title>
-<path fill="none" stroke="#000000" d="M1474.0364,-818.969C1453.0318,-797.138 1417.1112,-759.8041 1393.2135,-734.9662"/>
-<polygon fill="#000000" stroke="#000000" points="1395.6684,-732.4695 1386.2128,-727.69 1390.624,-737.3229 1395.6684,-732.4695"/>
+<!-- OrderCreated&#45;&gt;Commit.left -->
+<g id="edge33" class="edge">
+<title>OrderCreated-&gt;Commit.left</title>
+<path fill="none" stroke="#000000" d="M1273.0581,-131.6108C1207.0889,-111.0418 1081.0789,-71.7521 1010.7145,-49.8127"/>
+<polygon fill="#000000" stroke="#000000" points="1011.7557,-46.4712 1001.1671,-46.8358 1009.672,-53.1539 1011.7557,-46.4712"/>
 </g>
-<!-- Option&lt;OrderCreated&gt; -->
+<!-- Commit.right -->
 <g id="node27" class="node">
-<title>Option&lt;OrderCreated&gt;</title>
-<ellipse fill="none" stroke="#000000" cx="1611" cy="-709.8" rx="101.0907" ry="18"/>
-<text text-anchor="middle" x="1611" y="-705.6" font-family="Times,serif" font-size="14.00" fill="#000000">Option&lt;OrderCreated&gt;</text>
+<title>Commit.right</title>
+<ellipse fill="none" stroke="#000000" cx="1316" cy="-34" rx="63.2006" ry="18"/>
+<text text-anchor="middle" x="1316" y="-29.8" font-family="Times,serif" font-size="14.00" fill="#000000">Commit.right</text>
 </g>
-<!-- OrderCreated&#45;&gt;Option&lt;OrderCreated&gt; -->
-<g id="edge35" class="edge">
-<title>OrderCreated-&gt;Option&lt;OrderCreated&gt;</title>
-<path fill="none" stroke="#000000" d="M1507.6855,-818.969C1528.3458,-797.138 1563.6775,-759.8041 1587.1834,-734.9662"/>
-<polygon fill="#000000" stroke="#000000" points="1589.7378,-737.359 1594.0694,-727.69 1584.6536,-732.5474 1589.7378,-737.359"/>
+<!-- OrderCreated&#45;&gt;Commit.right -->
+<g id="edge34" class="edge">
+<title>OrderCreated-&gt;Commit.right</title>
+<path fill="none" stroke="#000000" d="M1316,-126.6706C1316,-109.2373 1316,-82.7482 1316,-62.5489"/>
+<polygon fill="#000000" stroke="#000000" points="1319.5001,-62.3566 1316,-52.3566 1312.5001,-62.3567 1319.5001,-62.3566"/>
 </g>
-<!-- Commit.Excess_left -->
+<!-- Commit.left_fulfilled -->
 <g id="node28" class="node">
-<title>Commit.Excess_left</title>
-<ellipse fill="none" stroke="#000000" cx="1723" cy="-493.8" rx="89.7419" ry="18"/>
-<text text-anchor="middle" x="1723" y="-489.6" font-family="Times,serif" font-size="14.00" fill="#000000">Commit.Excess_left</text>
+<title>Commit.left_fulfilled</title>
+<ellipse fill="none" stroke="#000000" cx="1491" cy="-34" rx="93.8326" ry="18"/>
+<text text-anchor="middle" x="1491" y="-29.8" font-family="Times,serif" font-size="14.00" fill="#000000">Commit.left_fulfilled</text>
 </g>
-<!-- OrderCreated&#45;&gt;Commit.Excess_left -->
-<g id="edge36" class="edge">
-<title>OrderCreated-&gt;Commit.Excess_left</title>
-<path fill="none" stroke="#000000" d="M1553.1181,-832.4309C1624.2291,-825.9101 1731,-809.9932 1731,-773.2 1731,-773.2 1731,-773.2 1731,-601.8 1731,-574.7789 1728.4786,-544.0586 1726.2669,-522.3089"/>
-<polygon fill="#000000" stroke="#000000" points="1729.7209,-521.6896 1725.186,-512.1144 1722.7599,-522.4277 1729.7209,-521.6896"/>
+<!-- OrderCreated&#45;&gt;Commit.left_fulfilled -->
+<g id="edge35" class="edge">
+<title>OrderCreated-&gt;Commit.left_fulfilled</title>
+<path fill="none" stroke="#000000" d="M1342.1993,-128.3822C1372.2214,-109.3395 1421.5925,-78.0242 1455.1606,-56.7324"/>
+<polygon fill="#000000" stroke="#000000" points="1457.1862,-59.5923 1463.7561,-51.2804 1453.4368,-53.6811 1457.1862,-59.5923"/>
 </g>
-<!-- Commit.Excess_right -->
+<!-- Commit.right_fulfilled -->
 <g id="node29" class="node">
-<title>Commit.Excess_right</title>
-<ellipse fill="none" stroke="#000000" cx="1516" cy="-493.8" rx="94.9822" ry="18"/>
-<text text-anchor="middle" x="1516" y="-489.6" font-family="Times,serif" font-size="14.00" fill="#000000">Commit.Excess_right</text>
+<title>Commit.right_fulfilled</title>
+<ellipse fill="none" stroke="#000000" cx="1135" cy="-34" rx="99.0735" ry="18"/>
+<text text-anchor="middle" x="1135" y="-29.8" font-family="Times,serif" font-size="14.00" fill="#000000">Commit.right_fulfilled</text>
 </g>
-<!-- OrderCreated&#45;&gt;Commit.Excess_right -->
-<g id="edge37" class="edge">
-<title>OrderCreated-&gt;Commit.Excess_right</title>
-<path fill="none" stroke="#000000" d="M1491,-818.5635C1491,-805.8761 1491,-788.4997 1491,-773.2 1491,-773.2 1491,-773.2 1491,-601.8 1491,-573.8876 1499.0239,-542.9385 1505.9801,-521.352"/>
-<polygon fill="#000000" stroke="#000000" points="1509.3055,-522.4437 1509.1686,-511.8497 1502.6692,-520.2167 1509.3055,-522.4437"/>
+<!-- OrderCreated&#45;&gt;Commit.right_fulfilled -->
+<g id="edge36" class="edge">
+<title>OrderCreated-&gt;Commit.right_fulfilled</title>
+<path fill="none" stroke="#000000" d="M1289.2928,-128.6216C1258.3303,-109.6335 1207.0985,-78.2151 1172.2368,-56.8358"/>
+<polygon fill="#000000" stroke="#000000" points="1173.6636,-53.6051 1163.3092,-51.3609 1170.0041,-59.5724 1173.6636,-53.6051"/>
 </g>
-<!-- Option&lt;OrderCreated&gt;&#45;&gt;Commit.Excess_left -->
-<g id="edge29" class="edge">
-<title>Option&lt;OrderCreated&gt;-&gt;Commit.Excess_left</title>
-<path fill="none" stroke="#000000" d="M1620.3564,-691.7555C1639.9976,-653.8762 1685.6242,-565.8818 1708.8579,-521.074"/>
-<polygon fill="#000000" stroke="#000000" points="1712.0954,-522.4338 1713.5914,-511.9451 1705.8811,-519.2115 1712.0954,-522.4338"/>
+<!-- Commit.left&#45;&gt;StateMachine.commit -->
+<g id="edge39" class="edge">
+<title>Commit.left-&gt;StateMachine.commit</title>
+<path fill="none" stroke="#000000" d="M929.8309,-49.6188C916.1585,-59.0355 903,-72.5114 903,-89.5 903,-977.5 903,-977.5 903,-977.5 903,-1002.6229 902.9576,-1011.8782 918,-1032 923.2023,-1038.959 930.1816,-1044.8846 937.4936,-1049.798"/>
+<polygon fill="#000000" stroke="#000000" points="935.7889,-1052.8583 946.1434,-1055.1022 939.4482,-1046.8909 935.7889,-1052.8583"/>
 </g>
-<!-- Option&lt;OrderCreated&gt;&#45;&gt;Commit.Excess_right -->
-<g id="edge30" class="edge">
-<title>Option&lt;OrderCreated&gt;-&gt;Commit.Excess_right</title>
-<path fill="none" stroke="#000000" d="M1603.0638,-691.7555C1586.4388,-653.9556 1547.8648,-566.2506 1528.1197,-521.3564"/>
-<polygon fill="#000000" stroke="#000000" points="1531.2103,-519.6897 1523.9805,-511.9451 1524.8027,-522.508 1531.2103,-519.6897"/>
+<!-- Commit.right&#45;&gt;StateMachine.commit -->
+<g id="edge40" class="edge">
+<title>Commit.right-&gt;StateMachine.commit</title>
+<path fill="none" stroke="#000000" d="M1270.3013,-46.593C1261.3089,-48.6946 1251.9023,-50.6326 1243,-52 1180.2761,-61.6347 1014.0197,-40.1854 958,-70 948.3478,-75.1371 943,-78.5659 943,-89.5 943,-977.5 943,-977.5 943,-977.5 943,-999.936 952.0627,-1023.7106 960.6895,-1041.2593"/>
+<polygon fill="#000000" stroke="#000000" points="957.6733,-1043.0464 965.3769,-1050.32 963.8906,-1039.8299 957.6733,-1043.0464"/>
+</g>
+<!-- Commit.left_fulfilled&#45;&gt;StateMachine.commit -->
+<g id="edge41" class="edge">
+<title>Commit.left_fulfilled-&gt;StateMachine.commit</title>
+<path fill="none" stroke="#000000" d="M1423.8091,-46.5899C1411.9068,-48.5777 1399.6091,-50.4763 1388,-52 1340.9975,-58.1693 963,-42.0943 963,-89.5 963,-977.5 963,-977.5 963,-977.5 963,-998.631 966.5155,-1022.258 969.8902,-1040.0708"/>
+<polygon fill="#000000" stroke="#000000" points="966.498,-1040.9575 971.8867,-1050.0796 973.3628,-1039.5881 966.498,-1040.9575"/>
+</g>
+<!-- Commit.right_fulfilled&#45;&gt;StateMachine.commit -->
+<g id="edge42" class="edge">
+<title>Commit.right_fulfilled-&gt;StateMachine.commit</title>
+<path fill="none" stroke="#000000" d="M1061.51,-46.1653C1007.8185,-55.2572 943.4626,-66.6664 938,-70 928.6665,-75.6958 923,-78.5659 923,-89.5 923,-977.5 923,-977.5 923,-977.5 923,-1002.6229 925.0727,-1010.4583 938,-1032 940.7356,-1036.5585 944.2052,-1040.9135 947.9306,-1044.92"/>
+<polygon fill="#000000" stroke="#000000" points="945.7018,-1047.6371 955.2842,-1052.1569 950.6118,-1042.6479 945.7018,-1047.6371"/>
+</g>
+<!-- Commit.excess_left&#45;&gt;StateMachine.commit -->
+<g id="edge43" class="edge">
+<title>Commit.excess_left-&gt;StateMachine.commit</title>
+<path fill="none" stroke="#000000" d="M988.8304,-1265.9555C986.3907,-1228.3144 980.7436,-1141.1867 977.8229,-1096.1246"/>
+<polygon fill="#000000" stroke="#000000" points="981.3156,-1095.8977 977.1761,-1086.1451 974.3303,-1096.3505 981.3156,-1095.8977"/>
+</g>
+<!-- Commit.excess_right&#45;&gt;StateMachine.commit -->
+<g id="edge44" class="edge">
+<title>Commit.excess_right-&gt;StateMachine.commit</title>
+<path fill="none" stroke="#000000" d="M1170.7563,-1266.1851C1152.3011,-1248.1104 1123.0056,-1219.2722 1098,-1194 1063.259,-1158.8887 1023.5593,-1117.6819 999.135,-1092.203"/>
+<polygon fill="#000000" stroke="#000000" points="1001.5126,-1089.6254 992.0678,-1084.8248 996.4575,-1094.4675 1001.5126,-1089.6254"/>
 </g>
 </g>
 </svg>
