@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="612pt" height="139pt" viewBox="0.00 0.00 612.20 139.00">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 135)">
+<title>F</title>
+<polygon fill="#ffffff" stroke="transparent" points="-4,4 -4,-135 608.2023,-135 608.2023,4 -4,4"/>
+<g id="clust1" class="cluster">
+<title>cluster_C</title>
+<polygon fill="none" stroke="#000000" stroke-dasharray="1,5" points="8,-46 8,-123 466.5634,-123 466.5634,-46 8,-46"/>
+<text text-anchor="middle" x="237.2817" y="-106.4" font-family="Times,serif" font-size="14.00" fill="#000000">Contract</text>
+</g>
+<!-- Storage -->
+<g id="node1" class="node">
+<title>Storage</title>
+<ellipse fill="none" stroke="#000000" cx="56.5336" cy="-72" rx="40.5673" ry="18"/>
+<text text-anchor="middle" x="56.5336" y="-67.8" font-family="Times,serif" font-size="14.00" fill="#000000">Storage</text>
+</g>
+<!-- StateMachine -->
+<g id="node2" class="node">
+<title>StateMachine</title>
+<ellipse fill="none" stroke="#000000" cx="394.4331" cy="-72" rx="64.261" ry="18"/>
+<text text-anchor="middle" x="394.4331" y="-67.8" font-family="Times,serif" font-size="14.00" fill="#000000">StateMachine</text>
+</g>
+<!-- Storage&#45;&gt;StateMachine -->
+<g id="edge1" class="edge">
+<title>Storage-&gt;StateMachine</title>
+<path fill="none" stroke="#000000" d="M97.2922,-72C152.305,-72 251.3077,-72 319.8316,-72"/>
+<polygon fill="#000000" stroke="#000000" points="320.1336,-75.5001 330.1336,-72 320.1335,-68.5001 320.1336,-75.5001"/>
+<text text-anchor="middle" x="190.1554" y="-76.2" font-family="Times,serif" font-size="14.00" fill="#000000">Σ</text>
+</g>
+<!-- Emissions -->
+<g id="node4" class="node">
+<title>Emissions</title>
+<ellipse fill="none" stroke="#000000" cx="553.4631" cy="-72" rx="50.9793" ry="18"/>
+<text text-anchor="middle" x="553.4631" y="-67.8" font-family="Times,serif" font-size="14.00" fill="#000000">Emissions</text>
+</g>
+<!-- StateMachine&#45;&gt;Emissions -->
+<g id="edge3" class="edge">
+<title>StateMachine-&gt;Emissions</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M458.6583,-72C469.8783,-72 481.5205,-72 492.645,-72"/>
+<polygon fill="#000000" stroke="#000000" points="492.689,-75.5001 502.689,-72 492.6889,-68.5001 492.689,-75.5001"/>
+<text text-anchor="middle" x="480.6437" y="-76.2" font-family="Times,serif" font-size="14.00" fill="#000000">ε</text>
+</g>
+<!-- Applicative -->
+<g id="node3" class="node">
+<title>Applicative</title>
+<ellipse fill="none" stroke="#000000" cx="190.1554" cy="-18" rx="56.1763" ry="18"/>
+<text text-anchor="middle" x="190.1554" y="-13.8" font-family="Times,serif" font-size="14.00" fill="#000000">Applicative</text>
+</g>
+<!-- Applicative&#45;&gt;StateMachine -->
+<g id="edge2" class="edge">
+<title>Applicative-&gt;StateMachine</title>
+<path fill="none" stroke="#000000" stroke-dasharray="5,2" d="M233.6896,-29.4572C257.0086,-35.599 286.225,-43.3018 312.3027,-50.2 320.5033,-52.3693 329.1635,-54.6638 337.663,-56.918"/>
+<polygon fill="#000000" stroke="#000000" points="336.9667,-60.3543 347.5299,-59.5357 338.7618,-53.5884 336.9667,-60.3543"/>
+<text text-anchor="middle" x="288.2731" y="-54.2" font-family="Times,serif" font-size="14.00" fill="#000000">⟦·⟧ₛ</text>
+</g>
+</g>
+</svg>

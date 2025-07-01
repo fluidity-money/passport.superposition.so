@@ -1,0 +1,8 @@
+digraph F {
+  rankdir=LR
+  subgraph cluster_C { label="Contract"; style=dotted
+    Storage -> StateMachine [label="Σ"]
+  }
+  Applicative -> StateMachine [stysssssle=dashed,label="⟦·⟧ₛ"]
+  StateMachine -> Emissions  [style=dashed,label="ε"]
+}

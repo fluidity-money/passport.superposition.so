@@ -1,0 +1,49 @@
+digraph {
+  rankdir=TD
+  subgraph cluster_Applicative { label="Applicative model"; style=dotted
+    Balance -> Withdraw -> Order [label="Withdraws"]
+    Order -> Cancel -> Balance [label="Cancel order"]
+    Order -> Commit -> {
+      {
+        CommitToBalanceLeft
+        CommitToBalanceRight
+        ExcessToBalanceLeft
+        ExcessToBalanceRight
+      } -> Balance [label="Results to Balance"]
+    }
+  }
+  subgraph cluster_StateMachine { label="State machine"; style=dotted
+    CreateBalance -> "CreateBalanceOrigin.Single"
+    "StateMachine.Commit" -> "CreateBalanceOrigin.Commit"
+    {
+      "CreateBalanceOrigin.Single"
+      "CreateBalanceOrigin.Commit"
+    }
+      -> CreateBalanceOrigin
+      -> "SplitBalance.Input"
+      "SplitBalance.Input"
+    "CreateBalance" -> "SplitBalance.Spendable"
+    "CreateBalance" -> "SplitBalance.Excess"
+    {
+      "SplitBalance.Spendable"
+      "SplitBalance.Excess"
+      "SplitBalance.Input"
+    } -> "SplitBalance"
+    SplitBalance -> "StateBalance.Split"
+    CreateBalance -> "StateBalance.Single"
+    {
+      "StateBalance.Split"
+      "StateBalance.Single"
+    } -> "StateBalance"
+    "OrderCreated" -> {
+      "Commit.Left"
+      "Commit.Right"
+      "Commit.Left_fulfilled"
+      "Commit.Right_fulfilled"
+      "Option<OrderCreated>" -> {
+        "Commit.Excess_left"
+        "Commit.Excess_right"
+      }
+    }
+  }
+}

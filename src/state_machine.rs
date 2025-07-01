@@ -11,6 +11,7 @@ pub struct CreateBalance {
     asset: BAddress,
     chain: u32,
     amount: BU256,
+    snowflake: BU256
 }
 
 // Gets translated into from ArgsBalance compared to what we know about
@@ -62,23 +63,4 @@ pub struct Commit {
     excess_left: Option<OrderCreated>,
     /// The excess order, if any, for the right side.
     excess_right: Option<OrderCreated>,
-}
-
-/// Simple view of the Commit structure to send recipients of the trade
-/// outcomes.
-#[derive(Clone, PartialEq, Debug)]
-pub struct Outcome {
-    asset: BAddress,
-    recipient: BAddress,
-    amt: BU256,
-}
-
-/// The emissions of the trade that took place here, in the form of a view.
-/// Aka the inverted form of the request, or just the left side's fulfilled balance
-/// flipped around slash the right side.
-#[derive(Clone, PartialEq, Debug)]
-pub struct Emissions {
-    commit: Commit,
-    left_outcome: Outcome,
-    right_outcome: Outcome,
 }

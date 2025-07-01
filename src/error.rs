@@ -20,6 +20,9 @@ pub enum ErrorDiscriminant {
     /// The requests array isn't even.
     UnusualRequestsAmount,
 
+    /// Incorrect Applicative transition.
+    BadApplicativeTransition,
+
     /// We were unable to validate a signature.
     InvalidRequest,
 
@@ -52,10 +55,6 @@ pub type R = Result<Res, Error>;
 
 pub fn err_cd(typ: ErrorDiscriminant, cd: Vec<u8>) -> R {
     Err(Error { typ, cd })
-}
-
-pub fn err_cd_curry(typ: ErrorDiscriminant) -> impl FnOnce(Vec<u8>) -> R {
-    move |cd| Err(Error { typ, cd })
 }
 
 pub fn map_stylus_err(

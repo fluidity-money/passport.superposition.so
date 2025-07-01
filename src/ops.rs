@@ -22,12 +22,13 @@ pub struct Permit {
 }
 
 #[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq, Debug)]
-pub struct DepositLiquidity {
+pub struct DepositUnusedLiquidity {
     pub asset: BAddress,
     pub amount: BU256,
     pub permit: Option<Permit>,
     pub ed_association_addr: EdAddr
 }
+
 
 #[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq)]
 #[cfg_attr(not(target_arch = "wasm32"), derive(Debug))]
@@ -36,7 +37,9 @@ pub enum Op {
     Dummy,
     /// Deposit liquidity that can be consumed by the Solve feature in the form
     /// of Balance creation. Makes it possible to roll up the balance creation later.
-    DepositLiquidity(DepositLiquidity),
+    DepositUnusedLiquidity(DepositUnusedLiquidity),
+    /// Get unused liquidity that can be consumed.
+    QueryUnusedLiquidity(BAddress),
     // The recursive datatype entrypoint that represents the rolled up form
     // of every interaction. Each excess value creates a new value that could be
     // spent in the same transaction, or committed to the reusable pool of

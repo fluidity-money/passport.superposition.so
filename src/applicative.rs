@@ -1,22 +1,30 @@
 // Applicative form of the state machine, that gets converted to an
 // internal representation during the program's simulation.
 
-use borsh::{BorshSerialize, BorshDeserialize};
+use borsh::{BorshDeserialize, BorshSerialize};
 
 use alloc::boxed::Box;
 
-use crate::encoding::*;
+use crate::{encoding::*, error::*, state_machine::*};
+
+use stylus_sdk::alloy_primitives::U256;
 
 pub type Sig = [u8; 32];
+
+use alloc::vec;
+
+pub type EdAddr = [u8; 32];
 
 /// Balance should be the amount that the user has uncommitted in
 /// their entirety.
 #[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq, Debug)]
 pub struct ArgsBalance {
-    owner: BAddress,
     asset: BAddress,
     chain: u32,
     amount: BU256,
+    // Owner and timestamp (milliseconds) are combined to create a snowflake.
+    owner: EdAddr,
+    ms_timestamp: BU256
 }
 
 /// In the Applicative form, the arguments for the Order are slightly
@@ -38,9 +46,9 @@ pub struct ArgsOrder {
 /// and going to the state machine internal type!
 #[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq, Debug)]
 pub enum Applicative {
-    // When this step is used, it's only admissable if the user has
-    // uncommitted amounts they've deposited that haven't been converted to a
-    // Balance.
+    /// When this step is used, it's only admissable if the user has
+    /// uncommitted amounts they've deposited that haven't been converted to a
+    /// Balance.
     Balance(Sig, ArgsBalance),
     /// Withdraw a Balance from the system. The solver signature is needed
     /// alongside the user's signature to be able to testify there are no
@@ -60,13 +68,28 @@ pub enum Applicative {
     // Convert the left side of a Commit to a balance, to be reused.
     CommitToBalanceLeft(Sig, Box<Applicative>),
     // Commit the right side of the Commit results to a balance.
-    CommitToBalanceRight(Sig, Box<Applicative>)
+    CommitToBalanceRight(Sig, Box<Applicative>),
+    // Convert the leftover amount on the left side of a partial order match to a
+    // Balance. This is useful if the order doesn't fill properly! Internally,
+    // this has the identifier of a balance created using the snowflake function
+    // of the original Balance identifier, incremented by one.
+    ExcessToBalanceLeft(Box<Applicative>),
+    // Convert the leftover amount on the right side to a Balance. Internally,
+    // this has the identifier of a balance created using the snowflake function
+    // of the original Balance identifier, incremented by one.
+    ExcessToBalanceRight(Box<Applicative>),
 }
 
 /*
-(fulfilled
+(commit
   (order USDC 55244 10 (balance (alex ETH 55244 1)))
   (order ETH 55244 1 (balance (shahmeer USDC 55244 15))))
+
+(commit
+  (commit
+    (order USDC 55244 10 (balance (alex ETH 55244 1)))
+    (order ETH 55244 1 (balance (shahmeer USDC 55244 15))))
+  (order USDC 55244 10 (balance (alex ETH 55244 1))))
 
 Becomes internally before having the machine fleshed out:
 
