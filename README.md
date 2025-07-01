@@ -18,6 +18,16 @@ the state transition function is valid with the validate function. A stateful co
 using the methods attached to the storage type is needed to convert the `CreateBalance` in
 the applicative form conversion to `StateBalance`.
 
+## Why?
+
+A few reasons, namely:
+
+1. Immediate offramping using only signatures to any chain
+2. Easy explicit parallelism
+3. Easy privacy later using the same approach with inclusion proofs
+4. Super affordable compression that can be scaled to include a optimistic approach
+5. Simple once you understand
+
 ## Diagram
 
 The actual behaviour of the state transition looks like this:
