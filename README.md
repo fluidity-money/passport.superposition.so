@@ -246,19 +246,19 @@ the orderbook". It's translated literally by the Solver to the state machine typ
 
 ```scheme
 (Commit
- (OrderCreated 'ARB 55244 5				# The first balance that was filled (Eli).
+ (OrderCreated 'ARB 55244 5				; The first balance that was filled (Eli).
    (CreateBalance 'Eli 'OP 55244 5 1751353972))
- (OrderCreated 'OP 55244 3				# This is Ivan's 3 OP he spent.
+ (OrderCreated 'OP 55244 3				; This is Ivan's 3 OP he spent.
   (SplitBalanceSpendable
    (CreateBalance 'Ivan 'ARB 55244 5 1751349713)
    (CreateBalance 'Ivan 'ARB 55244 3 1751349713)
    (CreateBalance 'Ivan 'ARB 55244 2 1751349713)))
- (CreateBalance 'Eli 'ARB 55244 3 1751355318)	# This is Eli's filled balance.
- (CreateBalance 'Ivan 'OP 55244 3 1751355318)	# This is Ivan's filled balance.
- (Some											# This is Eli's excess order creation.
+ (CreateBalance 'Eli 'ARB 55244 3 1751355318)	; This is Eli's filled balance.
+ (CreateBalance 'Ivan 'OP 55244 3 1751355318)	; This is Ivan's filled balance.
+ (Some											; This is Eli's excess order creation.
   (OrderCreated 'ARB 55244 2
    (StateBalance (CreateBalance 'Eli 'OP 55244 2 1751353972))))
- (Some											# This is Ivan's excess order creation.
+ (Some											; This is Ivan's excess order creation.
   (OrderCreated 'OP 55244 2
    (StateBalance (CreateBalance 'Ivan 'OP 55244 2 1751353972)))))
 ```
