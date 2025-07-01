@@ -3,13 +3,14 @@ digraph {
   subgraph cluster_Applicative { label="Applicative model"; style=dotted
     Balance -> Withdraw [label="Withdraws"]
     Balance -> Order [label="Create order"]
+    Balance -> Join -> Balance [label="Join balances together"]
     Order -> Cancel -> Balance [label="Cancel order"]
     Order -> Commit -> {
       {
-        CommitToBalanceLeft
-        CommitToBalanceRight
-        ExcessToBalanceLeft
-        ExcessToBalanceRight
+        CommitLeftFilledToBalance
+        CommitRightFilledToBalance
+        CommitLeftExcessToBalance
+        CommitRightExcessToBalance
       } -> Balance [label="Results to Balance"]
     }
   }
@@ -20,6 +21,10 @@ digraph {
       "CreateBalanceOrigin.Single"
       "CreateBalanceOrigin.Commit"
     } -> CreateBalanceOrigin -> "SplitBalance.input" -> SplitBalance
+    CreateBalance -> {
+      "JoinBalance.Left"
+      "JoinBalance.Right"
+    } -> JoinBalance -> "CreateBalanceOrigin.Join" -> CreateBalanceOrigin
     SplitBalance -> {
       "SplitBalance.spendable"
       "SplitBalance.excess"

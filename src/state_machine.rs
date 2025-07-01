@@ -24,6 +24,7 @@ pub enum SnowflakeNonce {
     COMMIT_FULFILLED_RIGHT,
     COMMIT_EXCESS_LEFT,
     COMMIT_EXCESS_RIGHT,
+    JOIN_BALANCE,
 }
 
 // Gets translated into from ArgsBalance compared to what we know about
@@ -34,6 +35,8 @@ pub enum CreateBalanceOrigin {
     Single(CreateBalance),
     /// A commit took place and we're transforming the result!
     Commit(Commit, CreateBalance),
+    /// A join took place from a pair of balances!
+    Join(Box<CreateBalanceOrigin>, Box<CreateBalanceOrigin>),
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -53,12 +56,12 @@ pub struct SplitBalance {
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct SplitBalanceSpendable {
-  pub from: SplitBalance
+    pub from: SplitBalance,
 }
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct SplitBalanceSpendExcess {
-  pub from: SplitBalance
+    pub from: SplitBalance,
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -73,7 +76,7 @@ pub struct OrderCreated {
     desired_asset: BAddress,
     desired_chain: u32,
     desired_amt: BU256,
-    from: StateBalance
+    from: StateBalance,
 }
 
 /// The committed outcome for one side of a trade for a user.
@@ -84,11 +87,17 @@ pub struct Commit {
     /// The input order that filled the right side.
     right: OrderCreated,
     /// A copied order that represents a fulfilled order for the left side.
-    left_fulfilled: OrderCreated,
+    left_fulfilled: CreateBalance,
     /// A copied order that represents a fulfilled order for the right side.
-    right_fulfilled: OrderCreated,
+    right_fulfilled: CreateBalance,
     /// The excess order, if any, for the left side.
     excess_left: Option<OrderCreated>,
     /// The excess order, if any, for the right side.
     excess_right: Option<OrderCreated>,
+}
+
+#[derive(Clone, PartialEq, Debug)]
+pub struct JoinBalance {
+    left: CreateBalance,
+    right: CreateBalance,
 }

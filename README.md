@@ -147,20 +147,24 @@ of the Balance is `0x1177859b6194535e9e420abf7509a1dc4baee217eeae881188e09b4dfa5
 
 Ivan goes to place his newly created Balance on the market:
 
-	(Order
-	 (order 'ARB 3 'OP 55244 3)
-	 <ivan sig>
-	 (Balance
-	  <ivan sig>
-	  (balance 'ARB 55244 5 'Ivan 1751349713)))
+```scheme
+(Order
+ (order 3 'OP 55244 3)
+ <ivan sig>
+ (Balance
+  <ivan sig>
+  (balance 'ARB 55244 5 'Ivan 1751349713)))
+```
 
 This would be converted by the Solver to this structure during the `convert()` stage:
 
-	(OrderCreated 'OP 55244 3
-	  (SplitBalanceSpendable
-	   (CreateBalance 'Ivan 'ARB 55244 5)	# This makes up the input.
-	   (CreateBalance 'Ivan 'ARB 55244 3)	# This is the spendable output from this.
-	   (CreateBalance 'Ivan 'ARB 55244 2)))	# This is the amount that could be reused.
+```scheme
+(OrderCreated 'OP 55244 3
+  (SplitBalanceSpendable
+   (CreateBalance 'Ivan 'ARB 55244 5)	# This makes up the input.
+   (CreateBalance 'Ivan 'ARB 55244 3)	# This is the spendable output from this.
+   (CreateBalance 'Ivan 'ARB 55244 2)))	# This is the amount that could be reused.
+```
 
 In this situation, a new identifier would be made for the excess amount, which could be
 reused to create a new balance like so. This would have the snowflake of
@@ -168,15 +172,119 @@ reused to create a new balance like so. This would have the snowflake of
 uint8(1), uint256(2)))`, aka
 `0x2a48fd44c873f293067f14a14497ab3a7d54a6f4eef83d945ef277e1ad7d40f8`:
 
-	(CreateBalanceOrigin
-	 (SplitBalanceSpendExcess
-	  (SplitBalance
-	   (CreateBalance 'Ivan 'ARB 55244 5)
-	   (CreateBalance 'Ivan 'ARB 55244 3)
-	   (CreateBalance 'Ivan 'ARB 55244 2))))	# This amount constitutes the balance of the CreateBalance here.
+```scheme
+(CreateBalanceOrigin
+ (SplitBalanceSpendExcess
+  (SplitBalance
+   (CreateBalance 'Ivan 'ARB 55244 5)
+   (CreateBalance 'Ivan 'ARB 55244 3)
+   (CreateBalance 'Ivan 'ARB 55244 2))))	# This amount constitutes the balance of the CreateBalance here.
+```
 
 The solver knows the amount to fork off by keeping in mind the amounts available to be
 spent by the Balance that were split in the past and being permissive, assuming that the
 matching engine knows the correct amounts that can be spent (though it will check the
 balances available to it assuming it has enough from what's committed in the past). This
 translates into the matching engine knowing how much is available to be consumed.
+
+#### Commitments (matching orders)
+
+Knowing that Ivan has opted to spend his 3 ARB and the price is 1 to one, Eli has gone to
+be the counterparty on his trade at a $1 price, but supplying 5 OP. Eli
+constructs a Balance like the following:
+
+```scheme
+(Balance
+ <eli sig>
+ (balance 'OP 55244 5 'Eli 1751353972))
+```
+
+This would be converted to this structure for Eli:
+
+```scheme
+(CreateBalance 'Eli 'OP 55244 5)
+```
+
+Which he then wraps inside a Order:
+
+```scheme
+(Order (order 5 'ARB 55244 5)
+ <eli sig>
+ (Balance
+ <eli sig>
+ (balance 'OP 55244 5 'Eli 1751353972)))
+```
+
+Which is then translated to this type by the Solver:
+
+```scheme
+(OrderCreated 'ARB 55244 5
+ (CreateBalance 'Eli 'OP 55244 5))
+```
+
+The solver sees that Ivan's order can be partially filled, and it creates the following
+applicative structure from the two orders:
+
+```scheme
+(Commit
+ <solver sig>
+ (Order (order 5 'ARB 55244 5)
+  <eli sig>
+  (Balance
+   <eli sig>
+   (balance 'OP 55244 5 'Eli 1751353972)))
+ (Order (order 3 'OP 55244 3)
+  <ivan sig>
+  (Balance
+   <ivan sig>
+   (balance 'ARB 55244 5 'Ivan 1751349713))))
+```
+
+This states "Eli wants to exchange his 5 ARB for 5 OP, we can't fill it completely, but
+the Matcher thinks this is the best outcome we can give Eli and Ivan right now based on
+the orderbook". It's translated literally by the Solver to the state machine type:
+
+```scheme
+(Commit
+ (OrderCreated 'ARB 55244 5				# The first balance that was filled (Eli).
+   (CreateBalance 'Eli 'OP 55244 5 1751353972))
+ (OrderCreated 'OP 55244 3				# This is Ivan's 3 OP he spent.
+  (SplitBalanceSpendable
+   (CreateBalance 'Ivan 'ARB 55244 5 1751349713)
+   (CreateBalance 'Ivan 'ARB 55244 3 1751349713)
+   (CreateBalance 'Ivan 'ARB 55244 2 1751349713)))
+ (CreateBalance 'Eli 'ARB 55244 3 1751355318)	# This is Eli's filled balance.
+ (CreateBalance 'Ivan 'OP 55244 3 1751355318)	# This is Ivan's filled balance.
+ (Some											# This is Eli's excess order creation.
+  (OrderCreated 'ARB 55244 2
+   (StateBalance (CreateBalance 'Eli 'OP 55244 2 1751353972))))
+ (Some											# This is Ivan's excess order creation.
+  (OrderCreated 'OP 55244 2
+   (StateBalance (CreateBalance 'Ivan 'OP 55244 2 1751353972)))))
+```
+
+#### Reusing the match result of the order
+
+Eli can begin the cycle anew by taking the result of his order commitment by taking the
+amount that wasn't immediately rolled into a new order by using it to construct a Balance
+like so:
+
+```scheme
+(CommitLeftExcessToBalance
+ (Commit
+  (OrderCreated 'ARB 55244 5
+    (CreateBalance 'Eli 'OP 55244 5 1751353972))
+  (OrderCreated 'OP 55244 3
+   (SplitBalanceSpendable
+    (CreateBalance 'Ivan 'ARB 55244 5 1751349713)
+    (CreateBalance 'Ivan 'ARB 55244 3 1751349713)
+    (CreateBalance 'Ivan 'ARB 55244 2 1751349713)))
+  (CreateBalance 'Eli 'ARB 55244 3 1751355318)
+  (CreateBalance 'Ivan 'OP 55244 3 1751355318)
+  (Some
+   (OrderCreated 'ARB 55244 2
+    (StateBalance (CreateBalance 'Eli 'OP 55244 2 1751353972))))
+  (Some
+   (OrderCreated 'OP 55244 2
+    (StateBalance (CreateBalance 'Ivan 'OP 55244 2 1751353972))))))
+```
