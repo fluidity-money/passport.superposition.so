@@ -168,9 +168,9 @@ This would be converted by the Solver to this structure during the `convert()` s
  (OrderOrigin.Single
   (OrderCreated 'OP 55244 3
    (SplitBalanceSpendable
-    (CreateBalance 'Ivan 'ARB 55244 5)		# This makes up the input.
-    (CreateBalance 'Ivan 'ARB 55244 3)		# This is the spendable output from this.
-    (CreateBalance 'Ivan 'ARB 55244 2)))))	# This is the amount that could be reused.
+    (CreateBalance 'Ivan 'ARB 55244 5)		; This makes up the input.
+    (CreateBalance 'Ivan 'ARB 55244 3)		; This is the spendable output from this.
+    (CreateBalance 'Ivan 'ARB 55244 2)))))	; This is the amount that could be reused.
 ```
 
 In this situation, a new identifier would be made for the excess amount, which could be
@@ -185,7 +185,7 @@ uint8(1), uint256(2)))`, aka
   (SplitBalance
    (CreateBalance 'Ivan 'ARB 55244 5)
    (CreateBalance 'Ivan 'ARB 55244 3)
-   (CreateBalance 'Ivan 'ARB 55244 2))))	# This amount constitutes the balance of the CreateBalance here.
+   (CreateBalance 'Ivan 'ARB 55244 2))))	; This amount constitutes the balance of the CreateBalance here.
 ```
 
 The solver knows the amount to fork off by keeping in mind the amounts available to be
