@@ -122,6 +122,10 @@ So, a create balance would have the nonce of 0, and be created using `keccak256(
 
 ## User stories
 
+The following user stories explain how to do recursive use of the applicative type and
+it's translation to the state machine type. Some of the field arguments are elided and not
+used in the below examples.
+
 ### Balance forking
 
 #### Just the balance
@@ -159,11 +163,13 @@ Ivan goes to place his newly created Balance on the market:
 This would be converted by the Solver to this structure during the `convert()` stage:
 
 ```scheme
-(OrderCreated 'OP 55244 3
-  (SplitBalanceSpendable
-   (CreateBalance 'Ivan 'ARB 55244 5)	# This makes up the input.
-   (CreateBalance 'Ivan 'ARB 55244 3)	# This is the spendable output from this.
-   (CreateBalance 'Ivan 'ARB 55244 2)))	# This is the amount that could be reused.
+(OrderOrigin
+ (OrderOrigin.Single
+  (OrderCreated 'OP 55244 3
+   (SplitBalanceSpendable
+    (CreateBalance 'Ivan 'ARB 55244 5)		# This makes up the input.
+    (CreateBalance 'Ivan 'ARB 55244 3)		# This is the spendable output from this.
+    (CreateBalance 'Ivan 'ARB 55244 2)))))	# This is the amount that could be reused.
 ```
 
 In this situation, a new identifier would be made for the excess amount, which could be
@@ -227,7 +233,7 @@ applicative structure from the two orders:
 
 ```scheme
 (Commit
- <solver sig>
+ <matcher sig>
  (Order (order 5 'ARB 55244 5)
   <eli sig>
   (Balance
@@ -266,11 +272,36 @@ the orderbook". It's translated literally by the Solver to the state machine typ
 #### Reusing the match result of the order
 
 Eli can begin the cycle anew by taking the result of his order commitment by taking the
-amount that wasn't immediately rolled into a new order by using it to construct a Balance
-like so:
+amount that wasn't immediately rolled into a new order by using it to construct a Balance,
+then converting it to another order to buy some ETH, assuming ETH is worth $1, like so:
 
 ```scheme
-(CommitLeftExcessToBalance
+(Order (order 3 'ETH 55244 2)
+ <eli sig>
+ (CommitLeftFilledToBalance	; Eli is using the amount that was filled and is now just a balance.
+  (Commit
+   <matcher sig>
+   (Order (order 5 'ARB 55244 5)
+    <eli sig>
+    (Balance
+     <eli sig>
+     (balance 'OP 55244 5 'Eli 1751353972)))
+   (Order (order 3 'OP 55244 3)
+    <ivan sig>
+    (Balance
+     <ivan sig>
+     (balance 'ARB 55244 5 'Ivan 1751349713))))))
+```
+
+This is converted to the state machine form like this by the Solver. The state machine has
+another key difference with the applicative type in that it must always do a conversion to
+a local balance instead of using ephereal storage somewhere. Since this is done by the
+system during a local conversion, we can keep the type conversion here simple, so that the
+applicative type must use an intermediate conversion to get the equivalent of a split
+balance.
+
+```scheme
+(CommitSpendableLeft	; Eli uses the amount that was filled and converted to ARB.
  (Commit
   (OrderCreated 'ARB 55244 5
     (CreateBalance 'Eli 'OP 55244 5 1751353972))
@@ -286,5 +317,39 @@ like so:
     (StateBalance (CreateBalance 'Eli 'OP 55244 2 1751353972))))
   (Some
    (OrderCreated 'OP 55244 2
-    (StateBalance (CreateBalance 'Ivan 'OP 55244 2 1751353972))))))
+    (StateBalance (CreateBalance 'Ivan 'OP 55244 2 1751353972)))))
+ (CreateBalance 'Eli 'ETH 55244 3 1751358901))	; This is the result from the leftover amount here.
 ```
+
+#### Taking the results of the excessive amount and withdrawing
+
+Eli can withdraw the amount that wasn't able to be matched by cancelling the order that
+was created transitively from the Commit using the Cancel operation, then containing
+that in the withdrawal operation.
+
+```scheme
+(Withdraw
+ <matcher sig>
+ <eli sig>
+ (Cancel
+  <matcher sig>
+  <eli sig>
+   (Order (order 3 'ETH 55244 2)
+    <eli sig>
+    (CommitLeftFilledToBalance
+     (Commit
+      <matcher sig>
+      (Order (order 5 'ARB 55244 5)
+       <eli sig>
+       (Balance
+        <eli sig>
+        (balance 'OP 55244 5 'Eli 1751353972)))
+      (Order (order 3 'OP 55244 3)
+       <ivan sig>
+       (Balance
+        <ivan sig>
+        (balance 'ARB 55244 5 'Ivan 1751349713))))))))
+```
+
+At which point he could supply this to the contract, for it to process his withdrawal
+cleanly.

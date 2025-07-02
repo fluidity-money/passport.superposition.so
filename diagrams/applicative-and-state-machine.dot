@@ -16,44 +16,15 @@ digraph {
   }
   subgraph cluster_StateMachine { label="State machine"; style=dotted
     "StateMachine.commit" [label="Commit"]
-    "StateMachine.commit" -> "CreateBalanceOrigin.commit"
-    CreateBalance -> {
-      "CreateBalanceOrigin.Single"
-      "CreateBalanceOrigin.Commit"
-    } -> CreateBalanceOrigin -> "SplitBalance.input" -> SplitBalance
-    CreateBalance -> {
-      "JoinBalance.Left"
-      "JoinBalance.Right"
-    } -> JoinBalance -> "CreateBalanceOrigin.Join" -> CreateBalanceOrigin
-    SplitBalance -> {
-      "SplitBalance.spendable"
-      "SplitBalance.excess"
-    }
-    "SplitBalance.spendable" -> SplitBalanceSpendable -> "StateBalance.SplitSpendable"
-    "SplitBalance.excess" -> SplitBalanceExcess -> "StateBalance.SplitExcess"
-    {
-      "StateBalance.SplitSpendable"
-      "StateBalance.SplitExcess"
+    CreateBalance -> "CreateBalanceOrigin.Single" -> CreateBalanceOrigin -> SplitBalance -> {
+      SplitBalanceSpendable
+      SplitBalanceSpendExcess
     } -> StateBalance
-    CreateBalanceOrigin -> Withdrawal
-    CreateBalance -> "StateBalance.Single" -> StateBalance -> "OrderCreated.from" -> OrderCreated -> {
-      "Commit.left"
-      "Commit.right"
-      "Commit.left_fulfilled"
-      "Commit.right_fulfilled"
-    }
-    CreateBalance -> {
-      "Commit.excess_left"
-      "Commit.excess_right"
-    } [style=dotted]
-    {
-      "Commit.left"
-      "Commit.right"
-      "Commit.left_fulfilled"
-      "Commit.right_fulfilled"
-      "Commit.excess_left"
-      "Commit.excess_right"
-    } -> "StateMachine.commit"
-    "StateMachine.commit" -> "CreateBalanceOrigin.Commit"
+    CreateBalance -> StateBalance -> OrderCreated -> "StateMachine.commit" -> {
+      "CreateBalanceOrigin.CommitSpendableLeft"
+      "CreateBalanceOrigin.CommitSpendableRight"
+      "CreateBalanceOrigin.CommitExcessLeft"
+      "CreateBalanceOrigin.CommitExcessRight"
+    } -> CreateBalanceOrigin -> "CreateBalanceOrigin.Join" -> CreateBalanceOrigin -> Withdrawal
   }
 }

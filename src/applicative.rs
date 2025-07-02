@@ -32,7 +32,7 @@ pub struct ArgsBalance {
 /// different to also include the amount the user wants to liquidate.
 /// Since the Balance should be entirely spent, during the indirection
 /// stage to the more fleshed out type, a SplitBalance operation is
-/// created. A SplitBalance increments the Balance's Snowflake.
+/// created.
 #[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq, Debug)]
 pub struct ArgsOrder {
     from_amt: BU256,
@@ -101,66 +101,4 @@ digraph {
       ExcessToBalanceRight
   } -> Balance
 }
-*/
-
-/*
-(commit
-  (order USDC 55244 10 (balance (alex ETH 55244 1)))
-  (order ETH 55244 1 (balance (shahmeer USDC 55244 15))))
-
-(commit
-  (commit
-    (order USDC 55244 10 (balance (alex ETH 55244 1)))
-    (order ETH 55244 1 (balance (shahmeer USDC 55244 15))))
-  (order USDC 55244 10 (balance (alex ETH 55244 1))))
-
-Becomes internally before having the machine fleshed out:
-
-  Emissions {
-    commit: Commit {
-      left: OrderCreated {
-        from: StateBalance::Single(
-          CreateBalance { owner: Alex, asset: ETH, chain: 55244, amount: 1 }
-        ),
-        desired_asset: USDC,
-        desired_chain: 55244,
-        desired_amt: 10
-      },
-      left_fulfilled: OrderCreated {
-        from: StateBalance::Single(
-          CreateBalance { owner: Alex, asset: ETH, chain: 55244, amount: 1 }
-        ),
-        desired_asset: USDC,
-        desired_chain: 55244,
-        desired_amt: 10
-      },
-      right: OrderCreated {
-        from: StateBalance::Single(
-          CreateBalance { owner: Shahmeer, asset: USDC, chain: 55244, amount: 15 }
-        ),
-        desired_asset: ETH,
-        desired_chain: 55244,
-        desired_amt: 10
-      },
-      right_fulfilled: OrderCreated {
-        from: StateBalance::Single(
-          CreateBalance { owner: Shahmeer, asset: USDC, chain: 55244, amount: 15 }
-        ),
-        desired_asset: ETH,
-        desired_chain: 55244,
-        desired_amt: 10
-      },
-      excess: None
-    },
-    left_outcome: Outcome {
-      asset: USDC,
-      recipient: Alex,
-      amt: 10
-    },
-    left_outcome: Outcome {
-      asset: ETH,
-      recipient: Shahmeer,
-      amt: 1
-    }
-  }
 */

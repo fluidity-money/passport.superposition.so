@@ -18,7 +18,7 @@ pub struct CreateBalance {
 /// the nonce here.
 #[repr(C)]
 pub enum SnowflakeNonce {
-    CREATE_BALANCE,
+    CreateBalance,
     SPLIT_BALANCE_EXCESS,
     COMMIT_FULFILLED_LEFT,
     COMMIT_FULFILLED_RIGHT,
@@ -33,8 +33,14 @@ pub enum SnowflakeNonce {
 pub enum CreateBalanceOrigin {
     /// Smply creating a balance using a Permit signature on-chain!
     Single(CreateBalance),
-    /// A commit took place and we're transforming the result!
-    Commit(Commit, CreateBalance),
+    /// A commit took place and we're transforming the left filled side of the result.
+    CommitSpendableLeft(Commit, CreateBalance),
+    /// A commit took place and we're transforming the right filled side of the result.
+    CommitSpendableRight(Commit, CreateBalance),
+    /// A commit took place, and we're taking the excess order on the left.
+    CommitExcessLeft(Commit, CreateBalance),
+    /// A commit took place, and we're taking the excess order on the right.
+    CommitExcessRight(Commit, CreateBalance),
     /// A join took place from a pair of balances!
     Join(Box<CreateBalanceOrigin>, Box<CreateBalanceOrigin>),
 }
@@ -91,9 +97,9 @@ pub struct Commit {
     /// A copied order that represents a fulfilled order for the right side.
     right_fulfilled: CreateBalance,
     /// The excess order, if any, for the left side.
-    excess_left: Option<OrderCreated>,
+    excess_left: Option<CreateBalance>,
     /// The excess order, if any, for the right side.
-    excess_right: Option<OrderCreated>,
+    excess_right: Option<CreateBalance>,
 }
 
 #[derive(Clone, PartialEq, Debug)]
