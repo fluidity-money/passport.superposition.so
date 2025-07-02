@@ -107,12 +107,13 @@ made. From the source:
 /// the nonce here.
 #[repr(C)]
 pub enum SnowflakeNonce {
-    CREATE_BALANCE,
-    SPLIT_BALANCE_EXCESS,
-    COMMIT_FULFILLED_LEFT,
-    COMMIT_FULFILLED_RIGHT,
-    COMMIT_EXCESS_LEFT,
-    COMMIT_EXCESS_RIGHT,
+    CreateBalance,
+    SplitBalanceExcess,
+    CommitFulfilledLeft,
+    CommitFulfilledRight,
+    CommisExcessLeft,
+    CommitExcessRight,
+    JoinBalance,
 }
 ```
 
@@ -351,5 +352,11 @@ that in the withdrawal operation.
         (balance 'ARB 55244 5 'Ivan 1751349713))))))))
 ```
 
-At which point he could supply this to the contract, for it to process his withdrawal
-cleanly.
+At which point he could supply this to the contract, for it to process his withdrawal.
+
+Q. Why do we need a signature from the solver for the operation involving the withdrawing of balances?
+
+Any operation that could split the balance in a stateful way, for example, an order being
+matched with the Commit operation, Cancel, or Withdrawal, all depend on the balance not
+being spent. Since signatures are ephmereal, there needs to be a chokepoint that ensures
+that no double spending of balances is taking place.

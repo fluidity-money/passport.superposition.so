@@ -19,12 +19,12 @@ pub struct CreateBalance {
 #[repr(C)]
 pub enum SnowflakeNonce {
     CreateBalance,
-    SPLIT_BALANCE_EXCESS,
-    COMMIT_FULFILLED_LEFT,
-    COMMIT_FULFILLED_RIGHT,
-    COMMIT_EXCESS_LEFT,
-    COMMIT_EXCESS_RIGHT,
-    JOIN_BALANCE,
+    SplitBalanceExcess,
+    CommitFulfilledLeft,
+    CommitFulfilledRight,
+    CommisExcessLeft,
+    CommitExcessRight,
+    JoinBalance,
 }
 
 // Gets translated into from ArgsBalance compared to what we know about

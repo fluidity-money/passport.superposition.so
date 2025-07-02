@@ -43,7 +43,11 @@ pub struct ArgsOrder {
 
 /// It's difficult to use Applicative correctly owing to the lack of
 /// type control here. Developers must be cautious when constructing this
-/// and going to the state machine internal type!
+/// and going to the state machine internal type! When a Balance is
+/// constructed, but the consumer of the Balance opts to spend less than
+/// they otherwise could've, to the state machine it's implicitly a split
+/// balance operation. The Applicative user must rejoin balances when
+/// it suits them, but it's not important for them to split balances.
 #[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq, Debug)]
 pub enum Applicative {
     /// When this step is used, it's only admissable if the user has
