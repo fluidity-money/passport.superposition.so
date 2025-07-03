@@ -7,6 +7,10 @@ macro_rules! borsh_encoding {
         $(
             paste::paste! {
                 #[derive(Clone, PartialEq, Eq, Debug)]
+                #[cfg_attr(
+                    not(target_arch = "wasm32"),
+                    derive(arbitrary::Arbitrary, proptest_derive::Arbitrary)
+                )]
                 pub struct [<B$type>] {
                     pub x: $type,
                 }
@@ -39,12 +43,12 @@ macro_rules! borsh_encoding {
                     }
                 }
 
-                #[cfg_attr(not(target_arch = "wasm32"), derive(Debug, PartialEq, Eq))]
+                #[derive(Eq, PartialEq)]
                 #[allow(unused)]
                 pub struct [<BStrErr$type>] {}
 
                 #[cfg(not(target_arch = "wasm32"))]
-                impl std::str::FromStr for [<B$type>] {
+                impl core::str::FromStr for [<B$type>] {
                     type Err = [<BStrErr$type>];
 
                     fn from_str(s: &str) -> Result<Self, [<BStrErr$type>]> {

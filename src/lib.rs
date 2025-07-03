@@ -1,4 +1,5 @@
-#![cfg_attr(target_arch = "wasm32", no_main, no_std)]
+#![cfg_attr(target_arch = "wasm32", no_std)]
+
 // We don't instantiate the VM context so this is needed.
 #![allow(deprecated)]
 
@@ -19,15 +20,16 @@ pub mod encoding;
 pub mod ops;
 pub mod storage;
 
-mod utils;
-
-use crate::{storage::*, ops::*};
+pub mod utils;
 
 #[allow(unused)]
 use {
     borsh::BorshDeserialize,
     stylus_sdk::alloy_sol_types::{sol, SolError},
 };
+
+#[cfg(target_arch = "wasm32")]
+use crate::{ops::Op, storage::StoragePassport};
 
 sol!("src/IErrors.sol");
 

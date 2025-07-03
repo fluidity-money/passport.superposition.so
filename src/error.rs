@@ -6,7 +6,7 @@ use stylus_sdk::prelude::calls::errors::Error as StylusErr;
 
 pub use crate::result::Res;
 
-#[derive(BorshSerialize, BorshDeserialize, PartialEq)]
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
 pub enum ErrorDiscriminant {
     /// Bad call was made! It reverted.
     BadCall,
@@ -37,12 +37,27 @@ pub enum ErrorDiscriminant {
 
     /// Bad signer of a ecrecover call.
     BadEcrecoverSigner,
+
+    /// Bad keccak call.
+    BadKeccakCall,
+
+    /// Bad verifying key creation.
+    BadVerifyingKey,
+
+    /// Bad verifying of a signature using strict methods.
+    BadStrictVerify,
 }
 
-#[derive(BorshSerialize, BorshDeserialize, PartialEq)]
+#[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
 pub struct Error {
     pub typ: ErrorDiscriminant,
     pub cd: Vec<u8>,
+}
+
+impl Error {
+    pub fn is_typ(&self, x: ErrorDiscriminant) -> bool {
+        self.typ == x
+    }
 }
 
 impl From<ErrorDiscriminant> for Error {

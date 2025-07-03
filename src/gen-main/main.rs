@@ -1,8 +1,7 @@
-use std::str::FromStr;
-
+/*
 use clap::Parser;
 
-use libpassport::*;
+use libpassport::ops::Op;
 
 #[derive(Clone)]
 struct OurOp {
@@ -33,3 +32,6 @@ fn main() {
         })
     );
 }
+*/
+
+fn main() {}

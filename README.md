@@ -104,7 +104,7 @@ made. From the source:
 ```rust
 /// Balances are identifiable in their descended form using the
 /// concatenation of the previous hash, the timestamp of the change, and
-/// the nonce here.
+/// the nonce here. keccak256(previous . nonce . timestamp).
 #[repr(C)]
 pub enum SnowflakeNonce {
     CreateBalance,

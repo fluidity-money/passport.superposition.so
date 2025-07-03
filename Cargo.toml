@@ -48,43 +48,59 @@ alloy-sol-types = { version = "=0.8.20", default-features = false }
 array-concat = "0.5.3"
 borsh = { version = "1.5.5", default-features = false, features = ["derive"] }
 const-hex = { version = "1.12.0", default-features = false }
-ed25519-dalek = { version = "2.1.1", default-features = false, features = ["alloc", "fast"] }
 keccak-const = "0.2.0"
 lzss = { version = "0.9.1", features = ["alloc"], default-features = false }
 mini-alloc = "0.7.0"
 mutants = "0.0.3"
 paste = "1.0.15"
-rust_decimal = { version =  "1.36.0", default-features = false, features = ["maths"] }
-sha2 = { version = "0.10.8", default-features = false }
-strum = { version = "0.26.3", default-features = false, features = ["derive"] }
+sha2 = { version = "0.10.9", default-features = false }
 tiny-keccak = "2.0.2"
+
+[dependencies.ed25519-dalek]
+version = "2.1.1"
+default-features = false
+features = ["alloc", "fast", "digest"]
 
 [dependencies.stylus-sdk]
 # This version of the SDK is considered insecure, but we can't upgrade due to stylus-core
 # having a hardstuck dependency on the std.
-version = "=0.9.0"
+version = "=0.8.3"
 default-features = false
 features = ["mini-alloc"]
+path = "/home/user/Downloads/stylus-sdk-rs/stylus-sdk"
+
+[dependencies.arrayvec]
+# Pointing to this repo for now since the original didn't implement Borsh properly.
+version = "0.7.6"
+default-features = false
+features = ["borsh"]
+git = "https://github.com/af-afk/arrayvec"
+
+[dependencies.stylus-core]
+version = "=0.8.3"
+default-features = false
+path = "/home/user/Downloads/stylus-sdk-rs/stylus-core"
 
 [dependencies.hashbrown]
 version = "0.15.2"
 default-features = false
 features = ["allocator-api2", "default-hasher", "equivalent", "raw-entry"]
 
-[dev-dependencies]
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+proptest-derive = "0.6.0"
 proptest = "1.5.0"
+arbitrary = { version = "1.4.1", features = ["derive"] }
+alloy-primitives = { version = "=0.8.20", default-features = false, features = ["arbitrary"] }
+
+[dev-dependencies]
 const-hex = { version = "1.12.0", features = ["alloc"] }
 alloy-primitives = { version = "=0.8.20", default-features = false, features = ["arbitrary"] }
 
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-proptest = "1.5.0"
-getrandom = "0.2.15"
-clap = { version = "4.5.32", features = ["derive"] }
-
-[dev-dependencies.stylus-sdk]
-version = "=0.9.0"
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies.stylus-sdk]
+version = "=0.8.3"
 default-features = false
 features = ["mini-alloc", "stylus-test"]
+path = "/home/user/Downloads/stylus-sdk-rs/stylus-sdk"
 
 [features]
 harness-stylus-interpreter = []

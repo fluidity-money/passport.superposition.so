@@ -1,0 +1,8 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 2151a6f126893078ca2818442e74b927fbad737e27dcada2b3b46e2e4aa6c9d1 # shrinks to sign_key = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], args_bal = ArgsBalance { asset: BAddress { x: 0x0000000000000000000000000000000000000000 }, chain: 0, amount: BU256 { x: 0 }, owner: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], ms_timestamp: 0 }
+cc 9b23352f0eed6c7c15b0e8cb8443807bfbb3955bc399a91809b3f81899f64424 # shrinks to mut sign_key = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 255], args_bal = ArgsBalance { asset: BAddress { x: 0x0000000000000000000000000000000000000000 }, chain: 0, amount: BU256 { x: 0 }, owner: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], ms_timestamp: 0 }

@@ -1,6 +1,5 @@
-/// Final step of the Applicative --> StateMachine conversion.
-
-use borsh::{BorshDeserialize, BorshSerialize};
+/// Final step of the Applicative --> StateMachine conversion. Used to apply results to the
+/// engine.
 
 use crate::{state_machine::*, encoding::*};
 

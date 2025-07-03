@@ -5,9 +5,7 @@ use borsh::{BorshDeserialize, BorshSerialize};
 
 use alloc::boxed::Box;
 
-use crate::{encoding::*, error::*, state_machine::*};
-
-use stylus_sdk::alloy_primitives::U256;
+use crate::encoding::*;
 
 // Concatenated form of the ed25519 r and s values for use with
 // ed25519_dalek.
@@ -19,6 +17,10 @@ pub type EdAddr = [u8; 32];
 /// Balance should be the amount that the user has uncommitted in
 /// their entirety.
 #[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq, Debug)]
+#[cfg_attr(
+    not(target_arch = "wasm32"),
+    derive(arbitrary::Arbitrary, proptest_derive::Arbitrary)
+)]
 pub struct ArgsBalance {
     asset: BAddress,
     chain: u32,

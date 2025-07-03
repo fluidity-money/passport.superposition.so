@@ -40,7 +40,7 @@ checksum = "28e2652684758b0d9b389d248b209ed9fd9989ef489a550265fe4bb8454fe7eb"
 dependencies = [
  "alloy-primitives",
  "num_enum",
- "strum 0.27.1",
+ "strum",
 ]
 
 [[package]]
@@ -211,7 +211,7 @@ dependencies = [
  "keccak-asm",
  "paste",
  "proptest",
- "proptest-derive",
+ "proptest-derive 0.5.1",
  "rand 0.8.5",
  "ruint",
  "rustc-hash",
@@ -264,7 +264,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5f70d83b765fdc080dbcd4f4db70d8d23fe4761f2f02ebfa9146b833900634b4"
 dependencies = [
  "alloy-rlp-derive",
- "arrayvec",
+ "arrayvec 0.7.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "bytes",
 ]
 
@@ -459,7 +459,7 @@ checksum = "d95a94854e420f07e962f7807485856cde359ab99ab6413883e15235ad996e8b"
 dependencies = [
  "alloy-primitives",
  "alloy-rlp",
- "arrayvec",
+ "arrayvec 0.7.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "derive_more",
  "nybbles",
  "serde",
@@ -522,6 +522,9 @@ name = "arbitrary"
 version = "1.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dde20b3d026af13f561bdd0f15edf01fc734f0dafcedbaf42bba506a9517f223"
+dependencies = [
+ "derive_arbitrary",
+]
 
 [[package]]
 name = "ark-ff"
@@ -660,6 +663,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7c02d123df017efcdfbd739ef81735b36c5ba83ec3c59c80a9d7ecc718f92e50"
 dependencies = [
  "serde",
+]
+
+[[package]]
+name = "arrayvec"
+version = "0.7.6"
+source = "git+https://github.com/af-afk/arrayvec#e8169ef60caa2f9d21f1f6db2f738717a2bd15fd"
+dependencies = [
+ "borsh",
 ]
 
 [[package]]
@@ -1234,6 +1245,7 @@ dependencies = [
  "ed25519",
  "serde",
  "sha2",
+ "signature",
  "subtle",
  "zeroize",
 ]
@@ -1291,7 +1303,7 @@ version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "139834ddba373bbdd213dffe02c8d110508dcf1726c2be27e8d1f7d7e1856418"
 dependencies = [
- "arrayvec",
+ "arrayvec 0.7.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "auto_impl",
  "bytes",
 ]
@@ -1302,7 +1314,7 @@ version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ce8dba4714ef14b8274c371879b175aa55b16b30f269663f19d576f380018dc4"
 dependencies = [
- "arrayvec",
+ "arrayvec 0.7.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "auto_impl",
  "bytes",
 ]
@@ -1990,9 +2002,7 @@ dependencies = [
 
 [[package]]
 name = "mini-alloc"
-version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1b56630dba7f5c3ac7e37caa66d2388197fc2d4742b216104cba14c16dce55bf"
+version = "0.8.3"
 dependencies = [
  "cfg-if",
 ]
@@ -2182,7 +2192,7 @@ version = "3.7.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "799781ae679d79a948e13d4824a40970bfa500058d245760dd857301059810fa"
 dependencies = [
- "arrayvec",
+ "arrayvec 0.7.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "bitvec",
  "byte-slice-cast",
  "const_format",
@@ -2238,12 +2248,12 @@ dependencies = [
  "alloy-sol-macro-expander",
  "alloy-sol-macro-input",
  "alloy-sol-types",
+ "arbitrary",
  "array-concat",
+ "arrayvec 0.7.6 (git+https://github.com/af-afk/arrayvec)",
  "borsh",
- "clap",
  "const-hex",
  "ed25519-dalek",
- "getrandom 0.2.16",
  "hashbrown 0.15.4",
  "keccak-const",
  "lzss",
@@ -2251,9 +2261,9 @@ dependencies = [
  "mutants",
  "paste",
  "proptest",
- "rust_decimal",
+ "proptest-derive 0.6.0",
  "sha2",
- "strum 0.26.3",
+ "stylus-core",
  "stylus-sdk",
  "tiny-keccak",
 ]
@@ -2447,6 +2457,17 @@ name = "proptest-derive"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4ee1c9ac207483d5e7db4940700de86a9aae46ef90c48b57f99fe7edb8345e49"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.104",
+]
+
+[[package]]
+name = "proptest-derive"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "095a99f75c69734802359b682be8daaf8980296731f6470434ea2c652af1dd30"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2685,16 +2706,6 @@ name = "ruint-macro"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "48fd7bd8a6377e15ad9d42a8ec25371b94ddc67abe7c8b9127bec79bebaaae18"
-
-[[package]]
-name = "rust_decimal"
-version = "1.37.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b203a6425500a03e0919c42d3c47caca51e79f1132046626d2c8871c5092035d"
-dependencies = [
- "arrayvec",
- "num-traits",
-]
 
 [[package]]
 name = "rustc-demangle"
@@ -3042,33 +3053,11 @@ checksum = "7da8b5736845d9f2fcb837ea5d9e2628564b3b043a70948a3f0b778838c5fb4f"
 
 [[package]]
 name = "strum"
-version = "0.26.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8fec0f0aef304996cf250b31b5a10dee7980c85da9d759361292b8bca5a18f06"
-dependencies = [
- "strum_macros 0.26.4",
-]
-
-[[package]]
-name = "strum"
 version = "0.27.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f64def088c51c9510a8579e3c5d67c65349dcf755e5479ad3d010aa6454e2c32"
 dependencies = [
- "strum_macros 0.27.1",
-]
-
-[[package]]
-name = "strum_macros"
-version = "0.26.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4c6bee85a5a24955dc440386795aa378cd9cf82acd5f764469152d2270e581be"
-dependencies = [
- "heck",
- "proc-macro2",
- "quote",
- "rustversion",
- "syn 2.0.104",
+ "strum_macros",
 ]
 
 [[package]]
@@ -3086,9 +3075,7 @@ dependencies = [
 
 [[package]]
 name = "stylus-core"
-version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b96d0a4daa641fb5904cc3302c90b2d160f59c62aae7a19c2c6b94e28e3ab93e"
+version = "0.8.3"
 dependencies = [
  "alloy-primitives",
  "alloy-sol-types",
@@ -3098,9 +3085,7 @@ dependencies = [
 
 [[package]]
 name = "stylus-proc"
-version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c87cad1205aac3d46a3bb303ebe24976de3e88652d001a2e0e489b1e2bd6d0b9"
+version = "0.8.3"
 dependencies = [
  "alloy-primitives",
  "alloy-sol-types",
@@ -3119,9 +3104,7 @@ dependencies = [
 
 [[package]]
 name = "stylus-sdk"
-version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "38519923dae967837b90f00cd669b9d6df778ec1f0df849089f4dd456be96bf8"
+version = "0.8.3"
 dependencies = [
  "alloy-primitives",
  "alloy-sol-types",
@@ -3131,7 +3114,7 @@ dependencies = [
  "hex",
  "keccak-const",
  "lazy_static",
- "mini-alloc 0.9.0",
+ "mini-alloc 0.8.3",
  "rclite",
  "stylus-core",
  "stylus-proc",
@@ -3140,9 +3123,7 @@ dependencies = [
 
 [[package]]
 name = "stylus-test"
-version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "abef8a75532dab6480d83577e47f4db429e7f0330825b3e167a3c9ddb363fd1f"
+version = "0.8.3"
 dependencies = [
  "alloy-primitives",
  "alloy-provider",
