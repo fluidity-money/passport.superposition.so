@@ -10,6 +10,8 @@ use sha2::{digest::Digest, Sha512};
 
 use alloc::{format, string::String, vec::Vec};
 
+use stylus_sdk::alloy_primitives::*;
+
 fn err_str(d: ErrorDiscriminant, msg: String) -> Error {
     Error {
         typ: d,
@@ -279,7 +281,8 @@ pub fn validate(accounts: &Accounts, ap: &Applicative) -> ValidateCarry {
 /// User friendly trait for construction of Applicative with types
 /// included.
 pub trait UserApplicative {
-    fn balance(signer: SigningKey, asset: Address, ) -> Applicative;
+    fn balance(signer: SigningKey, asset: Address, chain: u32, amount: U256) -> Applicative;
+    fn withdraw(signer: SigningKey, commit: Applicative) -> Applicative;
 }
 
 #[cfg(not(target_arch = "wasm32"))]

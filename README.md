@@ -1,12 +1,11 @@
 
 # Superposition Passport
 
-Superposition Passport is a UTXO-based system of spending signatures given to the matching
+Superposition Passport is a UTXO-based system of spending signatures given by the Matching
 engine, which are then provided on-chain if the constraints are validated to the Solver
-engine. Balances are created with a timestamp, which is then hashed to create a snowflake,
-which is then used to create new snowflakes as a derivative.
+engine.
 
-The conversion taking place internally is the conversion from the applicative from in
+The conversion taking place internally is the conversion from the Applicative from in
 `src/applicative.rs`, to `src/state_machine.rs`, with the application taking place using a
 local conversion dependent on the state to the local contract. Following the conversion,
 the state is converted to a local type that is converted to the Emissions type, which is
@@ -118,8 +117,8 @@ pub enum SnowflakeNonce {
 ```
 
 So, a create balance would have the nonce of 0, and be created using `keccak256(address .
-0 . nano timestamp)`. A split balance would have 1, and be of the form `keccak256(previous hash
-. 1 . excess amount)` and so on.
+0 . millisecond timestamp)`. A split balance would have 1, and be of the form
+`keccak256(previous hash . 1 . excess amount)` and so on.
 
 ## User stories
 
