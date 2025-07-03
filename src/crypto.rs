@@ -4,7 +4,7 @@ use borsh::BorshSerialize;
 
 use arrayvec::ArrayVec;
 
-use ed25519_dalek::{Signature, VerifyingKey};
+use ed25519_dalek::{Signature, VerifyingKey, SigningKey};
 
 use sha2::{digest::Digest, Sha512};
 
@@ -253,6 +253,8 @@ pub fn validate_join(
     )
 }
 
+/// Entrypoint validation function for a Applicative type during its
+/// validation stage.
 pub fn validate(accounts: &Accounts, ap: &Applicative) -> ValidateCarry {
     match ap {
         Applicative::Balance(sig, args) => validate_balance(accounts, sig, args),
@@ -272,6 +274,12 @@ pub fn validate(accounts: &Accounts, ap: &Applicative) -> ValidateCarry {
         | Applicative::CommitRightExcessToOrder(ap) => validate_wrapped_commit(accounts, ap),
         Applicative::Join(user_sig, left, right) => validate_join(accounts, user_sig, left, right),
     }
+}
+
+/// User friendly trait for construction of Applicative with types
+/// included.
+pub trait UserApplicative {
+    fn balance(signer: SigningKey, asset: Address, ) -> Applicative;
 }
 
 #[cfg(not(target_arch = "wasm32"))]
