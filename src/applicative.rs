@@ -11,8 +11,15 @@ use crate::encoding::*;
 // ed25519_dalek.
 pub type EdSig = [u8; 64];
 
-// Ed25519 signature.
-pub type EdAddr = [u8; 32];
+/// Ed25519 signature. Referenced according to its place in the accounts
+/// vector.
+pub type EdAddr = usize;
+
+/// User provided signature. Needs a lookup in the accounts table.
+pub type UserSig = (EdAddr, EdSig);
+
+/// Solver provided signature.
+pub type SolverSig = EdSig;
 
 /// Balance should be the amount that the user has uncommitted in
 /// their entirety.
@@ -67,31 +74,31 @@ pub enum Applicative {
     /// Consumes a Balance. The signature is the concatenation of the inputs,
     /// and the hash from the balance.
     /// (Balance|CommitLeftFilledToBalance|CommitRightFilledToBalance|CommitLeftExcessToBalance|CommitRightExcessToBalance)
-    Order(ArgsOrder, EdSig, Box<Applicative>),
+    Order(SolverSig, ArgsOrder, Box<Applicative>),
     /// Cancel an order using a user's signature as well as the matching
     /// engine's signature.
-    Cancel(EdSig, EdSig, Box<Applicative>),
+    Cancel(SolverSig, UserSig, Box<Applicative>),
     /// When this type is used, the internal balances are converted to the
     /// derived type that we use to generate the rebalancing of amounts to users.
     /// The first signature argument is the user's signature, and the second is the
     /// matching engine's signature.
     // Order * Order => Commit
-    Commit(EdSig, Box<Applicative>, Box<Applicative>),
+    Commit(SolverSig, Box<Applicative>, Box<Applicative>),
     // Convert the left side of a Commit to a balance, to be reused.
-    CommitLeftFilledToBalance(EdSig, Box<Applicative>),
+    CommitLeftFilledToBalance(Box<Applicative>),
     // Commit the right side of the Commit results to a balance.
-    CommitRightFilledToBalance(EdSig, Box<Applicative>),
+    CommitRightFilledToBalance(Box<Applicative>),
     // Convert the leftover amount on the left side of a partial order match to a
     // Balance. This is useful if the order doesn't fill properly! Internally,
     // this has the identifier of a balance created using the snowflake function
     // of the original Balance identifier, incremented by one.
-    CommitLeftExcessToBalance(Box<Applicative>),
+    CommitLeftExcessToBalance(UserSig, Box<Applicative>),
     // Convert the leftover amount on the right side to a Balance. Internally,
     // this has the identifier of a balance created using the snowflake function
     // of the original Balance identifier, incremented by one.
-    CommitRightExcessToBalance(Box<Applicative>),
+    CommitRightExcessToBalance(UserSig, Box<Applicative>),
     /// Join two balances together.
-    Join(EdSig, Box<Applicative>, Box<Applicative>),
+    Join(UserSig, Box<Applicative>, Box<Applicative>),
 }
 
 /*

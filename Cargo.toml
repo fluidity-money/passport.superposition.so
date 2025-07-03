@@ -67,7 +67,6 @@ features = ["alloc", "fast", "digest"]
 version = "=0.8.3"
 default-features = false
 features = ["mini-alloc"]
-path = "/home/user/Downloads/stylus-sdk-rs/stylus-sdk"
 
 [dependencies.arrayvec]
 # Pointing to this repo for now since the original didn't implement Borsh properly.
@@ -79,7 +78,6 @@ git = "https://github.com/af-afk/arrayvec"
 [dependencies.stylus-core]
 version = "=0.8.3"
 default-features = false
-path = "/home/user/Downloads/stylus-sdk-rs/stylus-core"
 
 [dependencies.hashbrown]
 version = "0.15.2"
@@ -100,7 +98,6 @@ alloy-primitives = { version = "=0.8.20", default-features = false, features = [
 version = "=0.8.3"
 default-features = false
 features = ["mini-alloc", "stylus-test"]
-path = "/home/user/Downloads/stylus-sdk-rs/stylus-sdk"
 
 [features]
 harness-stylus-interpreter = []

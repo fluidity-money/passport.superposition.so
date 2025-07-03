@@ -12,6 +12,7 @@ pub mod result;
 pub mod crypto;
 
 pub mod snowflake;
+pub mod accounts;
 pub mod applicative;
 pub mod state_machine;
 pub mod emissions;
