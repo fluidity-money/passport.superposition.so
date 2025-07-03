@@ -13,10 +13,10 @@ pub type EdSig = [u8; 64];
 
 /// Ed25519 signature. Referenced according to its place in the accounts
 /// vector.
-pub type EdAddr = usize;
+pub type EdId = usize;
 
 /// User provided signature. Needs a lookup in the accounts table.
-pub type UserSig = (EdAddr, EdSig);
+pub type UserSig = (EdId, EdSig);
 
 /// Solver provided signature.
 pub type SolverSig = EdSig;
@@ -29,12 +29,11 @@ pub type SolverSig = EdSig;
     derive(arbitrary::Arbitrary, proptest_derive::Arbitrary)
 )]
 pub struct ArgsBalance {
-    asset: BAddress,
-    chain: u32,
-    amount: BU256,
+    pub asset: BAddress,
+    pub chain: u32,
+    pub amount: BU256,
     // Owner and timestamp (milliseconds) are combined to create a snowflake.
-    owner: EdAddr,
-    ms_timestamp: u128,
+    pub ms_timestamp: u128,
 }
 
 /// In the Applicative form, the arguments for the Order are slightly
@@ -44,10 +43,15 @@ pub struct ArgsBalance {
 /// created.
 #[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq, Debug)]
 pub struct ArgsOrder {
-    from_amt: BU256,
-    desired_asset: BAddress,
-    desired_chain: u32,
-    desired_amt: BU256,
+    pub from_amt: BU256,
+    pub desired_asset: BAddress,
+    pub desired_chain: u32,
+    pub desired_amt: BU256,
+}
+
+#[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq, Debug)]
+pub struct ArgsCommit {
+    pub ms_timestamp: u128
 }
 
 /// It's difficult to use Applicative correctly owing to the lack of
@@ -62,19 +66,19 @@ pub enum Applicative {
     /// When this step is used, it's only admissable if the user has
     /// uncommitted amounts they've deposited that haven't been converted to a
     /// Balance.
-    Balance(EdSig, ArgsBalance),
+    Balance(UserSig, ArgsBalance),
     /// Withdraw a Balance from the system. The solver signature is needed
     /// alongside the user's signature to be able to testify there are no
     /// unspent UTXOs. The signature only needs to be the signed value
     /// of the concatenation of the hash of the
     /// (Balance|CommitLeftFilledToBalance|CommitRightFilledToBalance|CommitLeftExcessToBalance|CommitRightExcessToBalance)
     /// input from the solver and the user.
-    Withdraw(EdSig, EdSig, Box<Applicative>),
+    Withdraw(SolverSig, UserSig, Box<Applicative>),
     /// Only (Balance | CommitToBalance*) => Order as the argument here.
     /// Consumes a Balance. The signature is the concatenation of the inputs,
     /// and the hash from the balance.
-    /// (Balance|CommitLeftFilledToBalance|CommitRightFilledToBalance|CommitLeftExcessToBalance|CommitRightExcessToBalance)
-    Order(SolverSig, ArgsOrder, Box<Applicative>),
+    /// (Balance|CommitLeftFilledToBalance|CommitRightFilledToBalance|CommitLeftExcessToBalance|CommitRightExcessToBalance|Join)
+    Order(UserSig, ArgsOrder, Box<Applicative>),
     /// Cancel an order using a user's signature as well as the matching
     /// engine's signature.
     Cancel(SolverSig, UserSig, Box<Applicative>),
@@ -82,8 +86,8 @@ pub enum Applicative {
     /// derived type that we use to generate the rebalancing of amounts to users.
     /// The first signature argument is the user's signature, and the second is the
     /// matching engine's signature.
-    // Order * Order => Commit
-    Commit(SolverSig, Box<Applicative>, Box<Applicative>),
+    // Args * Order * Order => Commit
+    Commit(SolverSig, ArgsCommit, Box<Applicative>, Box<Applicative>),
     // Convert the left side of a Commit to a balance, to be reused.
     CommitLeftFilledToBalance(Box<Applicative>),
     // Commit the right side of the Commit results to a balance.
@@ -92,11 +96,11 @@ pub enum Applicative {
     // Balance. This is useful if the order doesn't fill properly! Internally,
     // this has the identifier of a balance created using the snowflake function
     // of the original Balance identifier, incremented by one.
-    CommitLeftExcessToBalance(UserSig, Box<Applicative>),
+    CommitLeftExcessToBalance(Box<Applicative>),
     // Convert the leftover amount on the right side to a Balance. Internally,
     // this has the identifier of a balance created using the snowflake function
     // of the original Balance identifier, incremented by one.
-    CommitRightExcessToBalance(UserSig, Box<Applicative>),
+    CommitRightExcessToBalance(Box<Applicative>),
     /// Join two balances together.
     Join(UserSig, Box<Applicative>, Box<Applicative>),
 }

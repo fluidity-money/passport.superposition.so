@@ -46,6 +46,9 @@ pub enum ErrorDiscriminant {
 
     /// Bad verifying of a signature using strict methods.
     BadStrictVerify,
+
+    /// The signer wasn't found using their id.
+    SignerNotFound,
 }
 
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
