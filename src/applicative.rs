@@ -92,15 +92,10 @@ pub enum Applicative {
     CommitLeftFilledToBalance(Box<Applicative>),
     // Commit the right side of the Commit results to a balance.
     CommitRightFilledToBalance(Box<Applicative>),
-    // Convert the leftover amount on the left side of a partial order match to a
-    // Balance. This is useful if the order doesn't fill properly! Internally,
-    // this has the identifier of a balance created using the snowflake function
-    // of the original Balance identifier, incremented by one.
-    CommitLeftExcessToBalance(Box<Applicative>),
-    // Convert the leftover amount on the right side to a Balance. Internally,
-    // this has the identifier of a balance created using the snowflake function
-    // of the original Balance identifier, incremented by one.
-    CommitRightExcessToBalance(Box<Applicative>),
+    // Accessor for the excess left side order to a balance.
+    CommitLeftExcessToOrder(Box<Applicative>),
+    // Accessor for the excess right side order to a balance.
+    CommitRightExcessToOrder(Box<Applicative>),
     /// Join two balances together.
     Join(UserSig, Box<Applicative>, Box<Applicative>),
 }

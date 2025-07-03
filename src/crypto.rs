@@ -110,6 +110,15 @@ fn chain_digests(x: [u8; 64], y: [u8; 64]) -> [u8; 64] {
         .into()
 }
 
+pub fn validate_wrapped_balance(accounts: &Accounts, ap: &Applicative) -> ValidateCarry {
+    match ap {
+        Applicative::Balance(sig, args) => validate_balance(accounts, sig, args),
+        Applicative::CommitLeftFilledToBalance(ap)
+        | Applicative::CommitRightFilledToBalance(ap) => validate_wrapped_balance(accounts, ap),
+        _ => Err(err_bad_ap_transition()),
+    }
+}
+
 pub fn validate_order(
     accounts: &Accounts,
     (owner_id, owner_sig): &UserSig,
@@ -121,16 +130,21 @@ pub fn validate_order(
         owner_sig,
         &serialise_inplace::<_, { size_of::<ArgsOrder>() }>(args),
         &match ap {
-            Applicative::Balance(sig, args) => validate_balance(accounts, sig, args),
-            Applicative::CommitLeftFilledToBalance(args)
-            | Applicative::CommitRightFilledToBalance(args)
-            | Applicative::CommitLeftExcessToBalance(args)
-            | Applicative::CommitRightExcessToBalance(args) => {
-                validate_commit_inside(accounts, args)
-            }
-            _ => Err(err_bad_ap_transition()),
+            Applicative::CommitLeftFilledToBalance(ap)
+            | Applicative::CommitRightFilledToBalance(ap) => validate_wrapped_commit(accounts, ap),
+            ap => validate_wrapped_balance(accounts, ap),
         }?,
     )
+}
+
+pub fn validate_wrapped_order(accounts: &Accounts, ap: &Applicative) -> ValidateCarry {
+    match ap {
+        Applicative::Order(sig, args, ap) => validate_order(accounts, sig, args, ap),
+        Applicative::CommitLeftExcessToOrder(ap) | Applicative::CommitRightExcessToOrder(ap) => {
+            validate_wrapped_commit(accounts, ap)
+        }
+        _ => Err(err_bad_ap_transition()),
+    }
 }
 
 /// Validate a commit using the solver's signature. This function only
@@ -138,26 +152,19 @@ pub fn validate_order(
 /// machine to do the checking of the amounts and constraints.
 pub fn validate_commit(
     accounts: &Accounts,
-    sig: &[u8; 64],
+    solver_sig: &[u8; 64],
     args: &ArgsCommit,
     left: &Applicative,
     right: &Applicative,
 ) -> ValidateCarry {
     check_sig(
         &accounts.solver,
-        sig,
+        solver_sig,
         &serialise_inplace::<_, { size_of::<ArgsCommit>() }>(args),
-        &match (left, right) {
-            (
-                Applicative::Order(user_sig1, args1, ap1),
-                Applicative::Order(user_sig2, args2, ap2),
-            ) => {
-                let left_digest = validate_order(accounts, user_sig1, args1, ap1)?;
-                let right_digest = validate_order(accounts, user_sig2, args2, ap2)?;
-                Ok(chain_digests(left_digest, right_digest))
-            }
-            (_, _) => Err(err_bad_ap_transition()),
-        }?,
+        &chain_digests(
+            validate_wrapped_order(accounts, left)?,
+            validate_wrapped_order(accounts, right)?,
+        ),
     )
 }
 
@@ -166,8 +173,8 @@ pub fn validate_commit(
 /// contained within the commit should be reused by virtue of its typing
 /// system. So the translation function knows how to manipulate this.
 /// Does not do any validation except validate the contained value.
-pub fn validate_commit_inside(accounts: &Accounts, args: &Applicative) -> ValidateCarry {
-    match args {
+pub fn validate_wrapped_commit(accounts: &Accounts, ap: &Applicative) -> ValidateCarry {
+    match ap {
         Applicative::Commit(sig, args, left, right) => {
             validate_commit(accounts, sig, args, left, right)
         }
@@ -197,13 +204,52 @@ pub fn validate_withdraw(
         &match ap {
             Applicative::Balance(sig, args) => validate_balance(accounts, sig, args),
             Applicative::CommitLeftFilledToBalance(args)
-            | Applicative::CommitRightFilledToBalance(args)
-            | Applicative::CommitLeftExcessToBalance(args)
-            | Applicative::CommitRightExcessToBalance(args) => {
-                validate_commit_inside(accounts, args)
+            | Applicative::CommitRightFilledToBalance(args) => {
+                validate_wrapped_commit(accounts, args)
             }
             _ => Err(err_bad_ap_transition()),
         }?,
+    )
+}
+
+pub fn validate_cancel(
+    accounts: &Accounts,
+    solver_sig: &[u8; 64],
+    (owner_id, owner_sig): &UserSig,
+    ap: &Applicative,
+) -> ValidateCarry {
+    check_sig_two(
+        &accounts.solver,
+        solver_sig,
+        accounts.find(*owner_id)?,
+        owner_sig,
+        &[],
+        &match ap {
+            Applicative::Order(user_sig, args, ap) => validate_order(accounts, user_sig, args, ap),
+            // We only handle the excess amount cancellation since that's
+            // the type aside from Commit that's implicitly turned into a
+            // Order if it's not filled.
+            Applicative::CommitLeftExcessToOrder(args)
+            | Applicative::CommitRightExcessToOrder(args) => validate_wrapped_commit(accounts, args),
+            _ => Err(err_bad_ap_transition()),
+        }?,
+    )
+}
+
+pub fn validate_join(
+    accounts: &Accounts,
+    (owner_id, owner_sig): &UserSig,
+    left: &Applicative,
+    right: &Applicative,
+) -> ValidateCarry {
+    check_sig(
+        accounts.find(*owner_id)?,
+        owner_sig,
+        &[],
+        &chain_digests(
+            validate_wrapped_balance(accounts, left)?,
+            validate_wrapped_balance(accounts, right)?,
+        ),
     )
 }
 
@@ -214,6 +260,17 @@ pub fn validate(accounts: &Accounts, ap: &Applicative) -> ValidateCarry {
             validate_withdraw(accounts, solver_sig, user_sig, ap)
         }
         Applicative::Order(user_sig, args, ap) => validate_order(accounts, user_sig, args, ap),
+        Applicative::Cancel(solver_sig, user_sig, ap) => {
+            validate_cancel(accounts, solver_sig, user_sig, ap)
+        }
+        Applicative::Commit(solver_sig, args, ap1, ap2) => {
+            validate_commit(accounts, solver_sig, args, ap1, ap2)
+        }
+        Applicative::CommitLeftFilledToBalance(ap)
+        | Applicative::CommitRightFilledToBalance(ap)
+        | Applicative::CommitLeftExcessToOrder(ap)
+        | Applicative::CommitRightExcessToOrder(ap) => validate_wrapped_commit(accounts, ap),
+        Applicative::Join(user_sig, left, right) => validate_join(accounts, user_sig, left, right),
     }
 }
 
