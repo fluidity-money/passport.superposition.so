@@ -4,9 +4,10 @@ use stylus_sdk::alloy_primitives::{Address, U256};
 
 use crate::{
     accounts::Accounts,
-    applicative::{Applicative, ArgsBalance, UserApplicative},
+    applicative::{Applicative, ArgsBalance, ArgsCommit, ArgsOrder, UserApplicative},
     crypto::*,
     encoding::{BAddress, BU256},
+    error::Error,
 };
 
 /// This code implements crypto's UserApplicative trait, to provide a
@@ -38,22 +39,91 @@ impl UserContext {
 }
 
 impl UserApplicative for UserContext {
-    fn balance(&self, asset: Address, chain: u32, amount: U256, ms_timestamp: u128) -> Applicative {
-        let b = ArgsBalance {
+    fn balance(
+        &self,
+        asset: Address,
+        chain: u128,
+        amount: U256,
+        ms_timestamp: u128,
+    ) -> Applicative {
+        let args = ArgsBalance {
             asset: BAddress { x: asset },
             chain,
             amount: BU256 { x: amount },
             ms_timestamp,
         };
-        Applicative::Balance((self.find_signer(), sign_balance(&self.signer, &b)), b)
+        Applicative::Balance(
+            (self.find_signer(), sign_balance(&self.signer, &args)),
+            args,
+        )
     }
 
-    fn withdraw(&self, _solver_sig: [u8; 64], _ap: Applicative) -> Applicative {
-        //Applicative::Withdraw(solver_sig, make_sig(self.signer,
-        todo!()
+    fn withdraw(&self, solver_sig: [u8; 64], ap: Applicative) -> Result<Applicative, Error> {
+        Ok(Applicative::Withdraw(
+            solver_sig,
+            (self.find_signer(), sign_withdraw(&self.signer, &ap)?),
+            Box::new(ap),
+        ))
+    }
+
+    fn order(
+        &self,
+        from_amt: U256,
+        desired_asset: Address,
+        desired_chain: u128,
+        desired_amt: U256,
+        ap: Applicative,
+    ) -> Result<Applicative, Error> {
+        let args = ArgsOrder {
+            from_amt: BU256 { x: from_amt },
+            desired_asset: BAddress { x: desired_asset },
+            desired_chain,
+            desired_amt: BU256 { x: desired_amt },
+        };
+        Ok(Applicative::Order(
+            (self.find_signer(), sign_order(&self.signer, &args, &ap)?),
+            args,
+            Box::new(ap),
+        ))
+    }
+
+    fn cancel(&self, solver_sig: [u8; 64], ap: Applicative) -> Result<Applicative, Error> {
+        Ok(Applicative::Cancel(
+            solver_sig,
+            (self.find_signer(), sign_cancel(&self.signer, &ap)?),
+            Box::new(ap),
+        ))
+    }
+
+    fn commit(
+        &self,
+        solver_sig: [u8; 64],
+        ms_timestamp: u128,
+        left: Applicative,
+        right: Applicative,
+    ) -> Result<Applicative, Error> {
+        let args = ArgsCommit { ms_timestamp };
+        Ok(Applicative::Commit(
+            solver_sig,
+            args,
+            Box::new(left),
+            Box::new(right),
+        ))
+    }
+
+    fn commit_left_filled_to_balance(&self, ap: Applicative) -> Result<Applicative, Error> {
+        Ok(Applicative::CommitLeftFilledToBalance(Box::new(ap)))
+    }
+
+    fn commit_right_filled_to_balance(&self, ap: Applicative) -> Result<Applicative, Error> {
+        Ok(Applicative::CommitRightFilledToBalance(Box::new(ap)))
+    }
+
+    fn commit_left_excess_to_order(&self, ap: Applicative) -> Result<Applicative, Error> {
+        Ok(Applicative::CommitLeftExcessToOrder(Box::new(ap)))
+    }
+
+    fn commit_right_excess_to_order(&self, ap: Applicative) -> Result<Applicative, Error> {
+        Ok(Applicative::CommitRightExcessToOrder(Box::new(ap)))
     }
 }
-
-#[cfg(not(target_arch = "wasm32"))]
-#[cfg(test)]
-mod test_proptest {}

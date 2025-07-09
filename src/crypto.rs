@@ -314,6 +314,8 @@ fn digest_wrapped_balance(ap: &Applicative) -> Result<[u8; 64], Error> {
             ArgsBalance,
             { size_of::<ArgsBalance>() },
         >(args)),
+        Applicative::CommitLeftFilledToBalance(ap)
+        | Applicative::CommitRightFilledToBalance(ap) => digest_wrapped_balance(ap),
         _ => Err(err_bad_ap_transition()),
     }
 }
@@ -322,8 +324,8 @@ pub fn digest_order(args: &ArgsOrder, ap: &Applicative) -> Result<[u8; 64], Erro
     Ok(chain_digests(
         digest_inplace::<ArgsOrder, { size_of::<ArgsOrder>() }>(args),
         match ap {
-            Applicative::CommitLeftFilledToBalance(ap)
-            | Applicative::CommitRightFilledToBalance(ap) => digest_wrapped_commit(ap),
+            Applicative::CommitLeftExcessToOrder(ap)
+            | Applicative::CommitRightExcessToOrder(ap) => digest_wrapped_commit(ap),
             ap => digest_wrapped_balance(ap),
         }?,
     ))
@@ -360,6 +362,18 @@ pub fn sign_withdraw(key: &SigningKey, ap: &Applicative) -> Result<[u8; 64], Err
         | Applicative::CommitRightFilledToBalance(ap) => sign_withdraw(key, ap),
         _ => Err(err_bad_ap_transition()),
     }
+}
+
+pub fn sign_order(key: &SigningKey, args: &ArgsOrder, ap: &Applicative) -> Result<[u8; 64], Error> {
+    make_sig(
+        key,
+        &digest_inplace::<_, { size_of::<ArgsOrder>() }>(args),
+        &digest_wrapped_balance(ap)?,
+    )
+}
+
+pub fn sign_cancel(k: &SigningKey, ap: &Applicative) -> Result<[u8; 64], Error> {
+    make_sig(k, &[Nonce::Cancel.into()], &digest_wrapped_balance(ap)?)
 }
 
 #[cfg(not(target_arch = "wasm32"))]

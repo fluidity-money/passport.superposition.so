@@ -7,7 +7,7 @@ use borsh::{BorshDeserialize, BorshSerialize};
 
 use alloc::boxed::Box;
 
-use crate::encoding::*;
+use crate::{encoding::*, error::Error};
 
 // Concatenated form of the ed25519 r and s values for use with
 // ed25519_dalek.
@@ -51,7 +51,7 @@ impl From<Nonce> for u8 {
 )]
 pub struct ArgsBalance {
     pub asset: BAddress,
-    pub chain: u32,
+    pub chain: u128,
     pub amount: BU256,
     // Owner and timestamp (milliseconds) are combined to create a snowflake.
     pub ms_timestamp: u128,
@@ -66,7 +66,7 @@ pub struct ArgsBalance {
 pub struct ArgsOrder {
     pub from_amt: BU256,
     pub desired_asset: BAddress,
-    pub desired_chain: u32,
+    pub desired_chain: u128,
     pub desired_amt: BU256,
 }
 
@@ -125,8 +125,30 @@ pub enum Applicative {
 /// User friendly trait for construction of Applicative with types
 /// included in a side effectful way.
 pub trait UserApplicative {
-    fn balance(&self, asset: Address, chain: u32, amount: U256, ms_timestamp: u128) -> Applicative;
-    fn withdraw(&self, solver_sig: [u8; 64], ap: Applicative) -> Applicative;
+    fn balance(&self, asset: Address, chain: u128, amount: U256, ms_timestamp: u128) -> Applicative;
+
+    fn withdraw(&self, solver_sig: [u8; 64], ap: Applicative) -> Result<Applicative, Error>;
+
+    fn order(
+        &self,
+        from_amt: U256,
+        desired_asset: Address,
+        desired_chain: u128,
+        desired_amt: U256,
+        ap: Applicative,
+    ) -> Result<Applicative, Error>;
+
+    fn cancel(&self, solver_sig: [u8; 64], ap: Applicative) -> Result<Applicative, Error>;
+
+    fn commit(&self, solver_sig: [u8; 64], ms_timestamp: u128, left: Applicative, right: Applicative) -> Result<Applicative, Error>;
+
+    fn commit_left_filled_to_balance(&self, ap: Applicative) -> Result<Applicative, Error>;
+
+    fn commit_right_filled_to_balance(&self, ap: Applicative) -> Result<Applicative, Error>;
+
+    fn commit_left_excess_to_order(&self, ap: Applicative) -> Result<Applicative, Error>;
+
+    fn commit_right_excess_to_order(&self, ap: Applicative) -> Result<Applicative, Error>;
 }
 
 /*
