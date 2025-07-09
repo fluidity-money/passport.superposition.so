@@ -422,13 +422,12 @@ mod test_proptest {
             // Test it also breaks...
             let mut solver_sig = sign_withdraw(&solver_key, &bal).unwrap();
             solver_sig[31] = solver_sig[31].wrapping_add(1);
-            assert_eq!(
-                ErrorDiscriminant::BadStrictVerify,
+            assert!(
                 validate(
                     &a,
                     &Applicative::Withdraw(solver_sig, signer_sig, Box::new(bal)),
                 )
-                .unwrap_err()
+                .unwrap_err().is_typ(ErrorDiscriminant::BadStrictVerify)
             )
         }
     }
