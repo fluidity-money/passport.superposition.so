@@ -310,10 +310,9 @@ pub fn sign_balance(k: &SigningKey, args: &ArgsBalance) -> [u8; 64] {
 
 fn digest_wrapped_balance(ap: &Applicative) -> Result<[u8; 64], Error> {
     match ap {
-        Applicative::Balance(_, args) => Ok(digest_inplace::<
-            ArgsBalance,
-            { size_of::<ArgsBalance>() },
-        >(args)),
+        Applicative::Balance(_, args) => {
+            Ok(digest_inplace::<_, { size_of::<ArgsBalance>() }>(args))
+        }
         Applicative::CommitLeftFilledToBalance(ap)
         | Applicative::CommitRightFilledToBalance(ap) => digest_wrapped_balance(ap),
         _ => Err(err_bad_ap_transition()),
@@ -322,7 +321,7 @@ fn digest_wrapped_balance(ap: &Applicative) -> Result<[u8; 64], Error> {
 
 pub fn digest_order(args: &ArgsOrder, ap: &Applicative) -> Result<[u8; 64], Error> {
     Ok(chain_digests(
-        digest_inplace::<ArgsOrder, { size_of::<ArgsOrder>() }>(args),
+        digest_inplace::<_, { size_of::<ArgsOrder>() }>(args),
         match ap {
             Applicative::CommitLeftExcessToOrder(ap)
             | Applicative::CommitRightExcessToOrder(ap) => digest_wrapped_commit(ap),
@@ -356,7 +355,7 @@ pub fn sign_withdraw(key: &SigningKey, ap: &Applicative) -> Result<[u8; 64], Err
         Applicative::Balance(_, args) => make_sig(
             key,
             &[Nonce::Withdraw.into()],
-            &digest_inplace::<ArgsBalance, { size_of::<ArgsBalance>() }>(args),
+            &digest_inplace::<_, { size_of::<ArgsBalance>() }>(args),
         ),
         Applicative::CommitLeftFilledToBalance(ap)
         | Applicative::CommitRightFilledToBalance(ap) => sign_withdraw(key, ap),
@@ -374,6 +373,19 @@ pub fn sign_order(key: &SigningKey, args: &ArgsOrder, ap: &Applicative) -> Resul
 
 pub fn sign_cancel(k: &SigningKey, ap: &Applicative) -> Result<[u8; 64], Error> {
     make_sig(k, &[Nonce::Cancel.into()], &digest_wrapped_balance(ap)?)
+}
+
+pub fn sign_commit(
+    k: &SigningKey,
+    args: &ArgsCommit,
+    left: &Applicative,
+    right: &Applicative,
+) -> Result<[u8; 64], Error> {
+    make_sig(
+        k,
+        &digest_inplace::<_, { size_of::<ArgsCommit>() }>(args),
+        &chain_digests(digest_wrapped_order(left)?, digest_wrapped_order(right)?),
+    )
 }
 
 #[cfg(not(target_arch = "wasm32"))]

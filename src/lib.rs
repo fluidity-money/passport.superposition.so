@@ -1,5 +1,4 @@
 #![cfg_attr(target_arch = "wasm32", no_std)]
-
 // We don't instantiate the VM context so this is needed.
 #![allow(deprecated)]
 
@@ -11,13 +10,14 @@ pub mod result;
 
 pub mod crypto;
 
+pub mod solver_context;
 pub mod user_context;
 
-pub mod snowflake;
 pub mod accounts;
 pub mod applicative;
-pub mod state_machine;
 pub mod emissions;
+pub mod snowflake;
+pub mod state_machine;
 
 pub mod encoding;
 pub mod ops;
@@ -28,7 +28,7 @@ pub mod utils;
 #[allow(unused)]
 use {
     borsh::BorshDeserialize,
-    stylus_sdk::alloy_sol_types::{sol, SolError},
+    stylus_sdk::alloy_sol_types::{SolError, sol},
 };
 
 #[cfg(target_arch = "wasm32")]
@@ -63,7 +63,7 @@ pub extern "C" fn user_entrypoint(len: usize) -> usize {
         Op::Dummy => store.dummy(),
         Op::QueryUnusedLiquidity(addr) => store.query_unused_liq(addr),
         Op::DepositUnusedLiquidity(l) => store.deposit_unused_liq(l),
-        Op::Solve(args) => store.solve(args)
+        Op::Solve(args) => store.solve(args),
     };
     stylus_sdk::storage::StorageCache::flush();
     let rd = match r {
