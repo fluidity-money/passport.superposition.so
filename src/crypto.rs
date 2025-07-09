@@ -4,13 +4,11 @@ use borsh::BorshSerialize;
 
 use arrayvec::ArrayVec;
 
-use ed25519_dalek::{Signature, VerifyingKey, SigningKey};
+use ed25519_dalek::{Signature, SigningKey, VerifyingKey};
 
-use sha2::{digest::Digest, Sha512};
+use sha2::{Sha512, digest::Digest};
 
 use alloc::{format, string::String, vec::Vec};
-
-use stylus_sdk::alloy_primitives::*;
 
 fn err_str(d: ErrorDiscriminant, msg: String) -> Error {
     Error {
@@ -21,6 +19,10 @@ fn err_str(d: ErrorDiscriminant, msg: String) -> Error {
 
 fn err_sig(msg: String) -> Error {
     err_str(ErrorDiscriminant::BadStrictVerify, msg)
+}
+
+fn err_prehashed(msg: String) -> Error {
+    err_str(ErrorDiscriminant::UnableToSignPrehashed, msg)
 }
 
 pub type ValidateCarry = Result<[u8; 64], Error>;
@@ -77,10 +79,29 @@ fn check_sig_two(
     Ok(d.finalize().into())
 }
 
-fn serialise_inplace<'a, T: BorshSerialize, const CAP: usize>(x: T) -> ArrayVec<u8, CAP> {
+pub fn make_sig(key: &SigningKey, sig: &[u8], prev_digest: &[u8]) -> Result<[u8; 64], Error> {
+    Ok(key
+        .sign_prehashed(
+            Sha512::default()
+                .chain_update(sig)
+                .chain_update(prev_digest),
+            None,
+        )
+        .map_err(|msg| err_prehashed(format!("{msg}")))?
+        .to_bytes())
+}
+
+pub fn serialise_inplace<'a, T: BorshSerialize, const CAP: usize>(x: &T) -> ArrayVec<u8, CAP> {
     let mut b = ArrayVec::<u8, CAP>::new();
     x.serialize(&mut b).unwrap();
     b
+}
+
+pub fn digest_inplace<'a, T: BorshSerialize, const CAP: usize>(x: &T) -> [u8; 64] {
+    Sha512::default()
+        .chain_update(&serialise_inplace::<T, CAP>(x))
+        .finalize()
+        .into()
 }
 
 /// Validate the Balance against the signature given using an array on the stack.
@@ -90,7 +111,7 @@ pub fn validate_balance(
     ap: &ArgsBalance,
 ) -> ValidateCarry {
     check_sig(
-        accounts.find(*owner_id)?,
+        &accounts.find_key(*owner_id)?,
         owner_sig,
         &serialise_inplace::<_, { size_of::<ArgsBalance>() }>(ap),
         &[],
@@ -128,7 +149,7 @@ pub fn validate_order(
     ap: &Applicative,
 ) -> ValidateCarry {
     check_sig(
-        accounts.find(*owner_id)?,
+        &accounts.find_key(*owner_id)?,
         owner_sig,
         &serialise_inplace::<_, { size_of::<ArgsOrder>() }>(args),
         &match ap {
@@ -200,15 +221,13 @@ pub fn validate_withdraw(
     check_sig_two(
         &accounts.solver,
         solver_sig,
-        accounts.find(*owner_id)?,
+        &accounts.find_key(*owner_id)?,
         owner_sig,
-        &[],
+        &[Nonce::Withdraw.into()],
         &match ap {
             Applicative::Balance(sig, args) => validate_balance(accounts, sig, args),
-            Applicative::CommitLeftFilledToBalance(args)
-            | Applicative::CommitRightFilledToBalance(args) => {
-                validate_wrapped_commit(accounts, args)
-            }
+            Applicative::CommitLeftFilledToBalance(ap)
+            | Applicative::CommitRightFilledToBalance(ap) => validate_wrapped_commit(accounts, ap),
             _ => Err(err_bad_ap_transition()),
         }?,
     )
@@ -223,16 +242,18 @@ pub fn validate_cancel(
     check_sig_two(
         &accounts.solver,
         solver_sig,
-        accounts.find(*owner_id)?,
+        &accounts.find_key(*owner_id)?,
         owner_sig,
-        &[],
+        &[Nonce::Cancel.into()],
         &match ap {
             Applicative::Order(user_sig, args, ap) => validate_order(accounts, user_sig, args, ap),
             // We only handle the excess amount cancellation since that's
             // the type aside from Commit that's implicitly turned into a
             // Order if it's not filled.
             Applicative::CommitLeftExcessToOrder(args)
-            | Applicative::CommitRightExcessToOrder(args) => validate_wrapped_commit(accounts, args),
+            | Applicative::CommitRightExcessToOrder(args) => {
+                validate_wrapped_commit(accounts, args)
+            }
             _ => Err(err_bad_ap_transition()),
         }?,
     )
@@ -245,9 +266,9 @@ pub fn validate_join(
     right: &Applicative,
 ) -> ValidateCarry {
     check_sig(
-        accounts.find(*owner_id)?,
+        &accounts.find_key(*owner_id)?,
         owner_sig,
-        &[],
+        &[Nonce::Join.into()],
         &chain_digests(
             validate_wrapped_balance(accounts, left)?,
             validate_wrapped_balance(accounts, right)?,
@@ -278,11 +299,67 @@ pub fn validate(accounts: &Accounts, ap: &Applicative) -> ValidateCarry {
     }
 }
 
-/// User friendly trait for construction of Applicative with types
-/// included.
-pub trait UserApplicative {
-    fn balance(signer: SigningKey, asset: Address, chain: u32, amount: U256) -> Applicative;
-    fn withdraw(signer: SigningKey, commit: Applicative) -> Applicative;
+pub fn sign_balance(k: &SigningKey, args: &ArgsBalance) -> [u8; 64] {
+    make_sig(
+        k,
+        &serialise_inplace::<ArgsBalance, { size_of::<ArgsBalance>() }>(args),
+        &[],
+    )
+    .unwrap()
+}
+
+fn digest_wrapped_balance(ap: &Applicative) -> Result<[u8; 64], Error> {
+    match ap {
+        Applicative::Balance(_, args) => Ok(digest_inplace::<
+            ArgsBalance,
+            { size_of::<ArgsBalance>() },
+        >(args)),
+        _ => Err(err_bad_ap_transition()),
+    }
+}
+
+pub fn digest_order(args: &ArgsOrder, ap: &Applicative) -> Result<[u8; 64], Error> {
+    Ok(chain_digests(
+        digest_inplace::<ArgsOrder, { size_of::<ArgsOrder>() }>(args),
+        match ap {
+            Applicative::CommitLeftFilledToBalance(ap)
+            | Applicative::CommitRightFilledToBalance(ap) => digest_wrapped_commit(ap),
+            ap => digest_wrapped_balance(ap),
+        }?,
+    ))
+}
+
+fn digest_wrapped_order(ap: &Applicative) -> Result<[u8; 64], Error> {
+    match ap {
+        Applicative::Order(_, args, ap) => digest_order(args, ap),
+        Applicative::CommitLeftExcessToOrder(ap) | Applicative::CommitRightExcessToOrder(ap) => {
+            digest_wrapped_commit(ap)
+        }
+        _ => Err(err_bad_ap_transition()),
+    }
+}
+
+fn digest_wrapped_commit(ap: &Applicative) -> Result<[u8; 64], Error> {
+    if let Applicative::Commit(_, args, left, right) = ap {
+        let d = chain_digests(digest_wrapped_order(left)?, digest_wrapped_order(right)?);
+        let a = digest_inplace::<_, { size_of::<ArgsCommit>() }>(args);
+        Ok(chain_digests(d, a))
+    } else {
+        Err(err_bad_ap_transition())
+    }
+}
+
+pub fn sign_withdraw(key: &SigningKey, ap: &Applicative) -> Result<[u8; 64], Error> {
+    match ap {
+        Applicative::Balance(_, args) => make_sig(
+            key,
+            &[Nonce::Withdraw.into()],
+            &digest_inplace::<ArgsBalance, { size_of::<ArgsBalance>() }>(args),
+        ),
+        Applicative::CommitLeftFilledToBalance(ap)
+        | Applicative::CommitRightFilledToBalance(ap) => sign_withdraw(key, ap),
+        _ => Err(err_bad_ap_transition()),
+    }
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -304,17 +381,55 @@ mod test_proptest {
             args_bal.serialize(&mut b).unwrap();
             let vk = k.verifying_key();
             let d = Sha512::default().chain_update(&b);
-            let a = Accounts::default();
-            validate_balance(&a, &vk, &k.sign_prehashed(d, None).unwrap().to_bytes(), &args_bal)
-                .unwrap();
+            let a = Accounts::default().register(vk);
+            validate_balance(&a, &(0, sign_balance(&k, &args_bal)), &args_bal).unwrap();
+            validate_balance(
+                &a,
+                &(0, k.sign_prehashed(d, None).unwrap().to_bytes()),
+                &args_bal,
+            )
+            .unwrap();
+            let bal = (0, sign_balance(&k, &args_bal));
+            validate(&a, &Applicative::Balance(bal, args_bal.clone())).unwrap();
             // Test that someone can't break things:
             sign_key[31] = sign_key[31].wrapping_add(1);
             let k2 = SigningKey::from_bytes(&sign_key);
             assert!(
-                validate_balance(&a, &vk, &k2.sign(&b).to_bytes(), &args_bal)
+                validate_balance(&a, &(0, k2.sign(&b).to_bytes()), &args_bal)
                     .unwrap_err()
                     .is_typ(ErrorDiscriminant::BadStrictVerify)
             );
+        }
+
+        #[test]
+        fn test_validate_withdraw(
+            sign_key in any::<[u8; 32]>(),
+            solver_key in any::<[u8; 32]>(),
+            args_bal in any::<ArgsBalance>()
+        ) {
+            let solver_key = SigningKey::from_bytes(&solver_key);
+            let signer_key = SigningKey::from_bytes(&sign_key);
+            let a = Accounts::default().register(signer_key.verifying_key())
+                .with_solver(solver_key.verifying_key());
+            let bal = Applicative::Balance((0, sign_balance(&signer_key, &args_bal)), args_bal);
+            let solver_sig = sign_withdraw(&solver_key, &bal).unwrap();
+            let signer_sig = (0, sign_withdraw(&signer_key, &bal).unwrap());
+            validate(
+                &a,
+                &Applicative::Withdraw(solver_sig, signer_sig, Box::new(bal.clone())),
+            )
+            .unwrap();
+            // Test it also breaks...
+            let mut solver_sig = sign_withdraw(&solver_key, &bal).unwrap();
+            solver_sig[31] = solver_sig[31].wrapping_add(1);
+            assert_eq!(
+                ErrorDiscriminant::BadStrictVerify,
+                validate(
+                    &a,
+                    &Applicative::Withdraw(solver_sig, signer_sig, Box::new(bal)),
+                )
+                .unwrap_err()
+            )
         }
     }
 }

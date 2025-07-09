@@ -49,6 +49,9 @@ pub enum ErrorDiscriminant {
 
     /// The signer wasn't found using their id.
     SignerNotFound,
+
+    /// Unable to sign a prehashed blob.
+    UnableToSignPrehashed,
 }
 
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]

@@ -1,6 +1,8 @@
 // Applicative form of the state machine, that gets converted to an
 // internal representation during the program's simulation.
 
+use stylus_sdk::alloy_primitives::{Address, U256};
+
 use borsh::{BorshDeserialize, BorshSerialize};
 
 use alloc::boxed::Box;
@@ -20,6 +22,25 @@ pub type UserSig = (EdId, EdSig);
 
 /// Solver provided signature.
 pub type SolverSig = EdSig;
+
+/// For situations where the conversion between the type lacks an
+/// argument, we include this in the supplied bytes to differentiate
+/// things so a signature can't be misused. This is like the state machine
+/// equivalent. It's not strictly needed to have a type for the left and right
+/// applicative forms since the signer is going to be different for both
+/// sides in a normal operation.
+#[repr(u8)]
+pub enum Nonce {
+    Withdraw,
+    Cancel,
+    Join,
+}
+
+impl From<Nonce> for u8 {
+    fn from(v: Nonce) -> Self {
+        unsafe { *<*const _>::from(&v).cast::<u8>() }
+    }
+}
 
 /// Balance should be the amount that the user has uncommitted in
 /// their entirety.
@@ -99,6 +120,13 @@ pub enum Applicative {
     CommitRightExcessToOrder(Box<Applicative>),
     /// Join two balances together.
     Join(UserSig, Box<Applicative>, Box<Applicative>),
+}
+
+/// User friendly trait for construction of Applicative with types
+/// included in a side effectful way.
+pub trait UserApplicative {
+    fn balance(&self, asset: Address, chain: u32, amount: U256, ms_timestamp: u128) -> Applicative;
+    fn withdraw(&self, solver_sig: [u8; 64], ap: Applicative) -> Applicative;
 }
 
 /*

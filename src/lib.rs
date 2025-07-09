@@ -11,6 +11,8 @@ pub mod result;
 
 pub mod crypto;
 
+pub mod user_context;
+
 pub mod snowflake;
 pub mod accounts;
 pub mod applicative;
