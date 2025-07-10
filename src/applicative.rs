@@ -314,4 +314,8 @@ mod test_proptest {
             .boxed()
         }
     }
+
+    // Convert an Entry to the Applicative form, setting signatures and ids to 0.
+    fn entry_to_applicative(e: Entry) -> Applicative {
+    }
 }
