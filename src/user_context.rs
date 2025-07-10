@@ -21,8 +21,13 @@ pub struct UserContext {
 }
 
 impl UserContext {
-    pub fn new_from_bytes(_accounts: Accounts, _signer_b: [u8; 32]) -> UserContext {
-        todo!()
+    /// Create a new Accounts and register the Signer given.
+    pub fn new_from_bytes(accounts: Accounts, signer_b: [u8; 32]) -> Self {
+        let key = SigningKey::from_bytes(&signer_b);
+        UserContext {
+            accounts: accounts.register(key.verifying_key()),
+            signer: key,
+        }
     }
 
     pub fn find_signer(&self) -> usize {

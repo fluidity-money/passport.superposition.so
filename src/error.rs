@@ -4,8 +4,11 @@ use borsh::{BorshDeserialize, BorshSerialize};
 
 use stylus_sdk::prelude::calls::errors::Error as StylusErr;
 
-pub use crate::result::Res;
+pub use crate::{applicative::ApplicativeLabel, result::Res};
 
+/// ErrorDiscriminant is not shown to users, even if it contains any
+/// information. It could have its contents printed while running on the
+/// native host.
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
 pub enum ErrorDiscriminant {
     /// Bad call was made! It reverted.
@@ -20,8 +23,8 @@ pub enum ErrorDiscriminant {
     /// The requests array isn't even.
     UnusualRequestsAmount,
 
-    /// Incorrect Applicative transition.
-    BadApplicativeTransition,
+    /// Incorrect Applicative transition. To and from.
+    BadApplicativeTransition(ApplicativeLabel, ApplicativeLabel),
 
     /// We were unable to validate a signature.
     InvalidRequest,

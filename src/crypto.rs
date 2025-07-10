@@ -6,7 +6,7 @@ use arrayvec::ArrayVec;
 
 use ed25519_dalek::{Signature, SigningKey, VerifyingKey};
 
-use sha2::{Sha512, digest::Digest};
+use sha2::{digest::Digest, Sha512};
 
 use alloc::{format, string::String, vec::Vec};
 
@@ -118,9 +118,13 @@ pub fn validate_balance(
     )
 }
 
-fn err_bad_ap_transition() -> Error {
+fn label(x: &Applicative) -> ApplicativeLabel {
+    ApplicativeLabel::from(x)
+}
+
+fn err_bad_ap_transition(from: ApplicativeLabel, to: &Applicative) -> Error {
     Error {
-        typ: ErrorDiscriminant::BadApplicativeTransition,
+        typ: ErrorDiscriminant::BadApplicativeTransition(from, label(to)),
         cd: Vec::new(),
     }
 }
@@ -133,12 +137,20 @@ fn chain_digests(x: [u8; 64], y: [u8; 64]) -> [u8; 64] {
         .into()
 }
 
-pub fn validate_wrapped_balance(accounts: &Accounts, ap: &Applicative) -> ValidateCarry {
+pub fn validate_wrapped_balance(
+    from: ApplicativeLabel,
+    accounts: &Accounts,
+    ap: &Applicative,
+) -> ValidateCarry {
     match ap {
         Applicative::Balance(sig, args) => validate_balance(accounts, sig, args),
-        Applicative::CommitLeftFilledToBalance(ap)
-        | Applicative::CommitRightFilledToBalance(ap) => validate_wrapped_balance(accounts, ap),
-        _ => Err(err_bad_ap_transition()),
+        Applicative::CommitLeftFilledToBalance(ap) => {
+            validate_wrapped_commit(ApplicativeLabel::CommitLeftFilledToBalance, accounts, ap)
+        }
+        Applicative::CommitRightFilledToBalance(ap) => {
+            validate_wrapped_commit(ApplicativeLabel::CommitRightFilledToBalance, accounts, ap)
+        }
+        _ => Err(err_bad_ap_transition(from, ap)),
     }
 }
 
@@ -153,20 +165,31 @@ pub fn validate_order(
         owner_sig,
         &serialise_inplace::<_, { size_of::<ArgsOrder>() }>(args),
         &match ap {
-            Applicative::CommitLeftFilledToBalance(ap)
-            | Applicative::CommitRightFilledToBalance(ap) => validate_wrapped_commit(accounts, ap),
-            ap => validate_wrapped_balance(accounts, ap),
+            Applicative::CommitLeftFilledToBalance(ap) => {
+                validate_wrapped_commit(ApplicativeLabel::CommitLeftFilledToBalance, accounts, ap)
+            }
+            Applicative::CommitRightFilledToBalance(ap) => {
+                validate_wrapped_commit(ApplicativeLabel::CommitRightFilledToBalance, accounts, ap)
+            }
+            ap => validate_wrapped_balance(label(ap), accounts, ap),
         }?,
     )
 }
 
-pub fn validate_wrapped_order(accounts: &Accounts, ap: &Applicative) -> ValidateCarry {
+pub fn validate_wrapped_order(
+    from: ApplicativeLabel,
+    accounts: &Accounts,
+    ap: &Applicative,
+) -> ValidateCarry {
     match ap {
         Applicative::Order(sig, args, ap) => validate_order(accounts, sig, args, ap),
-        Applicative::CommitLeftExcessToOrder(ap) | Applicative::CommitRightExcessToOrder(ap) => {
-            validate_wrapped_commit(accounts, ap)
+        Applicative::CommitLeftExcessToOrder(ap) => {
+            validate_wrapped_commit(ApplicativeLabel::CommitLeftExcessToOrder, accounts, ap)
         }
-        _ => Err(err_bad_ap_transition()),
+        Applicative::CommitRightExcessToOrder(ap) => {
+            validate_wrapped_commit(ApplicativeLabel::CommitRightExcessToOrder, accounts, ap)
+        }
+        _ => Err(err_bad_ap_transition(from, ap)),
     }
 }
 
@@ -180,13 +203,14 @@ pub fn validate_commit(
     left: &Applicative,
     right: &Applicative,
 ) -> ValidateCarry {
+    let l = ApplicativeLabel::Commit;
     check_sig(
         &accounts.solver,
         solver_sig,
         &serialise_inplace::<_, { size_of::<ArgsCommit>() }>(args),
         &chain_digests(
-            validate_wrapped_order(accounts, left)?,
-            validate_wrapped_order(accounts, right)?,
+            validate_wrapped_order(l, accounts, left)?,
+            validate_wrapped_order(l, accounts, right)?,
         ),
     )
 }
@@ -196,12 +220,16 @@ pub fn validate_commit(
 /// contained within the commit should be reused by virtue of its typing
 /// system. So the translation function knows how to manipulate this.
 /// Does not do any validation except validate the contained value.
-pub fn validate_wrapped_commit(accounts: &Accounts, ap: &Applicative) -> ValidateCarry {
+pub fn validate_wrapped_commit(
+    from: ApplicativeLabel,
+    accounts: &Accounts,
+    ap: &Applicative,
+) -> ValidateCarry {
     match ap {
         Applicative::Commit(sig, args, left, right) => {
             validate_commit(accounts, sig, args, left, right)
         }
-        _ => Err(err_bad_ap_transition()),
+        _ => Err(err_bad_ap_transition(from, ap)),
     }
 }
 
@@ -218,6 +246,7 @@ pub fn validate_withdraw(
     // Since the argument to the right isn't known in the type here, we
     // validate the signature, and we feed the computed digest into a
     // concatenation here. Very stack expensive.
+    let l = ApplicativeLabel::Withdraw;
     check_sig_two(
         &accounts.solver,
         solver_sig,
@@ -226,9 +255,13 @@ pub fn validate_withdraw(
         &[Nonce::Withdraw.into()],
         &match ap {
             Applicative::Balance(sig, args) => validate_balance(accounts, sig, args),
-            Applicative::CommitLeftFilledToBalance(ap)
-            | Applicative::CommitRightFilledToBalance(ap) => validate_wrapped_commit(accounts, ap),
-            _ => Err(err_bad_ap_transition()),
+            Applicative::CommitLeftFilledToBalance(ap) => {
+                validate_wrapped_commit(ApplicativeLabel::CommitLeftFilledToBalance, accounts, ap)
+            }
+            Applicative::CommitRightFilledToBalance(ap) => {
+                validate_wrapped_commit(ApplicativeLabel::CommitRightFilledToBalance, accounts, ap)
+            }
+            ap => Err(err_bad_ap_transition(l, ap)),
         }?,
     )
 }
@@ -239,6 +272,7 @@ pub fn validate_cancel(
     (owner_id, owner_sig): &UserSig,
     ap: &Applicative,
 ) -> ValidateCarry {
+    let l = label(ap);
     check_sig_two(
         &accounts.solver,
         solver_sig,
@@ -250,11 +284,13 @@ pub fn validate_cancel(
             // We only handle the excess amount cancellation since that's
             // the type aside from Commit that's implicitly turned into a
             // Order if it's not filled.
-            Applicative::CommitLeftExcessToOrder(args)
-            | Applicative::CommitRightExcessToOrder(args) => {
-                validate_wrapped_commit(accounts, args)
+            Applicative::CommitLeftExcessToOrder(ap) => {
+                validate_wrapped_commit(ApplicativeLabel::CommitLeftExcessToOrder, accounts, ap)
             }
-            _ => Err(err_bad_ap_transition()),
+            Applicative::CommitRightExcessToOrder(ap) => {
+                validate_wrapped_commit(ApplicativeLabel::CommitRightExcessToOrder, accounts, ap)
+            }
+            _ => Err(err_bad_ap_transition(l, ap)),
         }?,
     )
 }
@@ -265,13 +301,14 @@ pub fn validate_join(
     left: &Applicative,
     right: &Applicative,
 ) -> ValidateCarry {
+    let l = ApplicativeLabel::Join;
     check_sig(
         &accounts.find_key(*owner_id)?,
         owner_sig,
         &[Nonce::Join.into()],
         &chain_digests(
-            validate_wrapped_balance(accounts, left)?,
-            validate_wrapped_balance(accounts, right)?,
+            validate_wrapped_balance(l, accounts, left)?,
+            validate_wrapped_balance(l, accounts, right)?,
         ),
     )
 }
@@ -291,10 +328,18 @@ pub fn validate(accounts: &Accounts, ap: &Applicative) -> ValidateCarry {
         Applicative::Commit(solver_sig, args, ap1, ap2) => {
             validate_commit(accounts, solver_sig, args, ap1, ap2)
         }
-        Applicative::CommitLeftFilledToBalance(ap)
-        | Applicative::CommitRightFilledToBalance(ap)
-        | Applicative::CommitLeftExcessToOrder(ap)
-        | Applicative::CommitRightExcessToOrder(ap) => validate_wrapped_commit(accounts, ap),
+        Applicative::CommitLeftFilledToBalance(ap) => {
+            validate_wrapped_balance(ApplicativeLabel::CommitLeftFilledToBalance, accounts, ap)
+        }
+        Applicative::CommitRightFilledToBalance(ap) => {
+            validate_wrapped_balance(ApplicativeLabel::CommitRightFilledToBalance, accounts, ap)
+        }
+        Applicative::CommitLeftExcessToOrder(ap) => {
+            validate_wrapped_commit(ApplicativeLabel::CommitLeftExcessToOrder, accounts, ap)
+        }
+        Applicative::CommitRightExcessToOrder(ap) => {
+            validate_wrapped_commit(ApplicativeLabel::CommitRightExcessToOrder, accounts, ap)
+        }
         Applicative::Join(user_sig, left, right) => validate_join(accounts, user_sig, left, right),
     }
 }
@@ -308,71 +353,87 @@ pub fn sign_balance(k: &SigningKey, args: &ArgsBalance) -> [u8; 64] {
     .unwrap()
 }
 
-fn digest_wrapped_balance(ap: &Applicative) -> Result<[u8; 64], Error> {
+fn digest_wrapped_balance(from: ApplicativeLabel, ap: &Applicative) -> Result<[u8; 64], Error> {
     match ap {
         Applicative::Balance(_, args) => {
             Ok(digest_inplace::<_, { size_of::<ArgsBalance>() }>(args))
         }
-        Applicative::CommitLeftFilledToBalance(ap)
-        | Applicative::CommitRightFilledToBalance(ap) => digest_wrapped_balance(ap),
-        _ => Err(err_bad_ap_transition()),
+        Applicative::CommitLeftFilledToBalance(ap) => {
+            digest_wrapped_commit(ApplicativeLabel::CommitLeftFilledToBalance, ap)
+        }
+        Applicative::CommitRightFilledToBalance(ap) => {
+            digest_wrapped_commit(ApplicativeLabel::CommitRightFilledToBalance, ap)
+        }
+        ap => Err(err_bad_ap_transition(from, ap)),
     }
 }
 
 pub fn digest_order(args: &ArgsOrder, ap: &Applicative) -> Result<[u8; 64], Error> {
     Ok(chain_digests(
         digest_inplace::<_, { size_of::<ArgsOrder>() }>(args),
-        match ap {
-            Applicative::CommitLeftExcessToOrder(ap)
-            | Applicative::CommitRightExcessToOrder(ap) => digest_wrapped_commit(ap),
-            ap => digest_wrapped_balance(ap),
-        }?,
+        digest_wrapped_balance(ApplicativeLabel::Order, ap)?,
     ))
 }
 
-fn digest_wrapped_order(ap: &Applicative) -> Result<[u8; 64], Error> {
+fn digest_wrapped_order(from: ApplicativeLabel, ap: &Applicative) -> Result<[u8; 64], Error> {
     match ap {
         Applicative::Order(_, args, ap) => digest_order(args, ap),
-        Applicative::CommitLeftExcessToOrder(ap) | Applicative::CommitRightExcessToOrder(ap) => {
-            digest_wrapped_commit(ap)
+        Applicative::CommitLeftExcessToOrder(ap) => {
+            digest_wrapped_commit(ApplicativeLabel::CommitLeftExcessToOrder, ap)
         }
-        _ => Err(err_bad_ap_transition()),
+        Applicative::CommitRightExcessToOrder(ap) => {
+            digest_wrapped_commit(ApplicativeLabel::CommitRightExcessToOrder, ap)
+        }
+        ap => Err(err_bad_ap_transition(from, ap)),
     }
 }
 
-fn digest_wrapped_commit(ap: &Applicative) -> Result<[u8; 64], Error> {
+fn digest_wrapped_commit(from: ApplicativeLabel, ap: &Applicative) -> Result<[u8; 64], Error> {
     if let Applicative::Commit(_, args, left, right) = ap {
-        let d = chain_digests(digest_wrapped_order(left)?, digest_wrapped_order(right)?);
+        let d = chain_digests(
+            digest_wrapped_order(from, left)?,
+            digest_wrapped_order(from, right)?,
+        );
         let a = digest_inplace::<_, { size_of::<ArgsCommit>() }>(args);
         Ok(chain_digests(d, a))
     } else {
-        Err(err_bad_ap_transition())
+        Err(err_bad_ap_transition(from, ap))
     }
 }
 
 pub fn sign_withdraw(key: &SigningKey, ap: &Applicative) -> Result<[u8; 64], Error> {
-    match ap {
-        Applicative::Balance(_, args) => make_sig(
-            key,
-            &[Nonce::Withdraw.into()],
-            &digest_inplace::<_, { size_of::<ArgsBalance>() }>(args),
-        ),
-        Applicative::CommitLeftFilledToBalance(ap)
-        | Applicative::CommitRightFilledToBalance(ap) => sign_withdraw(key, ap),
-        _ => Err(err_bad_ap_transition()),
-    }
+    make_sig(
+        key,
+        &[Nonce::Withdraw.into()],
+        &match ap {
+            Applicative::Balance(_, args) => {
+                Ok(digest_inplace::<_, { size_of::<ArgsBalance>() }>(args))
+            }
+            Applicative::CommitLeftFilledToBalance(ap) => {
+                digest_wrapped_commit(ApplicativeLabel::CommitLeftFilledToBalance, ap)
+            }
+            Applicative::CommitRightFilledToBalance(ap) => {
+                digest_wrapped_commit(ApplicativeLabel::CommitRightFilledToBalance, ap)
+            }
+            ap => Err(err_bad_ap_transition(ApplicativeLabel::Withdraw, ap)),
+        }?,
+    )
 }
 
 pub fn sign_order(key: &SigningKey, args: &ArgsOrder, ap: &Applicative) -> Result<[u8; 64], Error> {
     make_sig(
         key,
         &digest_inplace::<_, { size_of::<ArgsOrder>() }>(args),
-        &digest_wrapped_balance(ap)?,
+        &digest_wrapped_balance(ApplicativeLabel::Order, ap)?,
     )
 }
 
 pub fn sign_cancel(k: &SigningKey, ap: &Applicative) -> Result<[u8; 64], Error> {
-    make_sig(k, &[Nonce::Cancel.into()], &digest_wrapped_balance(ap)?)
+    make_sig(
+        k,
+        &[Nonce::Cancel.into()],
+        &digest_wrapped_order(ApplicativeLabel::Cancel, ap)?,
+    )
 }
 
 pub fn sign_commit(
@@ -381,10 +442,14 @@ pub fn sign_commit(
     left: &Applicative,
     right: &Applicative,
 ) -> Result<[u8; 64], Error> {
+    let l = ApplicativeLabel::Commit;
     make_sig(
         k,
         &digest_inplace::<_, { size_of::<ArgsCommit>() }>(args),
-        &chain_digests(digest_wrapped_order(left)?, digest_wrapped_order(right)?),
+        &chain_digests(
+            digest_wrapped_order(l, left)?,
+            digest_wrapped_order(l, right)?,
+        ),
     )
 }
 

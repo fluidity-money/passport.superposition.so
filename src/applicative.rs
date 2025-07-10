@@ -83,6 +83,21 @@ pub struct ArgsCommit {
     pub ms_timestamp: u128,
 }
 
+#[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq, Debug, Copy)]
+pub enum ApplicativeLabel {
+    Unset,
+    Balance,
+    Withdraw,
+    Order,
+    Cancel,
+    Commit,
+    CommitLeftFilledToBalance,
+    CommitRightFilledToBalance,
+    CommitLeftExcessToOrder,
+    CommitRightExcessToOrder,
+    Join,
+}
+
 /// User friendly higher level form of the state_machine internal type
 /// that does conversions to the internal type in a way that's more
 /// consistent with the user journey. Also consumed by the contract to
@@ -128,6 +143,27 @@ pub enum Applicative {
     CommitRightExcessToOrder(Box<Applicative>),
     /// Join two balances together.
     Join(UserSig, Box<Applicative>, Box<Applicative>),
+}
+
+impl From<&Applicative> for ApplicativeLabel {
+    fn from(x: &Applicative) -> Self {
+        match x {
+            Applicative::Balance(_, _) => ApplicativeLabel::Balance,
+            Applicative::Withdraw(_, _, _) => ApplicativeLabel::Withdraw,
+            Applicative::Order(_, _, _) => ApplicativeLabel::Order,
+            Applicative::Cancel(_, _, _) => ApplicativeLabel::Cancel,
+            Applicative::Commit(_, _, _, _) => ApplicativeLabel::Commit,
+            Applicative::CommitLeftFilledToBalance(_) => {
+                ApplicativeLabel::CommitLeftFilledToBalance
+            }
+            Applicative::CommitRightFilledToBalance(_) => {
+                ApplicativeLabel::CommitRightFilledToBalance
+            }
+            Applicative::CommitLeftExcessToOrder(_) => ApplicativeLabel::CommitLeftExcessToOrder,
+            Applicative::CommitRightExcessToOrder(_) => ApplicativeLabel::CommitRightExcessToOrder,
+            Applicative::Join(_, _, _) => ApplicativeLabel::Join,
+        }
+    }
 }
 
 /// User friendly trait for construction of Applicative with types
@@ -177,145 +213,4 @@ pub trait SolverApplicative {
         left: Applicative,
         right: Applicative,
     ) -> Result<SolverSig, Error>;
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-#[cfg(test)]
-mod test_proptest {
-    use proptest::prelude::*;
-
-    use super::*;
-
-    #[derive(Debug, PartialEq)]
-    struct TestBalanceInside {
-        args: ArgsBalance,
-    }
-
-    // Flattened testing structure that if the excess form is used, assume
-    // that the input is a Commit properly structured.
-    #[derive(Debug, PartialEq)]
-    enum TestOrder {
-        Balance(Box<TestBalance>),
-        CommitLeftExcessToOrder(Box<TestCommit>),
-        CommitRightExcessToOrder(Box<TestCommit>),
-    }
-
-    #[derive(Debug, PartialEq)]
-    struct TestCommitInside {
-        args: ArgsCommit,
-        left: Box<TestOrder>,
-        right: Box<TestOrder>,
-    }
-
-    #[derive(Debug, PartialEq)]
-    enum TestCommit {
-        Commit(Box<TestCommitInside>),
-    }
-
-    #[derive(Debug, PartialEq)]
-    enum TestBalance {
-        Balance(TestBalanceInside),
-        CommitLeftFilledToBalance(Box<TestCommit>),
-        CommitRightFilledToBalance(Box<TestCommit>),
-    }
-
-    #[derive(Debug, PartialEq)]
-    enum Entry {
-        Balance(TestBalance),
-        Withdraw(TestBalance),
-        Order(TestOrder),
-        Cancel(TestOrder),
-        Commit(TestCommit),
-        CommitLeftFilledToBalance(TestCommit),
-        CommitRightFilledToBalance(TestCommit),
-        CommitLeftExcessToOrder(TestCommit),
-        CommitRightExcessToOrder(TestCommit),
-    }
-
-    // ChatGPT generated arbitrary type in lieu of using the generator.
-    impl Arbitrary for Entry {
-        type Parameters = ();
-        type Strategy = BoxedStrategy<Self>;
-
-        fn arbitrary_with(_: Self::Parameters) -> Self::Strategy {
-            let bal_leaf = any::<ArgsBalance>()
-                .prop_map(|args| TestBalance::Balance(TestBalanceInside { args }))
-                .boxed();
-
-            let ord_leaf = any::<ArgsBalance>()
-                .prop_map(|args| {
-                    TestOrder::Balance(Box::new(TestBalance::Balance(TestBalanceInside { args })))
-                })
-                .boxed();
-            let commit_leaf = (any::<ArgsCommit>(), ord_leaf.clone(), ord_leaf.clone())
-                .prop_map(|(args, left, right)| {
-                    TestCommit::Commit(Box::new(TestCommitInside {
-                        args,
-                        left: Box::new(left),
-                        right: Box::new(right),
-                    }))
-                })
-                .boxed();
-            let commit_strat = commit_leaf.prop_recursive(4, 64, 4, |inner| {
-                (any::<ArgsCommit>(), inner.clone(), inner)
-                    .prop_map(|(args, left_c, right_c)| {
-                        TestCommit::Commit(Box::new(TestCommitInside {
-                            args,
-                            left: Box::new(TestOrder::CommitLeftExcessToOrder(Box::new(left_c))),
-                            right: Box::new(TestOrder::CommitRightExcessToOrder(Box::new(right_c))),
-                        }))
-                    })
-                    .boxed()
-            });
-            let c_ord_l = commit_strat.clone();
-            let c_ord_r = commit_strat.clone();
-            let ord_strat = ord_leaf.prop_recursive(4, 64, 4, move |inner| {
-                prop_oneof![
-                    c_ord_l
-                        .clone()
-                        .prop_map(|c| TestOrder::CommitLeftExcessToOrder(Box::new(c))),
-                    c_ord_r
-                        .clone()
-                        .prop_map(|c| TestOrder::CommitRightExcessToOrder(Box::new(c))),
-                    inner,
-                ]
-                .boxed()
-            });
-            let c_bal = commit_strat.clone();
-            let bal_strat = bal_leaf.prop_recursive(4, 64, 4, move |inner| {
-                prop_oneof![
-                    c_bal
-                        .clone()
-                        .prop_map(|c| TestBalance::CommitLeftFilledToBalance(Box::new(c))),
-                    c_bal
-                        .clone()
-                        .prop_map(|c| TestBalance::CommitRightFilledToBalance(Box::new(c))),
-                    inner,
-                ]
-                .boxed()
-            });
-            prop_oneof![
-                bal_strat.clone().prop_map(Entry::Balance),
-                bal_strat.clone().prop_map(Entry::Withdraw),
-                ord_strat.clone().prop_map(Entry::Order),
-                ord_strat.clone().prop_map(Entry::Cancel),
-                commit_strat.clone().prop_map(Entry::Commit),
-                commit_strat
-                    .clone()
-                    .prop_map(Entry::CommitLeftFilledToBalance),
-                commit_strat
-                    .clone()
-                    .prop_map(Entry::CommitRightFilledToBalance),
-                commit_strat
-                    .clone()
-                    .prop_map(Entry::CommitLeftExcessToOrder),
-                commit_strat.prop_map(Entry::CommitRightExcessToOrder),
-            ]
-            .boxed()
-        }
-    }
-
-    // Convert an Entry to the Applicative form, setting signatures and ids to 0.
-    fn entry_to_applicative(e: Entry) -> Applicative {
-    }
 }
