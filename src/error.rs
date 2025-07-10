@@ -51,7 +51,10 @@ pub enum ErrorDiscriminant {
     BadStrictVerify,
 
     /// The signer wasn't found using their id.
-    SignerNotFound,
+    SignerNotFoundId(usize),
+
+    /// The signer wasn't found using a verifying key.
+    SignerNotFoundKey,
 
     /// Unable to sign a prehashed blob.
     UnableToSignPrehashed,

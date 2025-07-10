@@ -1,6 +1,8 @@
 #![cfg(not(target_arch = "wasm32"))]
 
-use libpassport::{accounts::*, applicative::*, error::*, user_context::*};
+use libpassport::{
+    accounts::*, applicative::*, crypto::validate, error::*, solver_context::*, user_context::*,
+};
 
 use stylus_sdk::alloy_primitives::{Address, U256};
 
@@ -64,7 +66,6 @@ impl Arbitrary for Entry {
         let bal_leaf = any::<ArgsBalance>()
             .prop_map(|args| TestBalance::Balance(TestBalanceInside { args }))
             .boxed();
-
         let ord_leaf = (any::<ArgsBalance>(), any::<ArgsOrder>())
             .prop_map(|(bal_args, ord_args)| {
                 TestOrder::Order(Box::new(TestOrderInside {
@@ -73,7 +74,6 @@ impl Arbitrary for Entry {
                 }))
             })
             .boxed();
-
         let commit_leaf = (any::<ArgsCommit>(), ord_leaf.clone(), ord_leaf.clone())
             .prop_map(|(args, left, right)| {
                 TestCommit::Commit(Box::new(TestCommitInside {
@@ -83,7 +83,6 @@ impl Arbitrary for Entry {
                 }))
             })
             .boxed();
-
         let commit_strat = commit_leaf.prop_recursive(4, 64, 4, |inner| {
             (any::<ArgsCommit>(), inner.clone(), inner)
                 .prop_map(|(args, left_c, right_c)| {
@@ -95,11 +94,9 @@ impl Arbitrary for Entry {
                 })
                 .boxed()
         });
-
         let c_ord_l = commit_strat.clone();
         let c_ord_r = commit_strat.clone();
         let bal_strat_for_ord = bal_leaf.clone();
-
         let ord_strat = ord_leaf.prop_recursive(4, 64, 4, move |inner| {
             prop_oneof![
                 (bal_strat_for_ord.clone(), any::<ArgsOrder>()).prop_map(
@@ -120,7 +117,6 @@ impl Arbitrary for Entry {
             ]
             .boxed()
         });
-
         let c_bal = commit_strat.clone();
         let bal_strat = bal_leaf.prop_recursive(4, 64, 4, move |inner| {
             prop_oneof![
@@ -134,7 +130,6 @@ impl Arbitrary for Entry {
             ]
             .boxed()
         });
-
         prop_oneof![
             bal_strat.clone().prop_map(Entry::Balance),
             bal_strat.clone().prop_map(Entry::Withdraw),
@@ -156,33 +151,40 @@ impl Arbitrary for Entry {
     }
 }
 
-fn convert_test_balance<T: UserApplicative>(
+fn convert_test_balance<T: UserApplicative, S: SolverApplicative>(
     user_app: &T,
+    solver_app: &S,
     test_balance: &TestBalance,
 ) -> Result<Applicative, Error> {
     match test_balance {
-        TestBalance::Balance(balance_inside) => {
-            let args = &balance_inside.args;
-            Ok(user_app.balance(args.asset.x, args.chain, args.amount.x, args.ms_timestamp))
-        }
+        TestBalance::Balance(TestBalanceInside {
+            args:
+                ArgsBalance {
+                    asset,
+                    chain,
+                    amount,
+                    ms_timestamp,
+                },
+        }) => Ok(user_app.balance(asset.x, *chain, amount.x, *ms_timestamp)),
         TestBalance::CommitLeftFilledToBalance(test_commit) => {
-            let converted_commit = convert_test_commit(user_app, test_commit)?;
+            let converted_commit = convert_test_commit(user_app, solver_app, test_commit)?;
             user_app.commit_left_filled_to_balance(converted_commit)
         }
         TestBalance::CommitRightFilledToBalance(test_commit) => {
-            let converted_commit = convert_test_commit(user_app, test_commit)?;
+            let converted_commit = convert_test_commit(user_app, solver_app, test_commit)?;
             user_app.commit_right_filled_to_balance(converted_commit)
         }
     }
 }
 
-fn convert_test_order<T: UserApplicative>(
+fn convert_test_order<T: UserApplicative, S: SolverApplicative>(
     user_app: &T,
+    solver_app: &S,
     test_order: &TestOrder,
 ) -> Result<Applicative, Error> {
     match test_order {
         TestOrder::Order(order_inside) => {
-            let converted_from = convert_test_balance(user_app, &order_inside.from)?;
+            let converted_from = convert_test_balance(user_app, solver_app, &order_inside.from)?;
             let args = &order_inside.args;
             user_app.order(
                 args.from_amt.x,
@@ -193,27 +195,30 @@ fn convert_test_order<T: UserApplicative>(
             )
         }
         TestOrder::CommitLeftExcessToOrder(test_commit) => {
-            let converted_commit = convert_test_commit(user_app, test_commit)?;
+            let converted_commit = convert_test_commit(user_app, solver_app, test_commit)?;
             user_app.commit_left_excess_to_order(converted_commit)
         }
         TestOrder::CommitRightExcessToOrder(test_commit) => {
-            let converted_commit = convert_test_commit(user_app, test_commit)?;
+            let converted_commit = convert_test_commit(user_app, solver_app, test_commit)?;
             user_app.commit_right_excess_to_order(converted_commit)
         }
     }
 }
 
-fn convert_test_commit<T: UserApplicative>(
+fn convert_test_commit<T: UserApplicative, S: SolverApplicative>(
     user_app: &T,
+    solver_app: &S,
     test_commit: &TestCommit,
 ) -> Result<Applicative, Error> {
     match test_commit {
         TestCommit::Commit(commit_inside) => {
-            let left_converted = convert_test_order(user_app, &commit_inside.left)?;
-            let right_converted = convert_test_order(user_app, &commit_inside.right)?;
-
-            let solver_sig = [0u8; 64];
-
+            let left_converted = convert_test_order(user_app, solver_app, &commit_inside.left)?;
+            let right_converted = convert_test_order(user_app, solver_app, &commit_inside.right)?;
+            let solver_sig = solver_app.commit(
+                commit_inside.args.ms_timestamp,
+                left_converted.clone(),
+                right_converted.clone(),
+            )?;
             user_app.commit(
                 solver_sig,
                 commit_inside.args.ms_timestamp,
@@ -224,21 +229,20 @@ fn convert_test_commit<T: UserApplicative>(
     }
 }
 
-fn convert_entry_to_applicative<T: UserApplicative>(
+fn convert<T: UserApplicative, S: SolverApplicative>(
     user_app: &T,
+    solver_app: &S,
     entry: &Entry,
 ) -> Result<Applicative, Error> {
     match entry {
-        Entry::Balance(test_balance) => convert_test_balance(user_app, test_balance),
+        Entry::Balance(test_balance) => convert_test_balance(user_app, solver_app, test_balance),
         Entry::Withdraw(test_balance) => {
-            let converted_balance = convert_test_balance(user_app, test_balance)?;
-
-            let solver_sig = [0u8; 64];
+            let converted_balance = convert_test_balance(user_app, solver_app, test_balance)?;
+            let solver_sig = solver_app.withdraw(converted_balance.clone())?;
             user_app.withdraw(solver_sig, converted_balance)
         }
         Entry::Order(test_balance) => {
-            let converted_order = convert_test_balance(user_app, test_balance)?;
-
+            let converted_order = convert_test_balance(user_app, solver_app, test_balance)?;
             user_app.order(
                 U256::from(0),
                 Address::default(),
@@ -248,25 +252,25 @@ fn convert_entry_to_applicative<T: UserApplicative>(
             )
         }
         Entry::Cancel(test_order) => {
-            let converted_order = convert_test_order(user_app, test_order)?;
-            let solver_sig = [0u8; 64];
+            let converted_order = convert_test_order(user_app, solver_app, test_order)?;
+            let solver_sig = solver_app.cancel(converted_order.clone())?;
             user_app.cancel(solver_sig, converted_order)
         }
-        Entry::Commit(test_commit) => convert_test_commit(user_app, test_commit),
+        Entry::Commit(test_commit) => convert_test_commit(user_app, solver_app, test_commit),
         Entry::CommitLeftFilledToBalance(test_commit) => {
-            let converted_commit = convert_test_commit(user_app, test_commit)?;
+            let converted_commit = convert_test_commit(user_app, solver_app, test_commit)?;
             user_app.commit_left_filled_to_balance(converted_commit)
         }
         Entry::CommitRightFilledToBalance(test_commit) => {
-            let converted_commit = convert_test_commit(user_app, test_commit)?;
+            let converted_commit = convert_test_commit(user_app, solver_app, test_commit)?;
             user_app.commit_right_filled_to_balance(converted_commit)
         }
         Entry::CommitLeftExcessToOrder(test_commit) => {
-            let converted_commit = convert_test_commit(user_app, test_commit)?;
+            let converted_commit = convert_test_commit(user_app, solver_app, test_commit)?;
             user_app.commit_left_excess_to_order(converted_commit)
         }
         Entry::CommitRightExcessToOrder(test_commit) => {
-            let converted_commit = convert_test_commit(user_app, test_commit)?;
+            let converted_commit = convert_test_commit(user_app, solver_app, test_commit)?;
             user_app.commit_right_excess_to_order(converted_commit)
         }
     }
@@ -274,9 +278,19 @@ fn convert_entry_to_applicative<T: UserApplicative>(
 
 proptest! {
     #[test]
-    fn test_convertions(sig in any::<[u8; 32]>(), e: Entry) {
-        convert_entry_to_applicative(
-            &UserContext::new_from_bytes(Accounts::default(), sig), &e
+    fn test_convertions(
+        solver_key in any::<[u8; 32]>(),
+        signer_key in any::<[u8; 32]>(),
+        e: Entry
+    ) {
+        let solver_ctx = SolverContext::new_from_bytes(solver_key);
+        let user_ctx = UserContext::new_from_bytes(
+            Accounts::default().with_solver(signer_key),
+            signer_key
+        );
+        validate(
+            &user_ctx.accounts,
+            &convert(&user_ctx, &solver_ctx, &e).unwrap()
         )
         .unwrap();
     }

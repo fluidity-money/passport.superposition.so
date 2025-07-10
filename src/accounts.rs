@@ -16,17 +16,17 @@ pub struct Accounts {
 }
 
 impl Accounts {
-    pub fn with_solver(self, key: VerifyingKey) -> Accounts {
+    pub fn with_solver(self, key: [u8; 32]) -> Accounts {
         Accounts {
-            solver: key,
+            solver: VerifyingKey::from_bytes(&key).unwrap(),
             keys: self.keys,
             ids: self.ids,
         }
     }
 
     pub fn register(mut self, key: VerifyingKey) -> Accounts {
-        self.ids.push(key);
         let _ = self.keys.insert(key, self.ids.len());
+        self.ids.push(key);
         Accounts {
             solver: self.solver,
             keys: self.keys,
@@ -39,7 +39,7 @@ impl Accounts {
             Ok(*k)
         } else {
             Err(Error {
-                typ: ErrorDiscriminant::SignerNotFound,
+                typ: ErrorDiscriminant::SignerNotFoundId(id),
                 cd: Vec::new(),
             })
         }
@@ -50,7 +50,7 @@ impl Accounts {
             Ok(*k)
         } else {
             Err(Error {
-                typ: ErrorDiscriminant::SignerNotFound,
+                typ: ErrorDiscriminant::SignerNotFoundKey,
                 cd: Vec::new(),
             })
         }

@@ -501,7 +501,7 @@ mod test_proptest {
             let solver_key = SigningKey::from_bytes(&solver_key);
             let signer_key = SigningKey::from_bytes(&sign_key);
             let a = Accounts::default().register(signer_key.verifying_key())
-                .with_solver(solver_key.verifying_key());
+                .with_solver(solver_key.verifying_key().	to_bytes());
             let bal = Applicative::Balance((0, sign_balance(&signer_key, &args_bal)), args_bal);
             let solver_sig = sign_withdraw(&solver_key, &bal).unwrap();
             let signer_sig = (0, sign_withdraw(&signer_key, &bal).unwrap());

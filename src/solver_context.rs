@@ -1,7 +1,7 @@
 use ed25519_dalek::SigningKey;
 
 use crate::{
-    applicative::{Applicative, ArgsCommit},
+    applicative::{Applicative, ArgsCommit, SolverApplicative},
     crypto::{sign_cancel, sign_commit, sign_withdraw},
     error::Error,
 };
@@ -11,15 +11,23 @@ pub struct SolverContext {
 }
 
 impl SolverContext {
-    pub fn withdraw(&self, ap: Applicative) -> Result<[u8; 64], Error> {
+    pub fn new_from_bytes(x: [u8; 32]) -> Self {
+        SolverContext {
+            signer: SigningKey::from_bytes(&x),
+        }
+    }
+}
+
+impl SolverApplicative for SolverContext {
+    fn withdraw(&self, ap: Applicative) -> Result<[u8; 64], Error> {
         sign_withdraw(&self.signer, &ap)
     }
 
-    pub fn cancel(&self, ap: Applicative) -> Result<[u8; 64], Error> {
+    fn cancel(&self, ap: Applicative) -> Result<[u8; 64], Error> {
         sign_cancel(&self.signer, &ap)
     }
 
-    pub fn commit(
+    fn commit(
         &self,
         ms_timestamp: u128,
         left: Applicative,
