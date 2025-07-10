@@ -91,10 +91,17 @@ pub fn make_sig(key: &SigningKey, sig: &[u8], prev_digest: &[u8]) -> Result<[u8;
         .to_bytes())
 }
 
-pub fn digest_inplace<'a, T: BorshSerialize, const CAP: usize>(x: &T) -> [u8; 64] {
+pub fn serialise_inplace<'a, T: BorshSerialize, const CAP: usize>(x: &T) -> ArrayVec<u8, CAP> {
     let mut b = ArrayVec::<u8, CAP>::new();
     x.serialize(&mut b).unwrap();
-    Sha512::default().chain_update(b).finalize().into()
+    b
+}
+
+pub fn digest_inplace<'a, T: BorshSerialize, const CAP: usize>(x: &T) -> [u8; 64] {
+    Sha512::default()
+        .chain_update(&serialise_inplace::<_, CAP>(x))
+        .finalize()
+        .into()
 }
 
 /// Validate the Balance against the signature given using an array on the stack.
@@ -106,7 +113,7 @@ pub fn validate_balance(
     check_sig(
         &accounts.find_key(*owner_id)?,
         owner_sig,
-        &digest_inplace::<_, { size_of::<ArgsBalance>() }>(ap),
+        &serialise_inplace::<_, { size_of::<ArgsBalance>() }>(ap),
         &[],
     )
 }
@@ -340,7 +347,7 @@ pub fn validate(accounts: &Accounts, ap: &Applicative) -> ValidateCarry {
 pub fn sign_balance(k: &SigningKey, args: &ArgsBalance) -> [u8; 64] {
     make_sig(
         k,
-        &digest_inplace::<ArgsBalance, { size_of::<ArgsBalance>() }>(args),
+        &serialise_inplace::<ArgsBalance, { size_of::<ArgsBalance>() }>(args),
         &[],
     )
     .unwrap()
@@ -475,6 +482,28 @@ mod test_proptest {
                 validate_balance(&a, &(0, k2.sign(&b).to_bytes()), &args_bal)
                     .unwrap_err()
                     .is_typ(ErrorDiscriminant::BadStrictVerify)
+            );
+        }
+
+        #[test]
+        fn test_validate_balance_digest(
+            sign_key in any::<[u8; 32]>(),
+            args_bal in any::<ArgsBalance>()
+        ) {
+            let signer_key = SigningKey::from_bytes(&sign_key);
+            let a = Accounts::default().register(signer_key.verifying_key());
+            assert_eq!(
+                digest_inplace::<_, { size_of::<ArgsBalance>() }>(&args_bal),
+                digest_inplace::<_, { size_of::<ArgsBalance>() }>(&args_bal)
+            );
+            assert_eq!(
+                digest_inplace::<_, { size_of::<ArgsBalance>() }>(&args_bal),
+                validate_balance(
+                    &a,
+                    &(0, sign_balance(&signer_key, &args_bal)),
+                    &args_bal
+                )
+                .unwrap()
             );
         }
 

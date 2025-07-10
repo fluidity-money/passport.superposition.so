@@ -132,8 +132,8 @@ impl Arbitrary for Entry {
         });
         prop_oneof![
             bal_strat.clone().prop_map(Entry::Balance),
-            /*
             bal_strat.clone().prop_map(Entry::Withdraw),
+            /*
             bal_strat.clone().prop_map(Entry::Order),
             ord_strat.clone().prop_map(Entry::Cancel),
             commit_strat.clone().prop_map(Entry::Commit),
@@ -279,7 +279,7 @@ fn convert<T: UserApplicative, S: SolverApplicative>(
 
 proptest! {
     #[test]
-    fn test_convertions(
+    fn test_conversions(
         solver_key in any::<[u8; 32]>(),
         signer_key in any::<[u8; 32]>(),
         e: Entry
