@@ -91,17 +91,10 @@ pub fn make_sig(key: &SigningKey, sig: &[u8], prev_digest: &[u8]) -> Result<[u8;
         .to_bytes())
 }
 
-pub fn serialise_inplace<'a, T: BorshSerialize, const CAP: usize>(x: &T) -> ArrayVec<u8, CAP> {
+pub fn digest_inplace<'a, T: BorshSerialize, const CAP: usize>(x: &T) -> [u8; 64] {
     let mut b = ArrayVec::<u8, CAP>::new();
     x.serialize(&mut b).unwrap();
-    b
-}
-
-pub fn digest_inplace<'a, T: BorshSerialize, const CAP: usize>(x: &T) -> [u8; 64] {
-    Sha512::default()
-        .chain_update(&serialise_inplace::<T, CAP>(x))
-        .finalize()
-        .into()
+    Sha512::default().chain_update(b).finalize().into()
 }
 
 /// Validate the Balance against the signature given using an array on the stack.
@@ -113,7 +106,7 @@ pub fn validate_balance(
     check_sig(
         &accounts.find_key(*owner_id)?,
         owner_sig,
-        &serialise_inplace::<_, { size_of::<ArgsBalance>() }>(ap),
+        &digest_inplace::<_, { size_of::<ArgsBalance>() }>(ap),
         &[],
     )
 }
@@ -163,7 +156,7 @@ pub fn validate_order(
     check_sig(
         &accounts.find_key(*owner_id)?,
         owner_sig,
-        &serialise_inplace::<_, { size_of::<ArgsOrder>() }>(args),
+        &digest_inplace::<_, { size_of::<ArgsOrder>() }>(args),
         &match ap {
             Applicative::CommitLeftFilledToBalance(ap) => {
                 validate_wrapped_commit(ApplicativeLabel::CommitLeftFilledToBalance, accounts, ap)
@@ -207,7 +200,7 @@ pub fn validate_commit(
     check_sig(
         &accounts.solver,
         solver_sig,
-        &serialise_inplace::<_, { size_of::<ArgsCommit>() }>(args),
+        &digest_inplace::<_, { size_of::<ArgsCommit>() }>(args),
         &chain_digests(
             validate_wrapped_order(l, accounts, left)?,
             validate_wrapped_order(l, accounts, right)?,
@@ -329,10 +322,10 @@ pub fn validate(accounts: &Accounts, ap: &Applicative) -> ValidateCarry {
             validate_commit(accounts, solver_sig, args, ap1, ap2)
         }
         Applicative::CommitLeftFilledToBalance(ap) => {
-            validate_wrapped_balance(ApplicativeLabel::CommitLeftFilledToBalance, accounts, ap)
+            validate_wrapped_commit(ApplicativeLabel::CommitLeftFilledToBalance, accounts, ap)
         }
         Applicative::CommitRightFilledToBalance(ap) => {
-            validate_wrapped_balance(ApplicativeLabel::CommitRightFilledToBalance, accounts, ap)
+            validate_wrapped_commit(ApplicativeLabel::CommitRightFilledToBalance, accounts, ap)
         }
         Applicative::CommitLeftExcessToOrder(ap) => {
             validate_wrapped_commit(ApplicativeLabel::CommitLeftExcessToOrder, accounts, ap)
@@ -347,7 +340,7 @@ pub fn validate(accounts: &Accounts, ap: &Applicative) -> ValidateCarry {
 pub fn sign_balance(k: &SigningKey, args: &ArgsBalance) -> [u8; 64] {
     make_sig(
         k,
-        &serialise_inplace::<ArgsBalance, { size_of::<ArgsBalance>() }>(args),
+        &digest_inplace::<ArgsBalance, { size_of::<ArgsBalance>() }>(args),
         &[],
     )
     .unwrap()
@@ -390,12 +383,13 @@ fn digest_wrapped_order(from: ApplicativeLabel, ap: &Applicative) -> Result<[u8;
 
 fn digest_wrapped_commit(from: ApplicativeLabel, ap: &Applicative) -> Result<[u8; 64], Error> {
     if let Applicative::Commit(_, args, left, right) = ap {
-        let d = chain_digests(
-            digest_wrapped_order(from, left)?,
-            digest_wrapped_order(from, right)?,
-        );
-        let a = digest_inplace::<_, { size_of::<ArgsCommit>() }>(args);
-        Ok(chain_digests(d, a))
+        Ok(chain_digests(
+            digest_inplace::<_, { size_of::<ArgsCommit>() }>(args),
+            chain_digests(
+                digest_wrapped_order(from, left)?,
+                digest_wrapped_order(from, right)?,
+            ),
+        ))
     } else {
         Err(err_bad_ap_transition(from, ap))
     }

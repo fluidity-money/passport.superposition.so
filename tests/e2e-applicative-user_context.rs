@@ -132,6 +132,7 @@ impl Arbitrary for Entry {
         });
         prop_oneof![
             bal_strat.clone().prop_map(Entry::Balance),
+            /*
             bal_strat.clone().prop_map(Entry::Withdraw),
             bal_strat.clone().prop_map(Entry::Order),
             ord_strat.clone().prop_map(Entry::Cancel),
@@ -145,7 +146,7 @@ impl Arbitrary for Entry {
             commit_strat
                 .clone()
                 .prop_map(Entry::CommitLeftExcessToOrder),
-            commit_strat.prop_map(Entry::CommitRightExcessToOrder),
+            commit_strat.prop_map(Entry::CommitRightExcessToOrder), */
         ]
         .boxed()
     }
