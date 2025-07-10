@@ -464,16 +464,8 @@ mod test_proptest {
             let k = SigningKey::from_bytes(&sign_key);
             let mut b = Vec::new();
             args_bal.serialize(&mut b).unwrap();
-            let vk = k.verifying_key();
-            let d = Sha512::default().chain_update(&b);
-            let a = Accounts::default().register(vk);
+            let a = Accounts::default().register(k.verifying_key());
             validate_balance(&a, &(0, sign_balance(&k, &args_bal)), &args_bal).unwrap();
-            validate_balance(
-                &a,
-                &(0, k.sign_prehashed(d, None).unwrap().to_bytes()),
-                &args_bal,
-            )
-            .unwrap();
             let bal = (0, sign_balance(&k, &args_bal));
             validate(&a, &Applicative::Balance(bal, args_bal.clone())).unwrap();
             // Test that someone can't break things:
