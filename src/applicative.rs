@@ -170,7 +170,7 @@ impl From<&Applicative> for ApplicativeLabel {
 /// included in a side effectful way.
 pub trait UserApplicative {
     fn balance(&self, asset: Address, chain: u128, amount: U256, ms_timestamp: u128)
-        -> Applicative;
+    -> Applicative;
 
     fn withdraw(&self, solver_sig: [u8; 64], ap: Applicative) -> Result<Applicative, Error>;
 
@@ -200,6 +200,8 @@ pub trait UserApplicative {
     fn commit_left_excess_to_order(&self, ap: Applicative) -> Result<Applicative, Error>;
 
     fn commit_right_excess_to_order(&self, ap: Applicative) -> Result<Applicative, Error>;
+
+    fn join(&self, left: Applicative, right: Applicative) -> Result<Applicative, Error>;
 }
 
 pub trait SolverApplicative {

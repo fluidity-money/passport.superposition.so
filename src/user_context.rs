@@ -10,6 +10,8 @@ use crate::{
     error::Error,
 };
 
+use alloc::boxed::Box;
+
 /// This code implements crypto's UserApplicative trait, to provide a
 /// user-friendly vehicle to construct the Applicative type including
 /// signing. For the life of the construction it maintains the account
@@ -130,5 +132,13 @@ impl UserApplicative for UserContext {
 
     fn commit_right_excess_to_order(&self, ap: Applicative) -> Result<Applicative, Error> {
         Ok(Applicative::CommitRightExcessToOrder(Box::new(ap)))
+    }
+
+    fn join(&self, left: Applicative, right: Applicative) -> Result<Applicative, Error> {
+        Ok(Applicative::Join(
+            (self.find_signer(), sign_join(&self.signer, &left, &right)?),
+            Box::new(left),
+            Box::new(right),
+        ))
     }
 }

@@ -6,7 +6,7 @@ use arrayvec::ArrayVec;
 
 use ed25519_dalek::{Signature, SigningKey, VerifyingKey};
 
-use sha2::{digest::Digest, Sha512};
+use sha2::{Sha512, digest::Digest};
 
 use alloc::{format, string::String, vec::Vec};
 
@@ -450,6 +450,22 @@ pub fn sign_commit(
         &chain_digests(
             digest_wrapped_order(l, left)?,
             digest_wrapped_order(l, right)?,
+        ),
+    )
+}
+
+pub fn sign_join(
+    k: &SigningKey,
+    left: &Applicative,
+    right: &Applicative,
+) -> Result<[u8; 64], Error> {
+    let l = ApplicativeLabel::Join;
+    make_sig(
+        k,
+        &[Nonce::Join.into()],
+        &chain_digests(
+            digest_wrapped_balance(l, left)?,
+            digest_wrapped_balance(l, right)?,
         ),
     )
 }
