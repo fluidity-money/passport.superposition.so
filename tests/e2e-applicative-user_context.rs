@@ -133,7 +133,6 @@ impl Arbitrary for Entry {
         prop_oneof![
             bal_strat.clone().prop_map(Entry::Balance),
             bal_strat.clone().prop_map(Entry::Withdraw),
-            /*
             bal_strat.clone().prop_map(Entry::Order),
             ord_strat.clone().prop_map(Entry::Cancel),
             commit_strat.clone().prop_map(Entry::Commit),
@@ -146,7 +145,7 @@ impl Arbitrary for Entry {
             commit_strat
                 .clone()
                 .prop_map(Entry::CommitLeftExcessToOrder),
-            commit_strat.prop_map(Entry::CommitRightExcessToOrder), */
+            commit_strat.prop_map(Entry::CommitRightExcessToOrder),
         ]
         .boxed()
     }
@@ -242,16 +241,13 @@ fn convert<T: UserApplicative, S: SolverApplicative>(
             let solver_sig = solver_app.withdraw(converted_balance.clone())?;
             user_app.withdraw(solver_sig, converted_balance)
         }
-        Entry::Order(test_balance) => {
-            let converted_order = convert_test_balance(user_app, solver_app, test_balance)?;
-            user_app.order(
-                U256::from(0),
-                Address::default(),
-                0,
-                U256::from(0),
-                converted_order,
-            )
-        }
+        Entry::Order(test_balance) => user_app.order(
+            U256::from(0),
+            Address::default(),
+            0,
+            U256::from(0),
+            convert_test_balance(user_app, solver_app, test_balance)?,
+        ),
         Entry::Cancel(test_order) => {
             let converted_order = convert_test_order(user_app, solver_app, test_order)?;
             let solver_sig = solver_app.cancel(converted_order.clone())?;
@@ -286,13 +282,11 @@ proptest! {
     ) {
         let solver_ctx = SolverContext::new_from_bytes(solver_key);
         let user_ctx = UserContext::new_from_bytes(
-            Accounts::default().with_solver(signer_key),
+            Accounts::default().with_solver(solver_key),
             signer_key
         );
-        validate(
-            &user_ctx.accounts,
-            &convert(&user_ctx, &solver_ctx, &e).unwrap()
-        )
-        .unwrap();
+        let converted = convert(&user_ctx, &solver_ctx, &e).unwrap();
+        dbg!(&converted);
+        validate(&user_ctx.accounts, &converted).unwrap();
     }
 }

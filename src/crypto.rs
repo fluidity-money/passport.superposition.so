@@ -204,14 +204,12 @@ pub fn validate_commit(
     right: &Applicative,
 ) -> ValidateCarry {
     let l = ApplicativeLabel::Commit;
+    let digest_left = validate_wrapped_order(l, accounts, left)?;
     check_sig(
         &accounts.solver,
         solver_sig,
         &digest_inplace::<_, { size_of::<ArgsCommit>() }>(args),
-        &chain_digests(
-            validate_wrapped_order(l, accounts, left)?,
-            validate_wrapped_order(l, accounts, right)?,
-        ),
+        &chain_digests(digest_left, validate_wrapped_order(l, accounts, right)?),
     )
 }
 
@@ -532,7 +530,7 @@ mod test_proptest {
             let solver_key = SigningKey::from_bytes(&solver_key);
             let signer_key = SigningKey::from_bytes(&sign_key);
             let a = Accounts::default().register(signer_key.verifying_key())
-                .with_solver(solver_key.verifying_key().	to_bytes());
+                .with_solver(solver_key.verifying_key().to_bytes());
             let bal = Applicative::Balance((0, sign_balance(&signer_key, &args_bal)), args_bal);
             let solver_sig = sign_withdraw(&solver_key, &bal).unwrap();
             let signer_sig = (0, sign_withdraw(&signer_key, &bal).unwrap());
@@ -551,6 +549,167 @@ mod test_proptest {
                 )
                 .unwrap_err().is_typ(ErrorDiscriminant::BadStrictVerify)
             )
+        }
+
+        #[test]
+        fn test_order_from_balance(
+            sign_key in any::<[u8; 32]>(),
+            args_bal in any::<ArgsBalance>(),
+            args_order in any::<ArgsOrder>()
+        ) {
+            let signer_key = SigningKey::from_bytes(&sign_key);
+            let a = Accounts::default().register(signer_key.verifying_key());
+            let bal = Applicative::Balance((0, sign_balance(&signer_key, &args_bal)), args_bal);
+            let o = Applicative::Order(
+                (0, sign_order(&signer_key, &args_order, &bal).unwrap()),
+                args_order,
+                Box::new(bal)
+            );
+            validate(&a, &o).unwrap();
+        }
+
+        #[test]
+        fn test_cancel_from_balance(
+            sign_key in any::<[u8; 32]>(),
+            solver_key in any::<[u8; 32]>(),
+            args_bal in any::<ArgsBalance>(),
+            args_order in any::<ArgsOrder>()
+        ) {
+            let signer_key = SigningKey::from_bytes(&sign_key);
+            let solver_key = SigningKey::from_bytes(&solver_key);
+            let a = Accounts::default().register(signer_key.verifying_key())
+                .with_solver(solver_key.verifying_key().to_bytes());
+            let bal = Applicative::Balance((0, sign_balance(&signer_key, &args_bal)), args_bal);
+            let o = Applicative::Order(
+                (0, sign_order(&signer_key, &args_order, &bal).unwrap()),
+                args_order,
+                Box::new(bal)
+            );
+            let c = Applicative::Cancel(
+                sign_cancel(&solver_key, &o).unwrap(),
+                (0, sign_cancel(&signer_key, &o).unwrap()),
+                Box::new(o)
+             );
+            validate(&a, &c).unwrap();
+        }
+
+        #[test]
+        fn test_commit_from_balances(
+            sign_key_1 in any::<[u8; 32]>(),
+            sign_key_2 in any::<[u8; 32]>(),
+            solver_key in any::<[u8; 32]>(),
+            args_bal_1 in any::<ArgsBalance>(),
+            args_bal_2 in any::<ArgsBalance>(),
+            args_order_1 in any::<ArgsOrder>(),
+            args_order_2 in any::<ArgsOrder>(),
+            args_commit in any::<ArgsCommit>()
+        ) {
+            let signer_key_1 = SigningKey::from_bytes(&sign_key_1);
+            let signer_key_2 = SigningKey::from_bytes(&sign_key_2);
+            let solver_key = SigningKey::from_bytes(&solver_key);
+            let a = Accounts::default()
+                .register(signer_key_1.verifying_key())
+                .register(signer_key_2.verifying_key())
+                .with_solver(solver_key.verifying_key().to_bytes());
+            let bal1 =
+                Applicative::Balance((0, sign_balance(&signer_key_1, &args_bal_1)), args_bal_1);
+            let bal2 =
+                Applicative::Balance((1, sign_balance(&signer_key_2, &args_bal_2)), args_bal_2);
+            let o1 = Applicative::Order(
+                (0, sign_order(&signer_key_1, &args_order_1, &bal1).unwrap()),
+                args_order_1,
+                Box::new(bal1)
+            );
+            let o2 = Applicative::Order(
+                (1, sign_order(&signer_key_2, &args_order_2, &bal2).unwrap()),
+                args_order_2,
+                Box::new(bal2)
+            );
+            validate(&a, &Applicative::Commit(
+                sign_commit(&solver_key, &args_commit, &o1, &o2).unwrap(),
+                args_commit,
+                Box::new(o1),
+                Box::new(o2)
+            ))
+            .unwrap();
+        }
+
+        #[test]
+        fn test_commit_right_excess_to_order_from_balances(
+            sign_key_1 in any::<[u8; 32]>(),
+            sign_key_2 in any::<[u8; 32]>(),
+            solver_key in any::<[u8; 32]>(),
+            args_bal_1 in any::<ArgsBalance>(),
+            args_bal_2 in any::<ArgsBalance>(),
+            args_bal_3 in any::<ArgsBalance>(),
+            args_bal_4 in any::<ArgsBalance>(),
+            args_order_1 in any::<ArgsOrder>(),
+            args_order_2 in any::<ArgsOrder>(),
+            args_order_3 in any::<ArgsOrder>(),
+            args_order_4 in any::<ArgsOrder>(),
+            args_commit_1 in any::<ArgsCommit>(),
+            args_commit_2 in any::<ArgsCommit>(),
+            args_commit_3 in any::<ArgsCommit>()
+        ) {
+            let signer_key_1 = SigningKey::from_bytes(&sign_key_1);
+            let signer_key_2 = SigningKey::from_bytes(&sign_key_2);
+            let solver_key = SigningKey::from_bytes(&solver_key);
+            let a = Accounts::default()
+                .register(signer_key_1.verifying_key())
+                .register(signer_key_2.verifying_key())
+                .with_solver(solver_key.verifying_key().to_bytes());
+            let bal1 =
+                Applicative::Balance((0, sign_balance(&signer_key_1, &args_bal_1)), args_bal_1);
+            let bal2 =
+                Applicative::Balance((1, sign_balance(&signer_key_2, &args_bal_2)), args_bal_2);
+            let o1 = Applicative::Order(
+                (0, sign_order(&signer_key_1, &args_order_1, &bal1).unwrap()),
+                args_order_1,
+                Box::new(bal1)
+            );
+            let o2 = Applicative::Order(
+                (1, sign_order(&signer_key_2, &args_order_2, &bal2).unwrap()),
+                args_order_2,
+                Box::new(bal2)
+            );
+            let excess_order1 = Applicative::CommitRightExcessToOrder(Box::new(Applicative::Commit(
+                sign_commit(&solver_key, &args_commit_1, &o1, &o2).unwrap(),
+                args_commit_1,
+                Box::new(o1),
+                Box::new(o2)
+            )));
+            let bal3 =
+                Applicative::Balance((0, sign_balance(&signer_key_1, &args_bal_3)), args_bal_3);
+            let bal4 =
+                Applicative::Balance((1, sign_balance(&signer_key_2, &args_bal_4)), args_bal_4);
+            let extra_order1 = Applicative::Order(
+                (1, sign_order(&signer_key_2, &args_order_3, &bal3).unwrap()),
+                args_order_3,
+                Box::new(bal3)
+            );
+            let extra_order2 = Applicative::Order(
+                (0, sign_order(&signer_key_1, &args_order_4, &bal4).unwrap()),
+                args_order_4,
+                Box::new(bal4)
+            );
+            let excess_order2 = Applicative::CommitLeftExcessToOrder(Box::new(Applicative::Commit(
+                sign_commit(
+                    &solver_key,
+                    &args_commit_2,
+                    &extra_order1,
+                    &extra_order2
+                ).unwrap(),
+                args_commit_2,
+                Box::new(extra_order1),
+                Box::new(extra_order2)
+            )));
+            validate(&a, &Applicative::Commit(
+                sign_commit(&solver_key, &args_commit_3, &excess_order1, &excess_order2).unwrap(),
+                args_commit_3,
+                Box::new(excess_order1),
+                Box::new(excess_order2)
+            ))
+            .unwrap();
         }
     }
 }
