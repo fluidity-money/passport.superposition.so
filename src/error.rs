@@ -9,7 +9,7 @@ pub use crate::{applicative::ApplicativeLabel, result::Res};
 /// ErrorDiscriminant is not shown to users, even if it contains any
 /// information. It could have its contents printed while running on the
 /// native host.
-#[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
+#[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq, Debug)]
 pub enum ErrorDiscriminant {
     /// Bad call was made! It reverted.
     BadCall,
@@ -48,10 +48,10 @@ pub enum ErrorDiscriminant {
     BadVerifyingKey,
 
     /// Bad verifying of a signature using strict methods.
-    BadStrictVerify,
+    BadStrictVerify(ApplicativeLabel),
 
     /// The signer wasn't found using their id.
-    SignerNotFoundId(usize),
+    SignerNotFoundId([u8; 4]),
 
     /// The signer wasn't found using a verifying key.
     SignerNotFoundKey,

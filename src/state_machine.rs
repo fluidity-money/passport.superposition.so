@@ -16,7 +16,7 @@ pub struct CreateBalance {
 /// Balances are identifiable in their descended form using the
 /// concatenation of the previous hash, the timestamp of the change, and
 /// the nonce here. keccak256(previous . nonce . timestamp).
-#[repr(C)]
+#[repr(u8)]
 pub enum SnowflakeNonce {
     CreateBalance,
     SplitBalanceExcess,

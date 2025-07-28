@@ -13,7 +13,10 @@ pub mod crypto;
 pub mod solver_context;
 pub mod user_context;
 
+pub mod immutables;
+
 pub mod accounts;
+
 pub mod applicative;
 pub mod emissions;
 pub mod snowflake;
@@ -24,6 +27,8 @@ pub mod ops;
 pub mod storage;
 
 pub mod utils;
+
+pub mod application;
 
 #[allow(unused)]
 use {

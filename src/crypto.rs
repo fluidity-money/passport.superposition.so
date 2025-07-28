@@ -1,4 +1,4 @@
-use crate::{accounts::Accounts, applicative::*, error::*};
+use crate::{accounts::AccountsExpanded, applicative::*, error::*};
 
 use borsh::BorshSerialize;
 
@@ -17,8 +17,8 @@ fn err_str(d: ErrorDiscriminant, msg: String) -> Error {
     }
 }
 
-fn err_sig(msg: String) -> Error {
-    err_str(ErrorDiscriminant::BadStrictVerify, msg)
+fn err_sig(label: ApplicativeLabel, msg: String) -> Error {
+    err_str(ErrorDiscriminant::BadStrictVerify(label), msg)
 }
 
 fn err_prehashed(msg: String) -> Error {
@@ -32,6 +32,7 @@ fn check_sig(
     sig: &[u8; 64],
     msg: &[u8],
     prev_digest: &[u8],
+    from: ApplicativeLabel,
 ) -> ValidateCarry {
     let d = Sha512::default()
         .chain_update(msg)
@@ -40,13 +41,13 @@ fn check_sig(
         .verify_prehashed_strict(
             d.clone(),
             None,
-            &Signature::from_slice(sig).map_err(|err| err_sig(format!("{err}")))?,
+            &Signature::from_slice(sig).map_err(|err| err_sig(from, format!("{err}")))?,
         )
         .map_err(|err| {
             // When it comes to returning the error here, we can do so since the
             // caller will revert so we can be excessive with the penalties of
             // encoding a message.
-            err_sig(format!("{err}"))
+            err_sig(from, format!("{err}"))
         })?;
     Ok(d.finalize().into())
 }
@@ -58,6 +59,7 @@ fn check_sig_two(
     sig2: &[u8; 64],
     msg: &[u8],
     prev_digest: &[u8],
+    from: ApplicativeLabel,
 ) -> ValidateCarry {
     let d = Sha512::default()
         .chain_update(msg)
@@ -66,16 +68,16 @@ fn check_sig_two(
         .verify_prehashed_strict(
             d.clone(),
             None,
-            &Signature::from_slice(sig1).map_err(|err| err_sig(format!("{err}")))?,
+            &Signature::from_slice(sig1).map_err(|err| err_sig(from, format!("{err}")))?,
         )
-        .map_err(|err| err_sig(format!("{err}")))?;
+        .map_err(|err| err_sig(from, format!("{err}")))?;
     verifying_key2
         .verify_prehashed_strict(
             d.clone(),
             None,
-            &Signature::from_slice(sig2).map_err(|err| err_sig(format!("{err}")))?,
+            &Signature::from_slice(sig2).map_err(|err| err_sig(from, format!("{err}")))?,
         )
-        .map_err(|err| err_sig(format!("{err}")))?;
+        .map_err(|err| err_sig(from, format!("{err}")))?;
     Ok(d.finalize().into())
 }
 
@@ -106,7 +108,7 @@ pub fn digest_inplace<'a, T: BorshSerialize, const CAP: usize>(x: &T) -> [u8; 64
 
 /// Validate the Balance against the signature given using an array on the stack.
 pub fn validate_balance(
-    accounts: &Accounts,
+    accounts: &AccountsExpanded,
     (owner_id, owner_sig): &UserSig,
     ap: &ArgsBalance,
 ) -> ValidateCarry {
@@ -115,6 +117,7 @@ pub fn validate_balance(
         owner_sig,
         &serialise_inplace::<_, { size_of::<ArgsBalance>() }>(ap),
         &[],
+        ApplicativeLabel::Balance,
     )
 }
 
@@ -139,7 +142,7 @@ fn chain_digests(x: [u8; 64], y: [u8; 64]) -> [u8; 64] {
 
 pub fn validate_wrapped_balance(
     from: ApplicativeLabel,
-    accounts: &Accounts,
+    accounts: &AccountsExpanded,
     ap: &Applicative,
 ) -> ValidateCarry {
     match ap {
@@ -155,7 +158,7 @@ pub fn validate_wrapped_balance(
 }
 
 pub fn validate_order(
-    accounts: &Accounts,
+    accounts: &AccountsExpanded,
     (owner_id, owner_sig): &UserSig,
     args: &ArgsOrder,
     ap: &Applicative,
@@ -173,12 +176,13 @@ pub fn validate_order(
             }
             ap => validate_wrapped_balance(label(ap), accounts, ap),
         }?,
+        ApplicativeLabel::Order,
     )
 }
 
 pub fn validate_wrapped_order(
     from: ApplicativeLabel,
-    accounts: &Accounts,
+    accounts: &AccountsExpanded,
     ap: &Applicative,
 ) -> ValidateCarry {
     match ap {
@@ -197,7 +201,7 @@ pub fn validate_wrapped_order(
 /// validates the signature and the state transition, allowing the state
 /// machine to do the checking of the amounts and constraints.
 pub fn validate_commit(
-    accounts: &Accounts,
+    accounts: &AccountsExpanded,
     solver_sig: &[u8; 64],
     args: &ArgsCommit,
     left: &Applicative,
@@ -210,6 +214,7 @@ pub fn validate_commit(
         solver_sig,
         &digest_inplace::<_, { size_of::<ArgsCommit>() }>(args),
         &chain_digests(digest_left, validate_wrapped_order(l, accounts, right)?),
+        ApplicativeLabel::Commit,
     )
 }
 
@@ -220,7 +225,7 @@ pub fn validate_commit(
 /// Does not do any validation except validate the contained value.
 pub fn validate_wrapped_commit(
     from: ApplicativeLabel,
-    accounts: &Accounts,
+    accounts: &AccountsExpanded,
     ap: &Applicative,
 ) -> ValidateCarry {
     match ap {
@@ -236,7 +241,7 @@ pub fn validate_wrapped_commit(
 /// CommitLeftExcessToBalance, CommitRightExcessToBalance, and Balance to
 /// an amount that should be redeemed to the user by the contract.
 pub fn validate_withdraw(
-    accounts: &Accounts,
+    accounts: &AccountsExpanded,
     solver_sig: &[u8; 64],
     (owner_id, owner_sig): &UserSig,
     ap: &Applicative,
@@ -261,11 +266,12 @@ pub fn validate_withdraw(
             }
             ap => Err(err_bad_ap_transition(l, ap)),
         }?,
+        l,
     )
 }
 
 pub fn validate_cancel(
-    accounts: &Accounts,
+    accounts: &AccountsExpanded,
     solver_sig: &[u8; 64],
     (owner_id, owner_sig): &UserSig,
     ap: &Applicative,
@@ -290,11 +296,12 @@ pub fn validate_cancel(
             }
             _ => Err(err_bad_ap_transition(l, ap)),
         }?,
+        ApplicativeLabel::Cancel,
     )
 }
 
 pub fn validate_join(
-    accounts: &Accounts,
+    accounts: &AccountsExpanded,
     (owner_id, owner_sig): &UserSig,
     left: &Applicative,
     right: &Applicative,
@@ -308,12 +315,13 @@ pub fn validate_join(
             validate_wrapped_balance(l, accounts, left)?,
             validate_wrapped_balance(l, accounts, right)?,
         ),
+        ApplicativeLabel::Join,
     )
 }
 
 /// Entrypoint validation function for a Applicative type during its
 /// validation stage.
-pub fn validate(accounts: &Accounts, ap: &Applicative) -> ValidateCarry {
+pub fn validate(accounts: &AccountsExpanded, ap: &Applicative) -> ValidateCarry {
     match ap {
         Applicative::Balance(sig, args) => validate_balance(accounts, sig, args),
         Applicative::Withdraw(solver_sig, user_sig, ap) => {
@@ -485,17 +493,25 @@ mod test_proptest {
             let k = SigningKey::from_bytes(&sign_key);
             let mut b = Vec::new();
             args_bal.serialize(&mut b).unwrap();
-            let a = Accounts::default().register(k.verifying_key());
-            validate_balance(&a, &(0, sign_balance(&k, &args_bal)), &args_bal).unwrap();
-            let bal = (0, sign_balance(&k, &args_bal));
+            let signer_id = sign_key[..4].try_into().unwrap();
+            let a = AccountsExpanded::default().register(k.verifying_key());
+            validate_balance(
+                &a,
+                &(signer_id, sign_balance(&k, &args_bal)),
+                &args_bal
+            )
+            .unwrap();
+            let bal = (signer_id, sign_balance(&k, &args_bal));
             validate(&a, &Applicative::Balance(bal, args_bal.clone())).unwrap();
             // Test that someone can't break things:
             sign_key[31] = sign_key[31].wrapping_add(1);
             let k2 = SigningKey::from_bytes(&sign_key);
             assert!(
-                validate_balance(&a, &(0, k2.sign(&b).to_bytes()), &args_bal)
-                    .unwrap_err()
-                    .is_typ(ErrorDiscriminant::BadStrictVerify)
+                match validate_balance(&a, &(signer_id, k2.sign(&b).to_bytes()), &args_bal)
+                    .unwrap_err() {
+                        Error { typ: ErrorDiscriminant::BadStrictVerify(_), .. } => true,
+                        _ => false
+                    }
             );
         }
 
@@ -505,7 +521,8 @@ mod test_proptest {
             args_bal in any::<ArgsBalance>()
         ) {
             let signer_key = SigningKey::from_bytes(&sign_key);
-            let a = Accounts::default().register(signer_key.verifying_key());
+            let signer_id = sign_key[..4].try_into().unwrap();
+            let a = AccountsExpanded::default().register(signer_key.verifying_key());
             assert_eq!(
                 digest_inplace::<_, { size_of::<ArgsBalance>() }>(&args_bal),
                 digest_inplace::<_, { size_of::<ArgsBalance>() }>(&args_bal)
@@ -514,7 +531,7 @@ mod test_proptest {
                 digest_inplace::<_, { size_of::<ArgsBalance>() }>(&args_bal),
                 validate_balance(
                     &a,
-                    &(0, sign_balance(&signer_key, &args_bal)),
+                    &(signer_id, sign_balance(&signer_key, &args_bal)),
                     &args_bal
                 )
                 .unwrap()
@@ -529,11 +546,16 @@ mod test_proptest {
         ) {
             let solver_key = SigningKey::from_bytes(&solver_key);
             let signer_key = SigningKey::from_bytes(&sign_key);
-            let a = Accounts::default().register(signer_key.verifying_key())
-                .with_solver(solver_key.verifying_key().to_bytes());
-            let bal = Applicative::Balance((0, sign_balance(&signer_key, &args_bal)), args_bal);
+            let a = AccountsExpanded::default().register(signer_key.verifying_key())
+                .with_solver(solver_key.verifying_key().to_bytes())
+                .unwrap();
+            let signer_id = sign_key[..4].try_into().unwrap();
+            let bal = Applicative::Balance(
+                (signer_id, sign_balance(&signer_key, &args_bal)),
+                args_bal
+            );
             let solver_sig = sign_withdraw(&solver_key, &bal).unwrap();
-            let signer_sig = (0, sign_withdraw(&signer_key, &bal).unwrap());
+            let signer_sig = (signer_id, sign_withdraw(&signer_key, &bal).unwrap());
             validate(
                 &a,
                 &Applicative::Withdraw(solver_sig, signer_sig, Box::new(bal.clone())),
@@ -543,11 +565,14 @@ mod test_proptest {
             let mut solver_sig = sign_withdraw(&solver_key, &bal).unwrap();
             solver_sig[31] = solver_sig[31].wrapping_add(1);
             assert!(
-                validate(
+                match validate(
                     &a,
                     &Applicative::Withdraw(solver_sig, signer_sig, Box::new(bal)),
                 )
-                .unwrap_err().is_typ(ErrorDiscriminant::BadStrictVerify)
+                .unwrap_err() {
+                    Error { typ: ErrorDiscriminant::BadStrictVerify(_), .. } => true,
+                    _ => false,
+                }
             )
         }
 
@@ -558,10 +583,14 @@ mod test_proptest {
             args_order in any::<ArgsOrder>()
         ) {
             let signer_key = SigningKey::from_bytes(&sign_key);
-            let a = Accounts::default().register(signer_key.verifying_key());
-            let bal = Applicative::Balance((0, sign_balance(&signer_key, &args_bal)), args_bal);
+            let a = AccountsExpanded::default().register(signer_key.verifying_key());
+            let signer_id = sign_key[..4].try_into().unwrap();
+            let bal = Applicative::Balance(
+                (signer_id, sign_balance(&signer_key, &args_bal)),
+                args_bal
+            );
             let o = Applicative::Order(
-                (0, sign_order(&signer_key, &args_order, &bal).unwrap()),
+                (signer_id, sign_order(&signer_key, &args_order, &bal).unwrap()),
                 args_order,
                 Box::new(bal)
             );
@@ -576,18 +605,23 @@ mod test_proptest {
             args_order in any::<ArgsOrder>()
         ) {
             let signer_key = SigningKey::from_bytes(&sign_key);
+            let signer_id = sign_key[..4].try_into().unwrap();
             let solver_key = SigningKey::from_bytes(&solver_key);
-            let a = Accounts::default().register(signer_key.verifying_key())
-                .with_solver(solver_key.verifying_key().to_bytes());
-            let bal = Applicative::Balance((0, sign_balance(&signer_key, &args_bal)), args_bal);
+            let a = AccountsExpanded::default().register(signer_key.verifying_key())
+                .with_solver(solver_key.verifying_key().to_bytes())
+                .unwrap();
+            let bal = Applicative::Balance(
+                (signer_id, sign_balance(&signer_key, &args_bal)),
+                args_bal
+            );
             let o = Applicative::Order(
-                (0, sign_order(&signer_key, &args_order, &bal).unwrap()),
+                (signer_id, sign_order(&signer_key, &args_order, &bal).unwrap()),
                 args_order,
                 Box::new(bal)
             );
             let c = Applicative::Cancel(
                 sign_cancel(&solver_key, &o).unwrap(),
-                (0, sign_cancel(&signer_key, &o).unwrap()),
+                (signer_id, sign_cancel(&signer_key, &o).unwrap()),
                 Box::new(o)
              );
             validate(&a, &c).unwrap();
@@ -605,23 +639,32 @@ mod test_proptest {
             args_commit in any::<ArgsCommit>()
         ) {
             let signer_key_1 = SigningKey::from_bytes(&sign_key_1);
+            let signer_id1 = sign_key_1[..4].try_into().unwrap();
             let signer_key_2 = SigningKey::from_bytes(&sign_key_2);
+            let signer_id2 = sign_key_2[..4].try_into().unwrap();
             let solver_key = SigningKey::from_bytes(&solver_key);
-            let a = Accounts::default()
+            let a = AccountsExpanded::default()
                 .register(signer_key_1.verifying_key())
                 .register(signer_key_2.verifying_key())
-                .with_solver(solver_key.verifying_key().to_bytes());
+                .with_solver(solver_key.verifying_key().to_bytes())
+                .unwrap();
             let bal1 =
-                Applicative::Balance((0, sign_balance(&signer_key_1, &args_bal_1)), args_bal_1);
+                Applicative::Balance(
+                    (signer_id1, sign_balance(&signer_key_1, &args_bal_1)),
+                    args_bal_1
+                );
             let bal2 =
-                Applicative::Balance((1, sign_balance(&signer_key_2, &args_bal_2)), args_bal_2);
+                Applicative::Balance(
+                    (signer_id2, sign_balance(&signer_key_2, &args_bal_2)),
+                    args_bal_2
+                );
             let o1 = Applicative::Order(
-                (0, sign_order(&signer_key_1, &args_order_1, &bal1).unwrap()),
+                (signer_id1, sign_order(&signer_key_1, &args_order_1, &bal1).unwrap()),
                 args_order_1,
                 Box::new(bal1)
             );
             let o2 = Applicative::Order(
-                (1, sign_order(&signer_key_2, &args_order_2, &bal2).unwrap()),
+                (signer_id2, sign_order(&signer_key_2, &args_order_2, &bal2).unwrap()),
                 args_order_2,
                 Box::new(bal2)
             );
@@ -653,22 +696,31 @@ mod test_proptest {
         ) {
             let signer_key_1 = SigningKey::from_bytes(&sign_key_1);
             let signer_key_2 = SigningKey::from_bytes(&sign_key_2);
+            let signer_id1 = sign_key_1[..4].try_into().unwrap();
+            let signer_id2 = sign_key_2[..4].try_into().unwrap();
             let solver_key = SigningKey::from_bytes(&solver_key);
-            let a = Accounts::default()
+            let a = AccountsExpanded::default()
                 .register(signer_key_1.verifying_key())
                 .register(signer_key_2.verifying_key())
-                .with_solver(solver_key.verifying_key().to_bytes());
+                .with_solver(solver_key.verifying_key().to_bytes())
+                .unwrap();
             let bal1 =
-                Applicative::Balance((0, sign_balance(&signer_key_1, &args_bal_1)), args_bal_1);
+                Applicative::Balance(
+                    (signer_id1, sign_balance(&signer_key_1, &args_bal_1)),
+                    args_bal_1
+                );
             let bal2 =
-                Applicative::Balance((1, sign_balance(&signer_key_2, &args_bal_2)), args_bal_2);
+                Applicative::Balance(
+                    (signer_id2, sign_balance(&signer_key_2, &args_bal_2)),
+                    args_bal_2
+                );
             let o1 = Applicative::Order(
-                (0, sign_order(&signer_key_1, &args_order_1, &bal1).unwrap()),
+                (signer_id1, sign_order(&signer_key_1, &args_order_1, &bal1).unwrap()),
                 args_order_1,
                 Box::new(bal1)
             );
             let o2 = Applicative::Order(
-                (1, sign_order(&signer_key_2, &args_order_2, &bal2).unwrap()),
+                (signer_id1, sign_order(&signer_key_2, &args_order_2, &bal2).unwrap()),
                 args_order_2,
                 Box::new(bal2)
             );
@@ -679,16 +731,22 @@ mod test_proptest {
                 Box::new(o2)
             )));
             let bal3 =
-                Applicative::Balance((0, sign_balance(&signer_key_1, &args_bal_3)), args_bal_3);
+                Applicative::Balance(
+                    (signer_id1, sign_balance(&signer_key_1, &args_bal_3)),
+                    args_bal_3
+                );
             let bal4 =
-                Applicative::Balance((1, sign_balance(&signer_key_2, &args_bal_4)), args_bal_4);
+                Applicative::Balance(
+                    (signer_id2, sign_balance(&signer_key_2, &args_bal_4)),
+                    args_bal_4
+                );
             let extra_order1 = Applicative::Order(
-                (1, sign_order(&signer_key_2, &args_order_3, &bal3).unwrap()),
+                (signer_id2, sign_order(&signer_key_2, &args_order_3, &bal3).unwrap()),
                 args_order_3,
                 Box::new(bal3)
             );
             let extra_order2 = Applicative::Order(
-                (0, sign_order(&signer_key_1, &args_order_4, &bal4).unwrap()),
+                (signer_id2, sign_order(&signer_key_1, &args_order_4, &bal4).unwrap()),
                 args_order_4,
                 Box::new(bal4)
             );

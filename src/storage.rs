@@ -9,10 +9,9 @@ pub struct StoragePassport {
     // Owners of these addresses, based on the ed25519 signature.
     pub owners: StorageMap<KeyEdAddr, StorageAddress>,
 
-    // Balances that the EOAs have access to. Spent into using Permit
-    // signatures and Matches that're brought together. Spent down
-    // by the EOA offramping from from the passport contract.
-    pub balances: StorageMap<Address, StorageMap<Address, StorageU256>>,
+    pub unspent_balances: StorageMap<Address, StorageU256>,
+
+    pub spent_balances: StorageMap,
 }
 
 #[cfg(not(target_arch = "wasm32"))]

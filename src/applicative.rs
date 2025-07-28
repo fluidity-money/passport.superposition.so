@@ -7,18 +7,14 @@ use borsh::{BorshDeserialize, BorshSerialize};
 
 use alloc::boxed::Box;
 
-use crate::{encoding::*, error::Error};
+use crate::{accounts::AccountId, encoding::*, error::Error};
 
 // Concatenated form of the ed25519 r and s values for use with
 // ed25519_dalek.
 pub type EdSig = [u8; 64];
 
-/// Ed25519 signature. Referenced according to its place in the accounts
-/// vector.
-pub type EdId = usize;
-
 /// User provided signature. Needs a lookup in the accounts table.
-pub type UserSig = (EdId, EdSig);
+pub type UserSig = (AccountId, EdSig);
 
 /// Solver provided signature.
 pub type SolverSig = EdSig;
@@ -83,9 +79,10 @@ pub struct ArgsCommit {
     pub ms_timestamp: u128,
 }
 
+/// Simple label for debugging purposes when a contextual error takes
+/// place during a form conversion or validation.
 #[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq, Debug, Copy)]
 pub enum ApplicativeLabel {
-    Unset,
     Balance,
     Withdraw,
     Order,

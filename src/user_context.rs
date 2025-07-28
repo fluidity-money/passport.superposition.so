@@ -3,7 +3,7 @@ use ed25519_dalek::SigningKey;
 use stylus_sdk::alloy_primitives::{Address, U256};
 
 use crate::{
-    accounts::Accounts,
+    accounts::AccountsExpanded,
     applicative::{Applicative, ArgsBalance, ArgsCommit, ArgsOrder, UserApplicative},
     crypto::*,
     encoding::{BAddress, BU256},
@@ -18,13 +18,13 @@ use alloc::boxed::Box;
 /// table, which it provides during the conversion of this type to
 /// the state machine type.
 pub struct UserContext {
-    pub accounts: Accounts,
+    pub accounts: AccountsExpanded,
     pub signer: SigningKey,
 }
 
 impl UserContext {
     /// Create a new Accounts and register the Signer given.
-    pub fn new_from_bytes(accounts: Accounts, signer_b: [u8; 32]) -> Self {
+    pub fn new_from_bytes(accounts: AccountsExpanded, signer_b: [u8; 32]) -> Self {
         let key = SigningKey::from_bytes(&signer_b);
         UserContext {
             accounts: accounts.register(key.verifying_key()),
@@ -32,7 +32,7 @@ impl UserContext {
         }
     }
 
-    pub fn find_signer(&self) -> usize {
+    pub fn find_signer(&self) -> [u8; 4] {
         // We can panic here since this shouldn't be possible to construct
         // without the signing key in the Accounts map.
         self.accounts

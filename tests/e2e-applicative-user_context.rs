@@ -281,12 +281,12 @@ proptest! {
         e: Entry
     ) {
         let solver_ctx = SolverContext::new_from_bytes(solver_key);
+        // Implicitly registers the solver key.
         let user_ctx = UserContext::new_from_bytes(
-            Accounts::default().with_solver(solver_key),
+            AccountsExpanded::default().with_solver(solver_key).unwrap(),
             signer_key
         );
         let converted = convert(&user_ctx, &solver_ctx, &e).unwrap();
-        dbg!(&converted);
         validate(&user_ctx.accounts, &converted).unwrap();
     }
 }
