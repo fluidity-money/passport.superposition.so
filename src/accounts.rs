@@ -6,11 +6,14 @@ use alloc::vec::Vec;
 
 use hashbrown::HashMap;
 
+use borsh::{BorshDeserialize, BorshSerialize};
+
 /// Simple list that's sent with every Applicative form to the contract
 /// with the list of the unique addresses involved with the calldata.
+#[derive(BorshDeserialize, BorshSerialize, Debug, PartialEq, Eq)]
 pub struct AccountsList {
-    pub solver: VerifyingKey,
-    keys: Vec<VerifyingKey>,
+    pub solver: [u8; 32],
+    keys: Vec<[u8; 32]>,
 }
 
 /// AccountId is the first 4 bytes of the verifying key created from the
@@ -32,18 +35,12 @@ fn err_bad_verifying_key() -> Error {
 }
 
 impl AccountsList {
-    pub fn from(solver: &[u8; 32], keys: Vec<[u8; 32]>) -> Result<Self, Error> {
-        Ok(Self {
-            solver: VerifyingKey::from_bytes(solver).unwrap(),
-            keys: keys
-                .iter()
-                .map(|x| VerifyingKey::from_bytes(x).map_err(|_| err_bad_verifying_key()))
-                .collect::<Result<Vec<_>, _>>()?,
-        })
+    pub fn from(solver: [u8; 32], keys: Vec<[u8; 32]>) -> Result<Self, Error> {
+        Ok(Self { solver, keys })
     }
 
     pub fn from_testnet(keys: Vec<[u8; 32]>) -> Result<Self, Error> {
-        Self::from(&SOLVER_KEY_TESTNET, keys)
+        Self::from(SOLVER_KEY_TESTNET, keys)
     }
 }
 
@@ -52,12 +49,15 @@ impl From<AccountsList> for AccountsExpanded {
         let mut keys = HashMap::with_capacity(v.keys.len());
         let mut ids = HashMap::with_capacity(v.keys.len());
         for k in v.keys {
-            let id: [u8; 4] = k.as_bytes()[..4].try_into().unwrap();
+            let id: [u8; 4] = k[..4].try_into().unwrap();
+            let k = VerifyingKey::from_bytes(&k)
+                .map_err(|_| err_bad_verifying_key())
+                .unwrap();
             let _ = keys.insert(k, id);
             let _ = ids.insert(id, k);
         }
         Self {
-            solver: v.solver,
+            solver: VerifyingKey::from_bytes(&v.solver).unwrap(),
             keys,
             ids,
         }

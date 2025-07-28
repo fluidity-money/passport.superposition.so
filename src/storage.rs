@@ -10,8 +10,6 @@ pub struct StoragePassport {
     pub owners: StorageMap<KeyEdAddr, StorageAddress>,
 
     pub unspent_balances: StorageMap<Address, StorageU256>,
-
-    pub spent_balances: StorageMap,
 }
 
 #[cfg(not(target_arch = "wasm32"))]
