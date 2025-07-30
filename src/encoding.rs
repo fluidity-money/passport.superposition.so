@@ -61,7 +61,7 @@ macro_rules! borsh_encoding {
 }
 
 borsh_encoding! {
-    (U256, 32, U256::from_le_bytes, |x: U256| x.to_le_bytes_trimmed_vec()),
+    (U256, 32, U256::from_le_bytes, |x: U256| x.to_le_bytes_vec()),
     (Address, 20, Address::from, Address::into_array),
 }
 
