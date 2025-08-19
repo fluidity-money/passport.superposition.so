@@ -1,3 +1,3 @@
 #!/bin/sh
 
-cargo test -- test_conversions
+cargo test

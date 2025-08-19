@@ -1,7 +1,7 @@
 // Applicative form of the state machine, that gets converted to an
 // internal representation during the program's simulation.
 
-use stylus_sdk::alloy_primitives::{Address, U256};
+use stylus_sdk::alloy_primitives::Address;
 
 use borsh::{BorshDeserialize, BorshSerialize};
 
@@ -48,7 +48,7 @@ impl From<Nonce> for u8 {
 pub struct ArgsBalance {
     pub asset: BAddress,
     pub chain: u128,
-    pub amount: BU256,
+    pub amount: u128,
     // Owner and timestamp (milliseconds) are combined to create a snowflake.
     pub ms_timestamp: u128,
 }
@@ -64,10 +64,13 @@ pub struct ArgsBalance {
     derive(arbitrary::Arbitrary, proptest_derive::Arbitrary)
 )]
 pub struct ArgsOrder {
-    pub from_amt: BU256,
+    /// From amount that the user is willing to consume from the
+    /// previous balance on this operation.
+    pub from_amt: u128,
     pub desired_asset: BAddress,
     pub desired_chain: u128,
-    pub desired_amt: BU256,
+    /// Desired amount of the other asset to fill for.
+    pub desired_amt: u128,
 }
 
 #[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq, Debug)]
@@ -105,15 +108,13 @@ pub enum ApplicativeLabel {
 /// suits them, but it's not important for them to split balances.
 #[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq, Debug)]
 pub enum Applicative {
-    /// When this step is used, it's only admissable if the user has
-    /// uncommitted amounts they've deposited that haven't been converted to a
-    /// Balance.
+    /// Starting point of the conversion to the other types.
     Balance(UserSig, ArgsBalance),
     /// Withdraw a Balance from the system. The solver signature is needed
     /// alongside the user's signature to be able to testify there are no
     /// unspent UTXOs. The signature only needs to be the signed value
     /// of the concatenation of the hash of the
-    /// (Balance|CommitLeftFilledToBalance|CommitRightFilledToBalance)
+    /// (Balance|CommitLeftFilledToBalance|CommitRightFilledToBalance|Cancel)
     /// input from the solver and the user.
     Withdraw(SolverSig, UserSig, Box<Applicative>),
     /// Only (Balance | CommitToBalance*) => Order as the argument here.
@@ -139,6 +140,7 @@ pub enum Applicative {
     // Accessor for the excess right side order to a balance.
     CommitRightExcessToOrder(Box<Applicative>),
     /// Join two balances together.
+    /// (Balance|Cancel|CommitLeftFilledToBalance|CommitRightFilledToBalance).
     Join(UserSig, Box<Applicative>, Box<Applicative>),
 }
 
@@ -166,17 +168,17 @@ impl From<&Applicative> for ApplicativeLabel {
 /// User friendly trait for construction of Applicative with types
 /// included in a side effectful way.
 pub trait UserApplicative {
-    fn balance(&self, asset: Address, chain: u128, amount: U256, ms_timestamp: u128)
-    -> Applicative;
+    fn balance(&self, asset: Address, chain: u128, amount: u128, ms_timestamp: u128)
+        -> Applicative;
 
     fn withdraw(&self, solver_sig: [u8; 64], ap: Applicative) -> Result<Applicative, Error>;
 
     fn order(
         &self,
-        from_amt: U256,
+        from_amt: u128,
         desired_asset: Address,
         desired_chain: u128,
-        desired_amt: U256,
+        desired_amt: u128,
         ap: Applicative,
     ) -> Result<Applicative, Error>;
 

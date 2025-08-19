@@ -18,9 +18,9 @@ pub mod immutables;
 pub mod accounts;
 
 pub mod applicative;
-pub mod emissions;
 pub mod snowflake;
 pub mod state_machine;
+pub mod conversion;
 
 pub mod encoding;
 pub mod ops;

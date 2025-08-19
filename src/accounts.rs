@@ -2,6 +2,8 @@ use ed25519_dalek::VerifyingKey;
 
 use crate::{error::*, immutables::*};
 
+use stylus_sdk::alloy_primitives::FixedBytes;
+
 use alloc::vec::Vec;
 
 use hashbrown::HashMap;
@@ -95,6 +97,10 @@ impl AccountsExpanded {
                 cd: Vec::new(),
             })
         }
+    }
+
+    pub fn find_key_bytes(&self, id: [u8; 4]) -> Result<FixedBytes<32>, Error> {
+        Ok(FixedBytes(self.find_key(id)?.to_bytes()))
     }
 
     pub fn find_place(&self, key: &VerifyingKey) -> Result<[u8; 4], Error> {

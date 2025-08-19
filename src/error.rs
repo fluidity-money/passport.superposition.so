@@ -58,6 +58,26 @@ pub enum ErrorDiscriminant {
 
     /// Unable to sign a prehashed blob.
     UnableToSignPrehashed,
+
+    /// The convert stage couldn't find the address given.
+    AccountNotFound,
+
+    /// A bad conversion from took place from the applicative form to the
+    /// state machine form.
+    BadConversionFrom,
+
+    /// One side of the commit was asking for a side that doesn't match up
+    /// with the other side.
+    BadAssetComparison,
+
+    /// Inconsistent owners for a multiple step operation.
+    InconsistentOwners,
+
+    /// Not enough from the derivative amount to fill.
+    NotEnoughForDeriv,
+
+    /// No left excess is available to the user from this commit!
+    NoLeftExcess,
 }
 
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]

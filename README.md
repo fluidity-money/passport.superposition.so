@@ -88,37 +88,7 @@ the applicative form, which then converts to the state machine form, which is th
 persisted as state after conversion internally.
 
 Each Balance is the creation of a snowflake for a user. It must be the timestamp it was
-made from the user's point of view, and their address, hashed. The Solver contract
-maintains an idea of the state of the Snowflake.
-
-## Identifying the balances and their created derivatives
-
-Identification is done using a Snowflake-like system of taking the user's timestamp and
-their address, then keccak hashing it, then using the number as the snowflake as a
-identifier.
-
-When a recursively created derivative of a Balance creates a new Balance, a snowflake is
-made. From the source:
-
-```rust
-/// Balances are identifiable in their descended form using the
-/// concatenation of the previous hash, the timestamp of the change, and
-/// the nonce here. keccak256(previous . nonce . timestamp).
-#[repr(C)]
-pub enum SnowflakeNonce {
-    CreateBalance,
-    SplitBalanceExcess,
-    CommitFulfilledLeft,
-    CommitFulfilledRight,
-    CommisExcessLeft,
-    CommitExcessRight,
-    JoinBalance,
-}
-```
-
-So, a create balance would have the nonce of 0, and be created using `keccak256(address .
-0 . millisecond timestamp)`. A split balance would have 1, and be of the form
-`keccak256(previous hash . 1 . excess amount)` and so on.
+made from the user's point of view, and their address, hashed.
 
 ## User stories
 

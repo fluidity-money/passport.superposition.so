@@ -1,12 +1,12 @@
 use ed25519_dalek::SigningKey;
 
-use stylus_sdk::alloy_primitives::{Address, U256};
+use stylus_sdk::alloy_primitives::Address;
 
 use crate::{
     accounts::AccountsExpanded,
     applicative::{Applicative, ArgsBalance, ArgsCommit, ArgsOrder, UserApplicative},
     crypto::*,
-    encoding::{BAddress, BU256},
+    encoding::BAddress,
     error::Error,
 };
 
@@ -50,13 +50,13 @@ impl UserApplicative for UserContext {
         &self,
         asset: Address,
         chain: u128,
-        amount: U256,
+        amount: u128,
         ms_timestamp: u128,
     ) -> Applicative {
         let args = ArgsBalance {
             asset: BAddress { x: asset },
             chain,
-            amount: BU256 { x: amount },
+            amount,
             ms_timestamp,
         };
         Applicative::Balance(
@@ -75,17 +75,17 @@ impl UserApplicative for UserContext {
 
     fn order(
         &self,
-        from_amt: U256,
+        from_amt: u128,
         desired_asset: Address,
         desired_chain: u128,
-        desired_amt: U256,
+        desired_amt: u128,
         ap: Applicative,
     ) -> Result<Applicative, Error> {
         let args = ArgsOrder {
-            from_amt: BU256 { x: from_amt },
+            from_amt,
             desired_asset: BAddress { x: desired_asset },
             desired_chain,
-            desired_amt: BU256 { x: desired_amt },
+            desired_amt,
         };
         Ok(Applicative::Order(
             (self.find_signer(), sign_order(&self.signer, &args, &ap)?),

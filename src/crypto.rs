@@ -6,7 +6,7 @@ use arrayvec::ArrayVec;
 
 use ed25519_dalek::{Signature, SigningKey, VerifyingKey};
 
-use sha2::{Sha512, digest::Digest};
+use sha2::{digest::Digest, Sha512};
 
 use alloc::{format, string::String, vec::Vec};
 
@@ -167,15 +167,7 @@ pub fn validate_order(
         &accounts.find_key(*owner_id)?,
         owner_sig,
         &digest_inplace::<_, { size_of::<ArgsOrder>() }>(args),
-        &match ap {
-            Applicative::CommitLeftFilledToBalance(ap) => {
-                validate_wrapped_commit(ApplicativeLabel::CommitLeftFilledToBalance, accounts, ap)
-            }
-            Applicative::CommitRightFilledToBalance(ap) => {
-                validate_wrapped_commit(ApplicativeLabel::CommitRightFilledToBalance, accounts, ap)
-            }
-            ap => validate_wrapped_balance(label(ap), accounts, ap),
-        }?,
+        &validate_wrapped_balance(label(ap), accounts, ap)?,
         ApplicativeLabel::Order,
     )
 }
@@ -256,16 +248,7 @@ pub fn validate_withdraw(
         &accounts.find_key(*owner_id)?,
         owner_sig,
         &[Nonce::Withdraw.into()],
-        &match ap {
-            Applicative::Balance(sig, args) => validate_balance(accounts, sig, args),
-            Applicative::CommitLeftFilledToBalance(ap) => {
-                validate_wrapped_commit(ApplicativeLabel::CommitLeftFilledToBalance, accounts, ap)
-            }
-            Applicative::CommitRightFilledToBalance(ap) => {
-                validate_wrapped_commit(ApplicativeLabel::CommitRightFilledToBalance, accounts, ap)
-            }
-            ap => Err(err_bad_ap_transition(l, ap)),
-        }?,
+        &validate_wrapped_balance(label(ap), accounts, ap)?,
         l,
     )
 }
@@ -359,7 +342,7 @@ pub fn sign_balance(k: &SigningKey, args: &ArgsBalance) -> [u8; 64] {
     .unwrap()
 }
 
-fn digest_wrapped_balance(from: ApplicativeLabel, ap: &Applicative) -> Result<[u8; 64], Error> {
+pub fn digest_wrapped_balance(from: ApplicativeLabel, ap: &Applicative) -> Result<[u8; 64], Error> {
     match ap {
         Applicative::Balance(_, args) => {
             Ok(digest_inplace::<_, { size_of::<ArgsBalance>() }>(args))
@@ -482,7 +465,13 @@ mod test_proptest {
     use super::*;
     use proptest::prelude::*;
 
+    use borsh::BorshDeserialize;
+
     use ed25519_dalek::{Signer, SigningKey};
+
+    fn encode_decode<T: BorshSerialize + BorshDeserialize>(x: T) -> T {
+        T::try_from_slice(&borsh::to_vec(&x).unwrap()).unwrap()
+    }
 
     proptest! {
         #[test]
@@ -502,7 +491,7 @@ mod test_proptest {
             )
             .unwrap();
             let bal = (signer_id, sign_balance(&k, &args_bal));
-            validate(&a, &Applicative::Balance(bal, args_bal.clone())).unwrap();
+            validate(&a, &encode_decode(Applicative::Balance(bal, args_bal.clone()))).unwrap();
             // Test that someone can't break things:
             sign_key[31] = sign_key[31].wrapping_add(1);
             let k2 = SigningKey::from_bytes(&sign_key);
@@ -520,6 +509,7 @@ mod test_proptest {
             sign_key in any::<[u8; 32]>(),
             args_bal in any::<ArgsBalance>()
         ) {
+            let args_bal = encode_decode(args_bal);
             let signer_key = SigningKey::from_bytes(&sign_key);
             let signer_id = sign_key[..4].try_into().unwrap();
             let a = AccountsExpanded::default().register(signer_key.verifying_key());
@@ -544,6 +534,7 @@ mod test_proptest {
             solver_key in any::<[u8; 32]>(),
             args_bal in any::<ArgsBalance>()
         ) {
+            let args_bal = encode_decode(args_bal);
             let solver_key = SigningKey::from_bytes(&solver_key);
             let signer_key = SigningKey::from_bytes(&sign_key);
             let a = AccountsExpanded::default().register(signer_key.verifying_key())
@@ -582,18 +573,20 @@ mod test_proptest {
             args_bal in any::<ArgsBalance>(),
             args_order in any::<ArgsOrder>()
         ) {
+            let args_bal = encode_decode(args_bal);
+            let args_order = encode_decode(args_order);
             let signer_key = SigningKey::from_bytes(&sign_key);
             let a = AccountsExpanded::default().register(signer_key.verifying_key());
             let signer_id = sign_key[..4].try_into().unwrap();
-            let bal = Applicative::Balance(
+            let bal = encode_decode(Applicative::Balance(
                 (signer_id, sign_balance(&signer_key, &args_bal)),
                 args_bal
-            );
-            let o = Applicative::Order(
+            ));
+            let o = encode_decode(Applicative::Order(
                 (signer_id, sign_order(&signer_key, &args_order, &bal).unwrap()),
                 args_order,
                 Box::new(bal)
-            );
+            ));
             validate(&a, &o).unwrap();
         }
 
@@ -610,20 +603,20 @@ mod test_proptest {
             let a = AccountsExpanded::default().register(signer_key.verifying_key())
                 .with_solver(solver_key.verifying_key().to_bytes())
                 .unwrap();
-            let bal = Applicative::Balance(
+            let bal = encode_decode(Applicative::Balance(
                 (signer_id, sign_balance(&signer_key, &args_bal)),
                 args_bal
-            );
-            let o = Applicative::Order(
+            ));
+            let o = encode_decode(Applicative::Order(
                 (signer_id, sign_order(&signer_key, &args_order, &bal).unwrap()),
                 args_order,
                 Box::new(bal)
-            );
-            let c = Applicative::Cancel(
+            ));
+            let c = encode_decode(Applicative::Cancel(
                 sign_cancel(&solver_key, &o).unwrap(),
                 (signer_id, sign_cancel(&signer_key, &o).unwrap()),
                 Box::new(o)
-             );
+             ));
             validate(&a, &c).unwrap();
         }
 
@@ -649,31 +642,31 @@ mod test_proptest {
                 .with_solver(solver_key.verifying_key().to_bytes())
                 .unwrap();
             let bal1 =
-                Applicative::Balance(
+                encode_decode(Applicative::Balance(
                     (signer_id1, sign_balance(&signer_key_1, &args_bal_1)),
                     args_bal_1
-                );
+                ));
             let bal2 =
-                Applicative::Balance(
+                encode_decode(Applicative::Balance(
                     (signer_id2, sign_balance(&signer_key_2, &args_bal_2)),
                     args_bal_2
-                );
-            let o1 = Applicative::Order(
+                ));
+            let o1 = encode_decode(Applicative::Order(
                 (signer_id1, sign_order(&signer_key_1, &args_order_1, &bal1).unwrap()),
                 args_order_1,
                 Box::new(bal1)
-            );
-            let o2 = Applicative::Order(
+            ));
+            let o2 = encode_decode(Applicative::Order(
                 (signer_id2, sign_order(&signer_key_2, &args_order_2, &bal2).unwrap()),
                 args_order_2,
                 Box::new(bal2)
-            );
-            validate(&a, &Applicative::Commit(
+            ));
+            validate(&a, &encode_decode(Applicative::Commit(
                 sign_commit(&solver_key, &args_commit, &o1, &o2).unwrap(),
                 args_commit,
                 Box::new(o1),
                 Box::new(o2)
-            ))
+            )))
             .unwrap();
         }
 
@@ -705,68 +698,71 @@ mod test_proptest {
                 .with_solver(solver_key.verifying_key().to_bytes())
                 .unwrap();
             let bal1 =
-                Applicative::Balance(
+                encode_decode(Applicative::Balance(
                     (signer_id1, sign_balance(&signer_key_1, &args_bal_1)),
                     args_bal_1
-                );
+                ));
             let bal2 =
-                Applicative::Balance(
+                encode_decode(Applicative::Balance(
                     (signer_id2, sign_balance(&signer_key_2, &args_bal_2)),
                     args_bal_2
-                );
-            let o1 = Applicative::Order(
+                ));
+            let o1 = encode_decode(Applicative::Order(
                 (signer_id1, sign_order(&signer_key_1, &args_order_1, &bal1).unwrap()),
                 args_order_1,
                 Box::new(bal1)
-            );
-            let o2 = Applicative::Order(
+            ));
+            let o2 = encode_decode(Applicative::Order(
                 (signer_id1, sign_order(&signer_key_2, &args_order_2, &bal2).unwrap()),
                 args_order_2,
                 Box::new(bal2)
-            );
-            let excess_order1 = Applicative::CommitRightExcessToOrder(Box::new(Applicative::Commit(
+            ));
+            let excess_order1 = encode_decode(Applicative::CommitRightExcessToOrder(Box::new(Applicative::Commit(
                 sign_commit(&solver_key, &args_commit_1, &o1, &o2).unwrap(),
                 args_commit_1,
                 Box::new(o1),
                 Box::new(o2)
-            )));
+            ))));
             let bal3 =
-                Applicative::Balance(
+                encode_decode(Applicative::Balance(
                     (signer_id1, sign_balance(&signer_key_1, &args_bal_3)),
                     args_bal_3
-                );
+                ));
             let bal4 =
-                Applicative::Balance(
+                encode_decode(Applicative::Balance(
                     (signer_id2, sign_balance(&signer_key_2, &args_bal_4)),
                     args_bal_4
-                );
-            let extra_order1 = Applicative::Order(
+                ));
+            let extra_order1 = encode_decode(Applicative::Order(
                 (signer_id2, sign_order(&signer_key_2, &args_order_3, &bal3).unwrap()),
                 args_order_3,
                 Box::new(bal3)
-            );
-            let extra_order2 = Applicative::Order(
+            ));
+            let extra_order2 = encode_decode(Applicative::Order(
                 (signer_id2, sign_order(&signer_key_1, &args_order_4, &bal4).unwrap()),
                 args_order_4,
                 Box::new(bal4)
-            );
-            let excess_order2 = Applicative::CommitLeftExcessToOrder(Box::new(Applicative::Commit(
-                sign_commit(
-                    &solver_key,
-                    &args_commit_2,
-                    &extra_order1,
-                    &extra_order2
-                ).unwrap(),
-                args_commit_2,
-                Box::new(extra_order1),
-                Box::new(extra_order2)
-            )));
-            validate(&a, &Applicative::Commit(
+            ));
+            let excess_order2 =
+                encode_decode(
+                    Applicative::CommitLeftExcessToOrder(Box::new(Applicative::Commit(
+                        sign_commit(
+                            &solver_key,
+                            &args_commit_2,
+                            &extra_order1,
+                            &extra_order2
+                        ).unwrap(),
+                        args_commit_2,
+                        Box::new(extra_order1),
+                        Box::new(extra_order2)
+                    )))
+                );
+            validate(&a, &encode_decode(Applicative::Commit(
                 sign_commit(&solver_key, &args_commit_3, &excess_order1, &excess_order2).unwrap(),
                 args_commit_3,
                 Box::new(excess_order1),
                 Box::new(excess_order2)
-            ))
+            )))
             .unwrap();
         }
     }
