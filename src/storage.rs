@@ -5,6 +5,8 @@ use crate::{
     error::{Error, ErrorDiscriminant},
 };
 
+use ed25519_dalek::VerifyingKey;
+
 use alloc::{vec, vec::Vec};
 
 pub type KeyEdAddr = FixedBytes<32>;
@@ -51,6 +53,18 @@ impl StoragePassport {
         id: [u8; 4],
     ) -> Result<Address, Error> {
         let addr = self.ed25519_owners.get(accounts.find_key_bytes(id)?);
+        if addr.is_zero() {
+            Err(Error {
+                typ: ErrorDiscriminant::AccountNotFound,
+                cd: vec![],
+            })
+        } else {
+            Ok(addr)
+        }
+    }
+
+    pub fn find_ed25519_key(&self, key: &VerifyingKey) -> Result<Address, Error> {
+        let addr = self.ed25519_owners.get(FixedBytes::new(*key.as_bytes()));
         if addr.is_zero() {
             Err(Error {
                 typ: ErrorDiscriminant::AccountNotFound,

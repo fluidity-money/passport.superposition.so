@@ -90,7 +90,8 @@ and bal_asset =
   | Commit_right_filled_to_bal c -> commit_right_desired_asset c
   | Cancel o -> ord_asset o
 
-and ord_inline_desired_amt Applicative.(`Order_inline { ord_desired_amt; _ }) =
+and order_inline_desired_amt Applicative.(`Order_inline { ord_desired_amt; _ })
+    =
   ord_desired_amt
 
 and ord_onchain_desired_amt (`Order_onchain _) = failwith "TODO"
@@ -110,22 +111,20 @@ and commit_right_amt_unfilled =
 and ord_desired_amt =
   let open Applicative in
   function
-  | Order_inline o -> ord_inline_desired_amt o
+  | Order_inline o -> order_inline_desired_amt o
   | Order_onchain o -> ord_onchain_desired_amt o
   | Commit_left_excess_to_order c -> commit_left_amt_unfilled c
   | Commit_right_excess_to_order c -> commit_right_amt_unfilled c
 
-and ord_inline_desired_asset
+and order_inline_desired_asset
     Applicative.(`Order_inline { ord_desired_asset; _ }) =
   ord_desired_asset
-
-and ord_onchain_desired_asset (`Order_onchain _) = failwith "TODO"
 
 and ord_desired_asset =
   let open Applicative in
   function
-  | Order_inline o -> ord_inline_desired_asset o
-  | Order_onchain o -> ord_onchain_desired_asset o
+  | Order_inline o -> order_inline_desired_asset o
+  | Order_onchain _ -> failwith "TODO"
   | Commit_left_excess_to_order c -> commit_left_desired_asset c
   | Commit_right_excess_to_order c -> commit_right_desired_asset c
 
@@ -208,18 +207,19 @@ and commit_right_inline_amt_unfilled (`Commit_inline (_, l, r)) =
   try ord_amt r - ord_desired_amt l with Checked_sub (_, _, _) -> 0
 
 and apply_bal_inline (State.{ withdrawable; interim; _ } as s)
-    Applicative.(`Bal_inline { bal_owner; bal_asset; bal_amt; _ }) =
+    Applicative.(`Bal_inline { bal_owner; bal_asset; bal_amt; _ } as b) =
   if bal_amt <= 0 then invalid_arg "Balance is zero";
-  let k = State.Asset_owner_key.{ asset = bal_asset; owner = bal_owner } in
   State.
     {
       s with
       interim =
-        Asset_owner.update k
+        Order_state.update
+          (Orders_key.of_apply_inline_bal bal_owner b)
           (function Some v -> Some (v + bal_amt) | None -> Some bal_amt)
           interim;
       withdrawable =
-        Asset_owner.update k
+        Asset_owner.update
+          State.Asset_owner_key.{ asset = bal_asset; owner = bal_owner }
           (function
             | Some withdrawable when bal_amt > withdrawable ->
                 invalid_arg "Not enough withdrawable"
@@ -228,15 +228,12 @@ and apply_bal_inline (State.{ withdrawable; interim; _ } as s)
           withdrawable;
     }
 
-and apply_cancel s (Applicative.Cancel o) =
-  let from_asset = ord_asset o in
-  let desired_asset = ord_desired_asset o in
-  let desired_amt = ord_desired_amt o in
+and apply_cancel s (Applicative.Cancel o as c) =
   let amt = ord_amt o in
   let owner = ord_owner o in
   let s = apply_order s o in
   let State.{ orders; interim; _ } = s in
-  let k = State.Orders_key.{ desired_asset; owner; desired_amt; from_asset } in
+  let k = State.Orders_key.of_apply_ord owner o in
   (* In situations where the user would try to cancel a position
    * with 0 in it, we don't need to adjust the state: *)
   if ord_desired_amt o = 0 then s
@@ -251,8 +248,9 @@ and apply_cancel s (Applicative.Cancel o) =
                   invalid_arg
                     (Format.asprintf
                        "Order amount less than cancel, updating using key \
-                        (%a), tried to take amount %d, only have %d"
-                       State.Orders_key.pp k amt v)
+                        (%a), tried to take amount %d, only have %d. Storage: \
+                        %a"
+                       State.Orders_key.pp k amt v State.pp s)
               | Some v -> Some (v - amt)
               | None as n when amt = 0 -> n
               | None ->
@@ -263,8 +261,8 @@ and apply_cancel s (Applicative.Cancel o) =
                        State.pp s Orders_key.pp k amt))
             orders;
         interim =
-          Asset_owner.update
-            Asset_owner_key.{ asset = from_asset; owner }
+          Order_state.update
+            (Orders_key.of_apply_bal owner c)
             (function Some v -> Some (v + amt) | None -> Some amt)
             interim;
       }
@@ -277,55 +275,53 @@ and apply_bal s = function
       apply_commit s c
   | Applicative.Cancel _ as c -> apply_cancel s c
 
-and apply_order s order =
-  let from_asset = ord_asset order in
-  let owner = ord_owner order in
-  let amt = ord_amt order in
-  let desired_asset = ord_desired_asset order in
-  let desired_amt = ord_desired_amt order in
+and apply_inline_order s Applicative.(`Order_inline { ord_from; _ } as o) =
+  let from_asset = order_inline_asset o in
+  let owner = order_inline_owner o in
+  let amt = order_inline_amt o in
+  let desired_asset = order_inline_desired_asset o in
   if from_asset = desired_asset then
     invalid_arg "Same asset desired as supplied";
-  (* We don't actually do anything unless this is a fresh Order, since
-   * the Commit step will apply the order allocation for
-   * Commit_left_excess_to_order and Commit_right_excess_to_order. *)
+  let s = apply_bal s ord_from in
+  let State.{ orders; interim; _ } = s in
+  State.
+    {
+      s with
+      orders =
+        Order_state.update
+          (Orders_key.of_apply_inline_ord owner o)
+          (function Some v -> Some (v + amt) | None -> Some amt)
+          orders;
+      interim =
+        Order_state.update
+          (Orders_key.of_apply_bal owner ord_from)
+          (function
+            | Some v when amt > v ->
+                invalid_arg
+                  (Format.sprintf
+                     "Not enough interim for order, have %d, want %d" v amt)
+            | Some v -> Some (v - amt)
+            | None -> invalid_arg "no balance for interim order")
+          interim;
+    }
+
+and apply_order s =
   let open Applicative in
-  match order with
-  | Order_inline (`Order_inline { ord_from; _ }) ->
-      let s = apply_bal s ord_from in
-      let State.{ orders; interim; _ } = s in
-      State.
-        {
-          s with
-          orders =
-            State.Order_state.update
-              Orders_key.{ desired_asset; owner; desired_amt; from_asset }
-              (function Some v -> Some (v + amt) | None -> Some amt)
-              orders;
-          interim =
-            Asset_owner.update
-              Asset_owner_key.{ asset = from_asset; owner }
-              (function
-                | Some v when amt > v ->
-                    invalid_arg
-                      (Format.sprintf
-                         "Not enough interim for order, have %d, want %d" v amt)
-                | Some v -> Some (v - amt)
-                | None -> invalid_arg "no balance for interim order")
-              interim;
-        }
+  function
+  | Order_inline c -> apply_inline_order s c
   | Order_onchain (`Order_onchain _) -> failwith "TODO"
   | Commit_left_excess_to_order c | Commit_right_excess_to_order c ->
       apply_commit s c
 
 and apply_inline_commit s (`Commit_inline (_, l, r) as c) =
-  let l_from_asset = ord_asset l in
-  let r_from_asset = ord_asset r in
-  let l_desired_amt = ord_desired_amt l in
-  let r_desired_amt = ord_desired_amt r in
   let l_desired_asset = ord_desired_asset l in
   let r_desired_asset = ord_desired_asset r in
   if not (String.equal (ord_asset r) l_desired_asset) then
-    invalid_arg "Incorrect desired left asset";
+    invalid_arg
+      (Format.sprintf
+         "Incorrect desired left asset: order asset right: %s, left desired \
+          asset: %s"
+         (ord_asset r) l_desired_asset);
   if not (String.equal (ord_asset l) r_desired_asset) then
     invalid_arg "Incorrect desired right asset";
   let l_filled = commit_left_inline_amt_filled c in
@@ -336,74 +332,45 @@ and apply_inline_commit s (`Commit_inline (_, l, r) as c) =
   let r_owner = ord_owner r in
   let s = apply_order (apply_order s l) r in
   let State.{ orders; interim; _ } = s in
-  let set_order x y z = State.Order_state.update x (fun _ -> Some y) z in
-  let set_interim x y z = State.Asset_owner.update x (fun _ -> Some y) z in
+  let set_order_key x y z = State.Order_state.update x (fun _ -> Some y) z in
   (* When a user has their order partially filled, we must also destroy
-   * their previous order and make a new one with the remainder that
-   * they want to fill, so that it can be addressable later. *)
-  let l_desired_unfilled = commit_left_inline_amt_unfilled c in
-  let r_desired_unfilled = commit_right_inline_amt_unfilled c in
+     their previous order and make a new one with the remainder that
+     they want to fill, so that it can be addressable later. *)
+  let l_prev_key = State.Orders_key.of_apply_ord l_owner l in
+  let r_prev_key = State.Orders_key.of_apply_ord r_owner r in
+  let commit_inline = Applicative.Commit_inline c in
+  let l_unfilled_key =
+    State.Orders_key.of_apply_ord l_owner
+      (Commit_left_excess_to_order commit_inline)
+  in
+  let r_unfilled_key =
+    Applicative.(
+      State.Orders_key.of_apply_ord r_owner
+        (Commit_right_excess_to_order commit_inline))
+  in
   let l_filled_key =
-    State.Orders_key.
-      {
-        desired_asset = r_desired_asset;
-        desired_amt = r_desired_amt;
-        owner = r_owner;
-        from_asset = r_from_asset;
-      }
+    State.Orders_key.of_apply_bal l_owner
+      (Commit_left_filled_to_bal commit_inline)
   in
   let r_filled_key =
-    State.Orders_key.
-      {
-        desired_asset = l_desired_asset;
-        desired_amt = l_desired_amt;
-        owner = l_owner;
-        from_asset = l_from_asset;
-      }
-  in
-  let orders = set_order l_filled_key 0 (set_order r_filled_key 0 orders) in
-  (* We only set the orders for the new unfilled amounts if there's
-   * something to be set: *)
-  let orders =
-    if l_desired_unfilled > 0 then
-      set_order
-        State.Orders_key.
-          {
-            desired_asset = l_desired_asset;
-            desired_amt = l_desired_unfilled;
-            owner = l_owner;
-            from_asset = l_from_asset;
-          }
-        l_unfilled orders
-    else orders
-  in
-  let orders =
-    if r_desired_unfilled > 0 then
-      set_order
-        State.Orders_key.
-          {
-            desired_asset = r_desired_asset;
-            desired_amt = r_desired_unfilled;
-            owner = r_owner;
-            from_asset = r_from_asset;
-          }
-        r_unfilled orders
-    else orders
+    State.Orders_key.of_apply_bal r_owner
+      (Commit_right_filled_to_bal commit_inline)
   in
   State.
     {
       s with
       interim =
-        set_interim
-          Asset_owner_key.{ asset = r_desired_asset; owner = r_owner }
-          r_filled
-          (set_interim
-             Asset_owner_key.{ asset = l_desired_asset; owner = l_owner }
-             l_filled interim);
-      orders;
+        set_order_key l_filled_key l_filled
+          (set_order_key r_filled_key r_filled interim);
+      orders =
+        set_order_key l_unfilled_key l_unfilled
+          (set_order_key r_unfilled_key r_unfilled
+             (set_order_key l_prev_key 0 (set_order_key r_prev_key 0 orders)));
     }
 
-and apply_commit s = let open Applicative in function
+and apply_commit s =
+  let open Applicative in
+  function
   | Commit_inline o -> apply_inline_commit s o
   | Commit_onchain _ -> failwith "TODO"
 
@@ -413,24 +380,24 @@ and apply_withdraw s (Applicative.Withdraw b) =
   let amt = bal_amt b in
   let s = apply_bal s b in
   let State.{ interim; withdrawable; _ } = s in
-  let k = State.Asset_owner_key.{ asset; owner } in
+  let interim_k = State.Orders_key.of_apply_bal owner b in
   State.
     {
       s with
       interim =
-        Asset_owner.update k
+        State.Order_state.update interim_k
           (function
             | Some v when amt > v ->
                 invalid_arg
                   (Format.asprintf
                      "Not enough interim state (%a), key (%a), needed: %d, \
                       only have %d"
-                     State.pp s State.Asset_owner_key.pp k amt v)
+                     State.pp s State.Orders_key.pp interim_k amt v)
             | Some v -> Some (v - amt)
             | None -> invalid_arg "No interim balance")
           interim;
       withdrawable =
-        Asset_owner.update k
+        Asset_owner.update Asset_owner_key.{ asset ; owner }
           (function Some v -> Some (v + amt) | None -> Some amt)
           withdrawable;
     }

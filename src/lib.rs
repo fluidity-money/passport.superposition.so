@@ -8,7 +8,7 @@ pub mod entry;
 pub mod error;
 pub mod result;
 
-pub mod crypto;
+pub mod conversion;
 
 pub mod solver_context;
 pub mod user_context;
@@ -18,9 +18,7 @@ pub mod immutables;
 pub mod accounts;
 
 pub mod applicative;
-pub mod snowflake;
 pub mod state_machine;
-pub mod conversion;
 
 pub mod encoding;
 pub mod ops;
@@ -36,8 +34,7 @@ use {
     stylus_sdk::alloy_sol_types::{SolError, sol},
 };
 
-#[cfg(target_arch = "wasm32")]
-use crate::{ops::Op, storage::StoragePassport};
+pub use crate::{ops::Op, storage::StoragePassport};
 
 sol!("src/IErrors.sol");
 

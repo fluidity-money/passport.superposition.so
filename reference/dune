@@ -1,9 +1,0 @@
-(executable
- (name reference)
- (preprocess (pps ppx_deriving.ord ppx_deriving.show ppx_deriving.eq))
- (libraries
-  ounit2
-  qcheck-core
-  qcheck-core.runner
-  qcheck-ounit
-  ppx_deriving.runtime))

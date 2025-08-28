@@ -1,10 +1,11 @@
 #![cfg(not(target_arch = "wasm32"))]
 
 use libpassport::{
-    accounts::*, applicative::*, crypto::validate, error::*, solver_context::*, user_context::*,
+  StoragePassport,
+    accounts::*, applicative::*, error::*, solver_context::*, user_context::*,
 };
 
-use stylus_sdk::alloy_primitives::{Address, U256};
+use stylus_sdk::alloy_primitives::Address;
 
 use proptest::prelude::*;
 
@@ -165,7 +166,7 @@ fn convert_test_balance<T: UserApplicative, S: SolverApplicative>(
                     amount,
                     ms_timestamp,
                 },
-        }) => Ok(user_app.balance(asset.x, *chain, amount.x, *ms_timestamp)),
+        }) => Ok(user_app.balance(asset.x, *chain, *amount, *ms_timestamp)),
         TestBalance::CommitLeftFilledToBalance(test_commit) => {
             let converted_commit = convert_test_commit(user_app, solver_app, test_commit)?;
             user_app.commit_left_filled_to_balance(converted_commit)
@@ -187,10 +188,10 @@ fn convert_test_order<T: UserApplicative, S: SolverApplicative>(
             let converted_from = convert_test_balance(user_app, solver_app, &order_inside.from)?;
             let args = &order_inside.args;
             user_app.order(
-                args.from_amt.x,
+                args.from_amt,
                 args.desired_asset.x,
                 args.desired_chain,
-                args.desired_amt.x,
+                args.desired_amt,
                 converted_from,
             )
         }
@@ -242,10 +243,10 @@ fn convert<T: UserApplicative, S: SolverApplicative>(
             user_app.withdraw(solver_sig, converted_balance)
         }
         Entry::Order(test_balance) => user_app.order(
-            U256::from(0),
+            0,
             Address::default(),
             0,
-            U256::from(0),
+            0,
             convert_test_balance(user_app, solver_app, test_balance)?,
         ),
         Entry::Cancel(test_order) => {
@@ -287,6 +288,7 @@ proptest! {
             signer_key
         );
         let converted = convert(&user_ctx, &solver_ctx, &e).unwrap();
-        validate(&user_ctx.accounts, &converted).unwrap();
+        let mut s = StoragePassport::from(&stylus_sdk::testing::vm::TestVM::new());
+        s.validate(&user_ctx.accounts, converted).unwrap();
     }
 }

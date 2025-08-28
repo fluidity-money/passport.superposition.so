@@ -1,0 +1,17 @@
+(library
+ (name passport)
+ (public_name passport_superposition_so)
+ (preprocess
+  (pps
+   ppx_deriving.ord
+   ppx_deriving.show
+   ppx_deriving.eq
+   ppx_deriving_qcheck
+   ppx_sexp_conv))
+ (libraries
+  qcheck-core
+  qcheck-core.runner
+  qcheck-ounit
+  ppx_deriving.runtime
+  ppx_deriving_qcheck
+  ppx_sexp_conv.runtime-lib))

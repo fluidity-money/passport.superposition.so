@@ -20,6 +20,6 @@
  (name passport_superposition_so)
  (synopsis "Reference implementation of Superposition Passport, with mocked storage.")
  (description "Superposition Passport (OCaml edition) is a mocked implementation of Superposition's in-house rollup engine, built using Arbitrum Stylus. It aggregates signatures and performs an on-chain coincidence of wants matching. It is inherently cross-chain using Hyperlane and Espresso, so it's implementation is mocked in this reference.")
- (depends ocaml ounit2 qcheck ppx_deriving)
+ (depends ocaml ounit2 qcheck ppx_deriving ppx_deriving_qcheck qcheck ppx_hash)
  (tags
   (arbitrum web3 stylus rollup)))

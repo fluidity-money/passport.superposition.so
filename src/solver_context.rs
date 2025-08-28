@@ -2,7 +2,7 @@ use ed25519_dalek::SigningKey;
 
 use crate::{
     applicative::{Applicative, ArgsCommit, SolverApplicative},
-    crypto::{sign_cancel, sign_commit, sign_withdraw},
+    conversion::{sign_cancel, sign_commit, sign_withdraw},
     error::Error,
 };
 

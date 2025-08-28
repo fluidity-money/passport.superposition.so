@@ -30,6 +30,10 @@ pub enum Nonce {
     Withdraw,
     Cancel,
     Join,
+    CommitLeftFilledToBalance,
+    CommitRightFilledToBalance,
+    CommitLeftExcessToOrder,
+    CommitRightExcessToOrder,
 }
 
 impl From<Nonce> for u8 {

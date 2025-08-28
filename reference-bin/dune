@@ -1,0 +1,9 @@
+(executable
+ (name reference)
+ (public_name reference)
+ (libraries
+  passport_superposition_so
+  ounit2
+  qcheck-core
+  qcheck-core.runner
+  qcheck-ounit))
