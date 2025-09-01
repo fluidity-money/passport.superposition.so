@@ -9,6 +9,7 @@ pub mod error;
 pub mod result;
 
 pub mod conversion;
+pub mod apply;
 
 pub mod solver_context;
 pub mod user_context;

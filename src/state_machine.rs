@@ -21,8 +21,13 @@ pub enum Balance {
 }
 
 #[derive(Clone, Debug, PartialEq)]
+pub struct CommitArgs {
+    pub ms_ts: u128
+}
+
+#[derive(Clone, Debug, PartialEq)]
 pub enum Commit {
-    Inline(Box<Order>, Box<Order>, Hash),
+    Inline(CommitArgs, Box<Order>, Box<Order>, Hash),
     Onchain(Hash),
 }
 

@@ -12,7 +12,7 @@ use borsh::{BorshDeserialize, BorshSerialize};
 
 /// Simple list that's sent with every Applicative form to the contract
 /// with the list of the unique addresses involved with the calldata.
-#[derive(BorshDeserialize, BorshSerialize, Debug, PartialEq, Eq)]
+#[derive(BorshDeserialize, BorshSerialize, Debug, PartialEq, Eq, Clone)]
 pub struct AccountsList {
     pub solver: [u8; 32],
     keys: Vec<[u8; 32]>,
@@ -22,7 +22,7 @@ pub struct AccountsList {
 /// expanded list that's sent to the program.
 pub type AccountId = [u8; 4];
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct AccountsExpanded {
     pub solver: VerifyingKey,
     keys: HashMap<VerifyingKey, AccountId>,
@@ -69,9 +69,9 @@ impl From<AccountsList> for AccountsExpanded {
 /// Expanded form from the AccountsList, with a simple hashmap for simple
 /// lookup of account info.
 impl AccountsExpanded {
-    pub fn with_solver(self, key: [u8; 32]) -> Result<Self, Error> {
+    pub fn with_solver(self, key: &[u8; 32]) -> Result<Self, Error> {
         Ok(Self {
-            solver: VerifyingKey::from_bytes(&key).map_err(|_| err_bad_verifying_key())?,
+            solver: VerifyingKey::from_bytes(key).map_err(|_| err_bad_verifying_key())?,
             keys: self.keys,
             ids: self.ids,
         })

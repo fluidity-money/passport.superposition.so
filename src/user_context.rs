@@ -24,8 +24,8 @@ pub struct UserContext {
 
 impl UserContext {
     /// Create a new Accounts and register the Signer given.
-    pub fn new_from_bytes(accounts: AccountsExpanded, signer_b: [u8; 32]) -> Self {
-        let key = SigningKey::from_bytes(&signer_b);
+    pub fn new_from_bytes(accounts: AccountsExpanded, signer_b: &[u8; 32]) -> Self {
+        let key = SigningKey::from_bytes(signer_b);
         UserContext {
             accounts: accounts.register(key.verifying_key()),
             signer: key,

@@ -59,8 +59,11 @@ pub enum ErrorDiscriminant {
     /// Unable to sign a prehashed blob.
     UnableToSignPrehashed,
 
-    /// The convert stage couldn't find the address given.
-    AccountNotFound,
+    /// The convert stage couldn't find the ID given.
+    AccountIdNotFound([u8; 4]),
+
+    /// The convert stage couldn't find the address.
+    AccountKeyNotFound(String),
 
     /// A bad conversion from took place from the applicative form to the
     /// state machine form.
@@ -78,6 +81,16 @@ pub enum ErrorDiscriminant {
 
     /// No left excess is available to the user from this commit!
     NoLeftExcess,
+
+    /// Checked sub overflow in the math!
+    CheckedSub(u128, u128),
+
+    /// Checked add overflow in the math!
+    CheckedAdd(u128, u128),
+
+    SameAssets,
+
+    BadAssetAsks,
 }
 
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]

@@ -1,24 +1,23 @@
 use crate::{
     accounts::AccountsExpanded, applicative::Applicative, error::Error,
-    storage::StoragePassport, state_machine::StateMachine,
+    state_machine::StateMachine, storage::StoragePassport,
 };
 
 /// Helper trait for operating on the core business logic of the passport.
 /// Read the README for more.
 pub trait Application {
     fn convert(&self, accounts: &AccountsExpanded, ap: Applicative) -> Result<StateMachine, Error>;
-    fn apply(&mut self, m: StateMachine) -> Result<(), Error>;
+    fn application(&mut self, m: StateMachine) -> Result<(), Error>;
 }
 
 impl Application for StoragePassport {
     fn convert(&self, accounts: &AccountsExpanded, ap: Applicative) -> Result<StateMachine, Error> {
+        // This step should also check if the user's balance is enough to service
+        // the amounts.
         self.validate(accounts, ap)
     }
 
-    fn apply(
-        &mut self,
-        _ap: StateMachine,
-    ) -> Result<(), Error> {
-        todo!()
+    fn application(&mut self, ap: StateMachine) -> Result<(), Error> {
+        self.apply(ap)
     }
 }

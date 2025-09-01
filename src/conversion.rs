@@ -139,7 +139,9 @@ fn get_bal_hash(st: &state_machine::Balance) -> Hash {
         Balance::Inline(_, h)
         | Balance::CommitLeftFilledToBal(_, h)
         | Balance::CommitRightFilledToBal(_, h)
-        | Balance::Onchain(h) | Balance::Cancel(_, h) | Balance::Join(_, _, h) => *h,
+        | Balance::Onchain(h)
+        | Balance::Cancel(_, h)
+        | Balance::Join(_, _, h) => *h,
     }
 }
 
@@ -156,7 +158,7 @@ fn get_order_hash(st: &state_machine::Order) -> Hash {
 fn get_commit_hash(st: &state_machine::Commit) -> Hash {
     use state_machine::Commit;
     match st {
-        Commit::Inline(_, _, h) | Commit::Onchain(h) => *h,
+        Commit::Inline(_, _, _, h) | Commit::Onchain(h) => *h,
     }
 }
 
@@ -330,6 +332,7 @@ impl StoragePassport {
         let left_hash = get_order_hash(&left_order);
         let right_hash = get_order_hash(&right_order);
         Ok(state_machine::Commit::Inline(
+            state_machine::CommitArgs { ms_ts: args.ms_timestamp },
             Box::new(left_order),
             Box::new(right_order),
             check_sig(
@@ -464,28 +467,16 @@ impl StoragePassport {
                 self.validate_commit(accounts, &solver_sig, &args, &ap1, &ap2)?,
             )),
             Applicative::CommitLeftFilledToBalance(ap) => Ok(StateMachine::Balance(
-                self.validate_commit_left_filled_to_bal(
-                    accounts,
-                    &ap,
-                )?,
+                self.validate_commit_left_filled_to_bal(accounts, &ap)?,
             )),
             Applicative::CommitRightFilledToBalance(ap) => Ok(StateMachine::Balance(
-                self.validate_commit_right_filled_to_bal(
-                    accounts,
-                    &ap,
-                )?,
+                self.validate_commit_right_filled_to_bal(accounts, &ap)?,
             )),
             Applicative::CommitLeftExcessToOrder(ap) => Ok(StateMachine::Order(
-                self.validate_commit_left_excess_to_order(
-                    accounts,
-                    &ap,
-                )?,
+                self.validate_commit_left_excess_to_order(accounts, &ap)?,
             )),
             Applicative::CommitRightExcessToOrder(ap) => Ok(StateMachine::Order(
-                self.validate_commit_right_excess_to_order(
-                    accounts,
-                    &ap,
-                )?,
+                self.validate_commit_right_excess_to_order(accounts, &ap)?,
             )),
             Applicative::Join(user_sig, left, right) => Ok(StateMachine::Balance(
                 self.validate_join(accounts, &user_sig, &left, &right)?,

@@ -1,11 +1,13 @@
 #![cfg(not(target_arch = "wasm32"))]
 
 use libpassport::{
-  StoragePassport,
     accounts::*, applicative::*, error::*, solver_context::*, user_context::*,
+    utils::strat_address_not_empty, StoragePassport,
 };
 
-use stylus_sdk::alloy_primitives::Address;
+use ed25519_dalek::SigningKey;
+
+use stylus_sdk::alloy_primitives::{Address, FixedBytes};
 
 use proptest::prelude::*;
 
@@ -277,18 +279,24 @@ fn convert<T: UserApplicative, S: SolverApplicative>(
 proptest! {
     #[test]
     fn test_conversions(
-        solver_key in any::<[u8; 32]>(),
-        signer_key in any::<[u8; 32]>(),
+        solver_priv_key in any::<[u8; 32]>(),
+        signer_priv_key in any::<[u8; 32]>(),
+        solver_addr in strat_address_not_empty(),
         e: Entry
     ) {
-        let solver_ctx = SolverContext::new_from_bytes(solver_key);
+        let solver_priv = SigningKey::from_bytes(&solver_priv_key);
+        let signer_priv = SigningKey::from_bytes(&signer_priv_key);
+        let solver_key = solver_priv.verifying_key();
+        let signer_key = signer_priv.verifying_key();
+        let solver_ctx = SolverContext::new_from_bytes(solver_priv.as_bytes());
         // Implicitly registers the solver key.
         let user_ctx = UserContext::new_from_bytes(
-            AccountsExpanded::default().with_solver(solver_key).unwrap(),
-            signer_key
+            AccountsExpanded::default().with_solver(solver_key.as_bytes()).unwrap(),
+            signer_key.as_bytes()
         );
         let converted = convert(&user_ctx, &solver_ctx, &e).unwrap();
         let mut s = StoragePassport::from(&stylus_sdk::testing::vm::TestVM::new());
+        s.ed25519_owners.setter(FixedBytes::new(signer_priv_key)).set(solver_addr);
         s.validate(&user_ctx.accounts, converted).unwrap();
     }
 }

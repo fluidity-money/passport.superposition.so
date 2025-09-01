@@ -204,8 +204,8 @@ let _test_simple _ =
                                  bal_asset = "AAA";
                                  bal_amt = 1;
                                });
-                               ord_max_pol_fee = 0;
-                               ord_partial_fill_okay = true;
+                        ord_max_pol_fee = 0;
+                        ord_partial_fill_okay = true;
                       }),
                  Order_inline
                    (`Order_inline
@@ -221,8 +221,8 @@ let _test_simple _ =
                                  bal_asset = "AAAA";
                                  bal_amt = 1;
                                });
-                               ord_max_pol_fee = 0;
-                               ord_partial_fill_okay = true;
+                        ord_max_pol_fee = 0;
+                        ord_partial_fill_okay = true;
                       }) ))))
   in
   let s = State.state_of_app (`Withdraw w) in
