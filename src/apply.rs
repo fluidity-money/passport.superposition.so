@@ -8,6 +8,8 @@ use crate::{
     storage::StoragePassport,
 };
 
+use alloc::vec;
+
 pub type R<T> = Result<T, Error>;
 
 fn err_same_assets() -> Error {

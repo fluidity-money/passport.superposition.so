@@ -1,5 +1,7 @@
 use stylus_sdk::alloy_primitives::*;
 
+use alloc::boxed::Box;
+
 pub type Hash = [u8; 64];
 
 #[derive(Clone, Debug, PartialEq)]

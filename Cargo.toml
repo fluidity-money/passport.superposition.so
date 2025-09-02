@@ -54,12 +54,12 @@ mini-alloc = "0.7.0"
 mutants = "0.0.3"
 paste = "1.0.15"
 sha2 = { version = "0.10.9", default-features = false }
-tiny-keccak = "2.0.2"
+subtle = { version = "2.6.1", default-features = false }
 
 [dependencies.ed25519-dalek]
 version = "2.1.1"
 default-features = false
-features = ["alloc", "fast", "digest"]
+features = ["digest"]
 
 [dependencies.stylus-sdk]
 # This version of the SDK is considered insecure, but we can't upgrade due to stylus-core
@@ -88,11 +88,11 @@ features = ["allocator-api2", "default-hasher", "equivalent", "raw-entry"]
 proptest-derive = "0.6.0"
 proptest = "1.5.0"
 arbitrary = { version = "1.4.1", features = ["derive"] }
-alloy-primitives = { version = "=0.8.20", default-features = false, features = ["arbitrary"] }
+alloy-primitives = { version = "=0.8.20", default-features = false, features = ["tiny-keccak", "arbitrary"] }
+clap = { version = "4.5.46", features = ["derive"] }
 
 [dev-dependencies]
 const-hex = { version = "1.12.0", features = ["alloc"] }
-alloy-primitives = { version = "=0.8.20", default-features = false, features = ["arbitrary"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies.stylus-sdk]
 version = "=0.8.3"

@@ -48,7 +48,7 @@ pub enum ErrorDiscriminant {
     BadVerifyingKey,
 
     /// Bad verifying of a signature using strict methods.
-    BadStrictVerify(ApplicativeLabel),
+    BadStrictVerify,
 
     /// The signer wasn't found using their id.
     SignerNotFoundId([u8; 4]),
@@ -63,7 +63,7 @@ pub enum ErrorDiscriminant {
     AccountIdNotFound([u8; 4]),
 
     /// The convert stage couldn't find the address.
-    AccountKeyNotFound(String),
+    AccountKeyNotFound,
 
     /// A bad conversion from took place from the applicative form to the
     /// state machine form.
@@ -91,6 +91,16 @@ pub enum ErrorDiscriminant {
     SameAssets,
 
     BadAssetAsks,
+
+    Erc20TransferFromCall,
+
+    Erc20TransferFromDecode,
+
+    Erc20TransferFromFalse,
+
+    Erc20BalanceOfCall,
+
+    Erc20BalanceOfDecode,
 }
 
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
@@ -155,9 +165,13 @@ pub fn err(x: ErrorDiscriminant) -> R {
     err_cd(x, vec![])
 }
 
-pub const NOTHING: R = Ok(Res::NOTHING);
+pub const NOOP: R = Ok(Res::Noop);
 
-pub const DONE: R = Ok(Res::DONE);
+pub const DONE_UNIT: R = Ok(Res::DoneUnit);
+
+pub fn DONE_U128(x: u128) -> R {
+    Ok(Res::DoneU128(x))
+}
 
 #[macro_export]
 macro_rules! require {

@@ -12,7 +12,7 @@ CARGO_BUILD_STYLUS := \
 		--bin \
 		contract
 
-RELEASE_WASM_OPT_9LIVES := \
+RELEASE_PASSPORT_WASM := \
 	wasm-opt \
 		--dce \
 		--rse \
@@ -37,7 +37,7 @@ passport-superposition-so: passport-superposition-so.wasm
 passport-superposition-so.wasm: $(shell find src -type f -name '*.rs')
 	@rm -f passport-superposition-so.wasm
 	@${CARGO_BUILD_STYLUS}
-	@${RELEASE_WASM_OPT_9LIVES} passport-superposition-so.wasm
+	@${RELEASE_PASSPORT_WASM} passport-superposition-so.wasm
 
 generator.out: $(shell find src -type f -name '*.rs')
 	@rm -f generator.out

@@ -34,6 +34,8 @@ pub struct StoragePassport {
     pub interim: StorageTickets,
 }
 
+unsafe impl stylus_sdk::stylus_core::storage::TopLevelStorage for StoragePassport {}
+
 #[cfg(not(target_arch = "wasm32"))]
 impl Default for StoragePassport {
     fn default() -> Self {
@@ -78,7 +80,7 @@ impl StoragePassport {
         let addr = self.ed25519_owners.get(FixedBytes::new(k));
         if addr.is_zero() {
             Err(Error {
-                typ: ErrorDiscriminant::AccountKeyNotFound(const_hex::encode(k)),
+                typ: ErrorDiscriminant::AccountKeyNotFound,
                 cd: vec![],
             })
         } else {

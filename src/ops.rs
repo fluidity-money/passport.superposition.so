@@ -4,7 +4,7 @@
 // converting to a derived state, which the program interrogates to
 // transfer ownership and partial amounts.
 
-use crate::{applicative::Applicative, encoding::*};
+use crate::{applicative::Applicative, encoding::*, accounts::AccountsList};
 
 use borsh::{BorshDeserialize, BorshSerialize};
 
@@ -14,8 +14,8 @@ use borsh::{BorshDeserialize, BorshSerialize};
 #[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq, Debug)]
 pub struct Permit {
     pub owner: BAddress,
-    pub value: BU256,
-    pub deadline: BU256,
+    pub value: u128,
+    pub deadline: u128,
     pub r: [u8; 32],
     pub s: [u8; 32],
     pub v: u8,
@@ -24,7 +24,7 @@ pub struct Permit {
 #[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq, Debug)]
 pub struct DepositUnusedLiquidity {
     pub asset: BAddress,
-    pub amount: BU256,
+    pub amount: u128,
     pub permit: Option<Permit>,
     pub ed_association_addr: EdAddr
 }
@@ -44,5 +44,5 @@ pub enum Op {
     // of every interaction. Each excess value creates a new value that could be
     // spent in the same transaction, or committed to the reusable pool of
     // on-chain state.
-    Solve(Applicative)
+    Solve(AccountsList, Applicative)
 }

@@ -27,7 +27,7 @@ pub mod storage;
 
 pub mod utils;
 
-pub mod application;
+mod call_erc20;
 
 #[allow(unused)]
 use {
@@ -45,10 +45,11 @@ pub unsafe fn mark_used() {
     panic!();
 }
 
+pub type OurLzss = lzss::Lzss<12, 11, 0, { 1 << 12 }, { 2 << 12 }>;
+
 #[no_mangle]
 #[cfg(target_arch = "wasm32")]
 pub extern "C" fn user_entrypoint(len: usize) -> usize {
-    type OurLzss = lzss::Lzss<12, 11, 0, { 1 << 12 }, { 2 << 12 }>;
     let vm = stylus_sdk::host::VM(stylus_sdk::host::WasmVM {});
     let args = OurLzss::decompress_stack(
         lzss::SliceReader::new(&stylus_sdk::contract::args(len)),
@@ -66,7 +67,7 @@ pub extern "C" fn user_entrypoint(len: usize) -> usize {
         Op::Dummy => store.dummy(),
         Op::QueryUnusedLiquidity(addr) => store.query_unused_liq(addr),
         Op::DepositUnusedLiquidity(l) => store.deposit_unused_liq(l),
-        Op::Solve(args) => store.solve(args),
+        Op::Solve(accounts, args) => store.solve(accounts, args),
     };
     stylus_sdk::storage::StorageCache::flush();
     let rd = match r {
@@ -81,18 +82,4 @@ pub extern "C" fn user_entrypoint(len: usize) -> usize {
         .abi_encode(),
     });
     rd
-}
-
-// We need this function due to a bug in the SDK if this is compiled for
-// the native host.
-#[cfg(not(target_arch = "wasm32"))]
-#[no_mangle]
-pub unsafe extern "C" fn native_keccak256(bytes: *const u8, len: usize, output: *mut u8) {
-    use core::slice;
-    use tiny_keccak::{Hasher, Keccak};
-    let mut hasher = Keccak::v256();
-    let data = unsafe { slice::from_raw_parts(bytes, len) };
-    hasher.update(data);
-    let output = unsafe { slice::from_raw_parts_mut(output, 32) };
-    hasher.finalize(output);
 }

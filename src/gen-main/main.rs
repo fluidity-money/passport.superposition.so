@@ -1,12 +1,15 @@
-/*
 use clap::Parser;
 
-use libpassport::ops::Op;
+use libpassport::{ops::Op, OurLzss};
 
 #[derive(Clone)]
 struct OurOp {
     op: Op,
 }
+
+use lzss::{SliceReader, VecWriter};
+
+use std::str::FromStr;
 
 impl std::str::FromStr for OurOp {
     type Err = String;
@@ -26,12 +29,12 @@ struct Args {
 fn main() {
     println!(
         "{}",
-        const_hex::encode(match Args::parse().op.op {
-            Op::Dummy => borsh::to_vec(&Op::Dummy).unwrap(),
-            _ => unimplemented!(),
-        })
+        const_hex::encode(
+            OurLzss::compress_stack(
+                SliceReader::new(&borsh::to_vec(&Args::parse().op.op).unwrap()),
+                VecWriter::with_capacity(1024 * 10),
+            )
+            .unwrap()
+        )
     );
 }
-*/
-
-fn main() {}

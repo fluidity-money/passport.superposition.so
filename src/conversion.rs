@@ -14,21 +14,19 @@ use ed25519_dalek::{Signature, SigningKey, VerifyingKey};
 
 use sha2::{digest::Digest, Sha512};
 
-use alloc::{format, string::String, vec::Vec};
+use alloc::{vec::Vec, boxed::Box};
 
-fn err_str(d: ErrorDiscriminant, msg: String) -> Error {
+fn err_sig() -> Error {
     Error {
-        typ: d,
-        cd: msg.as_bytes().to_vec(),
+        typ: ErrorDiscriminant::BadStrictVerify,
+        cd: Vec::new()
+    }}
+
+fn err_prehashed() -> Error {
+    Error {
+        typ: ErrorDiscriminant::UnableToSignPrehashed,
+        cd: Vec::new()
     }
-}
-
-fn err_sig(label: ApplicativeLabel, msg: String) -> Error {
-    err_str(ErrorDiscriminant::BadStrictVerify(label), msg)
-}
-
-fn err_prehashed(msg: String) -> Error {
-    err_str(ErrorDiscriminant::UnableToSignPrehashed, msg)
 }
 
 pub type Hash = [u8; 64];
@@ -40,7 +38,6 @@ fn check_sig(
     sig: &[u8; 64],
     msg: &[u8],
     prev_digest: &[u8],
-    from: ApplicativeLabel,
 ) -> ValidateCarry {
     let d = Sha512::default()
         .chain_update(msg)
@@ -49,13 +46,13 @@ fn check_sig(
         .verify_prehashed_strict(
             d.clone(),
             None,
-            &Signature::from_slice(sig).map_err(|err| err_sig(from, format!("{err}")))?,
+            &Signature::from_slice(sig).map_err(|_| err_sig())?,
         )
-        .map_err(|err| {
+        .map_err(|_| {
             // When it comes to returning the error here, we can do so since the
             // caller will revert so we can be excessive with the penalties of
             // encoding a message.
-            err_sig(from, format!("{err}"))
+            err_sig()
         })?;
     Ok(d.finalize().into())
 }
@@ -67,7 +64,6 @@ fn check_sig_two(
     sig2: &[u8; 64],
     msg: &[u8],
     prev_digest: &[u8],
-    from: ApplicativeLabel,
 ) -> ValidateCarry {
     let d = Sha512::default()
         .chain_update(msg)
@@ -76,16 +72,16 @@ fn check_sig_two(
         .verify_prehashed_strict(
             d.clone(),
             None,
-            &Signature::from_slice(sig1).map_err(|err| err_sig(from, format!("{err}")))?,
+            &Signature::from_slice(sig1).map_err(|_| err_sig())?,
         )
-        .map_err(|err| err_sig(from, format!("{err}")))?;
+        .map_err(|_| err_sig())?;
     verifying_key2
         .verify_prehashed_strict(
             d.clone(),
             None,
-            &Signature::from_slice(sig2).map_err(|err| err_sig(from, format!("{err}")))?,
+            &Signature::from_slice(sig2).map_err(|_| err_sig())?,
         )
-        .map_err(|err| err_sig(from, format!("{err}")))?;
+        .map_err(|_| err_sig())?;
     Ok(d.finalize().into())
 }
 
@@ -97,7 +93,7 @@ pub fn make_sig(key: &SigningKey, sig: &[u8], prev_digest: &[u8]) -> Result<[u8;
                 .chain_update(prev_digest),
             None,
         )
-        .map_err(|msg| err_prehashed(format!("{msg}")))?
+        .map_err(|_| err_prehashed())?
         .to_bytes())
 }
 
@@ -176,7 +172,6 @@ impl StoragePassport {
             owner_sig,
             &serialise_inplace::<_, { size_of::<ArgsBalance>() }>(ap),
             &[],
-            ApplicativeLabel::Balance,
         )?;
         Ok(state_machine::Balance::Inline(
             state_machine::BalanceArgs {
@@ -255,7 +250,6 @@ impl StoragePassport {
             owner_sig,
             &digest_inplace::<_, { size_of::<ArgsOrder>() }>(args),
             &bal_hash,
-            ApplicativeLabel::Order,
         )?;
         Ok(state_machine::Order::Inline(
             state_machine::OrderArgs {
@@ -340,7 +334,6 @@ impl StoragePassport {
                 solver_sig,
                 &digest_inplace::<_, { size_of::<ArgsCommit>() }>(args),
                 &chain_digests(&left_hash, &right_hash),
-                ApplicativeLabel::Commit,
             )?,
         ))
     }
@@ -378,7 +371,6 @@ impl StoragePassport {
         // Since the argument to the right isn't known in the type here, we
         // validate the signature, and we feed the computed digest into a
         // concatenation here. Very stack expensive.
-        let l = ApplicativeLabel::Withdraw;
         let bal = self.validate_wrapped_balance(label(ap), accounts, ap)?;
         let bal_hash = get_bal_hash(&bal);
         Ok(state_machine::Withdraw::Inline(
@@ -390,7 +382,6 @@ impl StoragePassport {
                 owner_sig,
                 &[Nonce::Withdraw.into()],
                 &bal_hash,
-                l,
             )?,
         ))
     }
@@ -413,7 +404,6 @@ impl StoragePassport {
                 owner_sig,
                 &[Nonce::Cancel.into()],
                 &order_hash,
-                ApplicativeLabel::Cancel,
             )?,
         ))
     }
@@ -438,7 +428,6 @@ impl StoragePassport {
                 owner_sig,
                 &[Nonce::Join.into()],
                 &chain_digests(&left_hash, &right_hash),
-                ApplicativeLabel::Join,
             )?,
         ))
     }

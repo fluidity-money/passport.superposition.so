@@ -4,8 +4,11 @@ use borsh::{BorshDeserialize, BorshSerialize};
 #[derive(BorshSerialize, BorshDeserialize)]
 pub enum Res {
     /// This operation triggered a dummy interaction.
-    NOTHING,
+    Noop,
 
     /// The equivalent of returning a unit after a stateful action.
-    DONE,
+    DoneUnit,
+
+    /// A number was returned alongside correct execution.
+    DoneU128(u128)
 }
