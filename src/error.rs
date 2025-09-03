@@ -101,6 +101,16 @@ pub enum ErrorDiscriminant {
     Erc20BalanceOfCall,
 
     Erc20BalanceOfDecode,
+
+    Erc20TransferCall,
+
+    Erc20TransferDecode,
+
+    Erc20TransferFalse,
+
+    /// This happens if the amount that the user asked to transition from their balance to their
+    /// order is incorrect during the Order stage.
+    BalanceTransitionToOrderBad,
 }
 
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]

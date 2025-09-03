@@ -15,8 +15,10 @@ impl StoragePassport {
         DONE_UNIT
     }
 
-    pub fn query_unused_liq(&self, _addr: BAddress) -> R {
-        NOOP
+    pub fn query_unused_liq(&self, addr: BAddress, asset: BAddress) -> R {
+        DONE_U128(u128::from_le_bytes(
+            self.withdrawable.getter(addr.x).get(asset.x).to_le_bytes(),
+        ))
     }
 
     pub fn deposit_unused_liq(
@@ -25,11 +27,14 @@ impl StoragePassport {
             asset,
             amount,
             permit,
-            ed_association_addr,
+            association,
         }: DepositUnusedLiquidity,
     ) -> R {
         if let Some(_) = permit {
             todo!();
+        }
+        if let Some((_ed_addr, _ed_sig)) = association {
+            todo!()
         }
         let sender = self.vm().msg_sender();
         call_erc20::transfer_from(

@@ -254,6 +254,7 @@ impl StoragePassport {
         Ok(state_machine::Order::Inline(
             state_machine::OrderArgs {
                 desired_asset: args.desired_asset.x,
+                from_amt: args.from_amt,
                 desired_amt: args.desired_amt,
                 max_pol_fee: 0,              // TODO
                 ord_partial_fill_okay: true, // TODO

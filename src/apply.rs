@@ -1,7 +1,8 @@
-use stylus_sdk::alloy_primitives::Address;
+use stylus_sdk::{prelude::HostAccess, alloy_primitives::{Address, U256}};
 
 use crate::{
     error::{Error, ErrorDiscriminant},
+    call_erc20,
     state_machine::{
         Balance, BalanceArgs, Commit, CommitArgs, Order, OrderArgs, StateMachine, Withdraw,
     },
@@ -23,6 +24,13 @@ fn err_bad_asset_asks() -> Error {
     Error {
         typ: ErrorDiscriminant::BadAssetAsks,
         cd: vec![],
+    }
+}
+
+fn err_bad_balance_from_order() -> Error {
+    Error {
+        typ: ErrorDiscriminant::BalanceTransitionToOrderBad,
+        cd: vec![]
     }
 }
 
@@ -117,8 +125,7 @@ pub fn commit_right_amount_unfilled(o: &Commit) -> R<u128> {
 
 pub fn order_amount(o: &Order) -> R<u128> {
     match o {
-        // TODO: let the user supply the balance to spend from the ticket.
-        Order::Inline(_, b, _) => balance_amount(b),
+        Order::Inline(OrderArgs { from_amt, .. }, _, _) => Ok(*from_amt),
         Order::Onchain(_) => todo!(),
         Order::CommitLeftExcessToOrder(c, _) => commit_left_amount_unfilled(c),
         Order::CommitRightExcessToOrder(c, _) => commit_right_amount_unfilled(c),
@@ -295,15 +302,21 @@ impl StoragePassport {
     pub fn apply_inline_order(&mut self, o: &Order) -> R<()> {
         let from_asset = order_asset(o);
         let owner = order_owner(o);
+	// This function should check the argument for the amount,
+	// instead of the underlying balance.
         let amt = order_amount(o)?;
         let desired_asset = order_desired_asset(o);
         let ts = order_timestamp(o);
         let Order::Inline(_, b, _) = o else {
             unreachable!();
         };
+        let bal_amt = balance_amount(b)?;
         self.apply_balance(b)?;
         if from_asset == desired_asset {
             return Err(err_same_assets());
+        }
+        if bal_amt < amt {
+            return Err(err_bad_balance_from_order());
         }
         self.increase_order(owner, from_asset, ts, amt)?;
         self.decrease_interim(owner, from_asset, ts, amt)
@@ -336,7 +349,8 @@ impl StoragePassport {
         let ts = balance_timestamp(b);
         self.apply_balance(b)?;
         self.decrease_interim(owner, asset, ts, amt)?;
-        self.increase_withdrawal(owner, asset, amt)
+        self.increase_withdrawal(owner, asset, amt)?;
+        call_erc20::transfer(self.vm(), asset, owner, u128_to_u256(amt))
     }
 
     pub fn apply_withdraw(&mut self, w: &Withdraw) -> R<()> {
@@ -354,4 +368,10 @@ impl StoragePassport {
             StateMachine::Withdraw(w) => self.apply_withdraw(&w),
         }
     }
+}
+
+fn u128_to_u256(x: u128) -> U256 {
+    let mut b = [0u8; 32];
+    b[16..].copy_from_slice(&x.to_be_bytes());
+    U256::from_be_bytes(b)
 }

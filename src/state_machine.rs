@@ -37,6 +37,7 @@ pub enum Commit {
 pub struct OrderArgs {
     pub desired_asset: Address,
     pub desired_amt: u128,
+    pub from_amt: u128,
     pub max_pol_fee: u16,
     pub ord_partial_fill_okay: bool
 }

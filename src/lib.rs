@@ -65,7 +65,7 @@ pub extern "C" fn user_entrypoint(len: usize) -> usize {
     };
     let r = match Op::deserialize(&mut (&args as &[u8])).unwrap() {
         Op::Dummy => store.dummy(),
-        Op::QueryUnusedLiquidity(addr) => store.query_unused_liq(addr),
+        Op::QueryUnusedLiquidity(addr, asset) => store.query_unused_liq(addr, asset),
         Op::DepositUnusedLiquidity(l) => store.deposit_unused_liq(l),
         Op::Solve(accounts, args) => store.solve(accounts, args),
     };
