@@ -8,8 +8,8 @@ pub mod entry;
 pub mod error;
 pub mod result;
 
-pub mod conversion;
 pub mod apply;
+pub mod conversion;
 
 pub mod solver_context;
 pub mod user_context;
@@ -28,19 +28,25 @@ pub mod utils;
 
 mod call_erc20;
 
-#[allow(unused)]
-use {
-    borsh::BorshDeserialize,
-    stylus_sdk::alloy_sol_types::{SolError, sol},
+use borsh::BorshDeserialize;
+
+use stylus_sdk::{
+    alloy_sol_types::{sol, SolError},
+    prelude::{CalldataAccess, HostAccess},
 };
 
 pub use crate::{ops::Op, storage::StoragePassport};
 
 sol!("src/IErrors.sol");
 
+#[link(wasm_import_module = "vm_hooks")]
+extern "C" {
+    fn pay_for_memory_grow(pages: u16);
+}
+
 #[no_mangle]
 pub unsafe fn mark_used() {
-    stylus_sdk::evm::pay_for_memory_grow(0);
+    pay_for_memory_grow(0);
     panic!();
 }
 
@@ -51,7 +57,7 @@ pub type OurLzss = lzss::Lzss<12, 11, 0, { 1 << 12 }, { 2 << 12 }>;
 pub extern "C" fn user_entrypoint(len: usize) -> usize {
     let vm = stylus_sdk::host::VM(stylus_sdk::host::WasmVM {});
     let args = OurLzss::decompress_stack(
-        lzss::SliceReader::new(&stylus_sdk::contract::args(len)),
+        lzss::SliceReader::new(&vm.read_args(len)),
         lzss::VecWriter::with_capacity(1024 * 10),
     )
     .unwrap();
@@ -66,17 +72,14 @@ pub extern "C" fn user_entrypoint(len: usize) -> usize {
         Op::Dummy => store.dummy(),
         Op::Solve(accounts, args) => store.solve(accounts, args),
     };
-    stylus_sdk::storage::StorageCache::flush();
     let rd = match r {
         Ok(_) => 0,
         Err(_) => 1,
     };
-    stylus_sdk::contract::output(&match r {
+    store.vm().write_result(&match r {
         Ok(v) => borsh::to_vec(&v).unwrap(),
-        Err(v) => PassportError {
-            _0: borsh::to_vec(&v).unwrap().into(),
-        }
-        .abi_encode(),
+        Err(v) => PassportError(borsh::to_vec(&v).unwrap().into()).abi_encode(),
     });
+    store.vm().flush_cache(true);
     rd
 }

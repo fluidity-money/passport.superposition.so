@@ -1,7 +1,7 @@
 use crate::{accounts::AccountsList, applicative::Applicative, error::*, storage::*};
 
 #[cfg(not(target_arch = "wasm32"))]
-use crate::{call_erc20, encoding::*, ops::*};
+use crate::{call_erc20, ops::*};
 
 #[cfg(not(target_arch = "wasm32"))]
 use stylus_sdk::prelude::HostAccess;
@@ -21,9 +21,9 @@ impl StoragePassport {
 
 #[cfg(not(target_arch = "wasm32"))]
 impl StoragePassport {
-    pub fn query_unused_liq(&self, addr: BAddress, asset: BAddress) -> R {
+    pub fn query_unused_liq(&self, addr: Address, asset: Address) -> R {
         DONE_U128(u128::from_le_bytes(
-            self.withdrawable.getter(addr.x).get(asset.x).to_le_bytes(),
+            self.withdrawable.getter(addr).get(asset).to_le_bytes(),
         ))
     }
 

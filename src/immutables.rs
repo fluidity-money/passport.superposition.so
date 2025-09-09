@@ -1,6 +1,8 @@
 use ed25519_dalek::VerifyingKey;
 
-pub const SOLVER_KEY_TESTNET: VerifyingKey = OnceCell::match VerifyingKey::from_bytes(&[0u8; 32]) {
-    Ok(v) => v,
-    Err(_) => panic!()
-};
+use lazy_static::lazy_static;
+
+lazy_static! {
+    pub static ref SOLVER_KEY_TESTNET: VerifyingKey =
+        VerifyingKey::from_bytes(&[0u8; 32]).expect("bad testnet verifyingkey");
+}

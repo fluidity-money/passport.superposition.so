@@ -2,11 +2,8 @@ use crate::error::*;
 
 use stylus_sdk::{
     alloy_primitives::{Address, U256},
-    stylus_core::Host,
+    stylus_core::{Host, Call},
 };
-
-#[cfg(target_arch = "wasm32")]
-use stylus_sdk::{prelude::calls::context::Call};
 
 #[cfg(target_arch = "wasm32")]
 #[allow(unused)]
