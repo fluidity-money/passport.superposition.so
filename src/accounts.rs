@@ -25,19 +25,7 @@ pub struct AccountsList {
 /// expanded list that's sent to the program.
 pub type AccountId = [u8; 4];
 
-/// Expanded form from the AccountsList, with a simple hashmap for simple
-/// lookup of account info.
 impl AccountsList {
-    pub fn with_solver(self, key: &[u8; 32]) -> Result<Self, Error> {
-        todo!()
-        /*
-        Ok(Self {
-            solver: VerifyingKey::from_bytes(key).map_err(|_| err_bad_verifying_key())?,
-            keys: self.keys,
-            ids: self.ids,
-        }) */
-    }
-
     pub fn register(mut self, key: VerifyingKey) -> Self {
         /*
         let id: [u8; 4] = key.as_bytes()[..4].try_into().unwrap();

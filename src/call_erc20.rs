@@ -40,7 +40,7 @@ mod implem {
     use super::*;
 
     pub fn transfer_from(
-        _host: &dyn Host,
+        _env: &mut (impl TopLevelStorage + HostAccess),
         _addr: Address,
         _from: Address,
         _to: Address,
@@ -50,10 +50,10 @@ mod implem {
     }
 
     pub fn transfer(
-        _host: &dyn Host,
-        _addr: Address,
-        _recipient: Address,
-        _amt: U256,
+        _env: &mut (impl TopLevelStorage + HostAccess),
+        addr: Address,
+        recipient: Address,
+        amt: U256,
     ) -> Result<(), Error> {
         Ok(())
     }

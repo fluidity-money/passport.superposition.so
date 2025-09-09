@@ -60,7 +60,7 @@ impl Default for Storage {
     }
 }
 
-fn err_checked_add(x: U128, y: u128) -> Error {
+fn err_checked_add(_x: U128, _y: u128) -> Error {
     Error {
         typ: ErrorDiscriminant::CheckedAdd,
     }
