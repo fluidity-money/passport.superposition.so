@@ -2,7 +2,7 @@ use crate::{
     applicative::*,
     error::*,
     state_machine::{self, StateMachine},
-    storage::StoragePassport,
+    storage::Storage,
     accounts::AccountsList,
     immutables::SOLVER_KEY_TESTNET
 };
@@ -165,7 +165,7 @@ fn err_hash_already_onchain(h: &[u8; 64]) -> Error {
     }
 }
 
-impl StoragePassport {
+impl Storage {
     fn ensure_hash_unseen(&self, hash: &[u8; 64]) -> Result<(), Error> {
         // We need to truncate the first part of the hash to access it in the storage tree.
         if !self.details_hash_owner_l.get(FixedBytes::<32>::from_slice(&hash[..32])).is_zero() {

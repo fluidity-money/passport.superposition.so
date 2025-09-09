@@ -2,7 +2,9 @@ use crate::error::*;
 
 use stylus_sdk::{
     alloy_primitives::{Address, U256},
-    stylus_core::{Host, Call},
+    call::call,
+    prelude::{HostAccess, TopLevelStorage},
+    stylus_core::Call,
 };
 
 #[cfg(target_arch = "wasm32")]
@@ -11,7 +13,7 @@ mod implem {
     use super::*;
 
     pub fn transfer(
-        host: &dyn Host,
+        env: &mut (impl TopLevelStorage + HostAccess),
         addr: Address,
         recipient: Address,
         amt: U256,
@@ -20,8 +22,9 @@ mod implem {
         let mut b = [0u8; 32 * 2 + 4];
         b[..4].copy_from_slice(&sel);
         b[4 + 12..4 + 12 + 20].copy_from_slice(recipient.as_slice());
+        let c = Call::new_mutating(env);
         b[4 + 32..].copy_from_slice(&amt.to_be_bytes() as &[u8; 32]);
-        let rd = host.call(&Call::new(), addr, &b).map_err(|_| Error {
+        let rd = call(env.vm(), c, addr, &b).map_err(|_| Error {
             typ: ErrorDiscriminant::Erc20TransferCall,
         })?;
         if rd.len() == 0 {

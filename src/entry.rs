@@ -8,7 +8,7 @@ use stylus_sdk::prelude::HostAccess;
 
 use stylus_sdk::{alloy_primitives::U256};
 
-impl StoragePassport {
+impl Storage {
     pub fn dummy(&self) -> R {
         DONE_UNIT
     }
@@ -20,7 +20,7 @@ impl StoragePassport {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-impl StoragePassport {
+impl Storage {
     pub fn query_unused_liq(&self, addr: Address, asset: Address) -> R {
         DONE_U128(u128::from_le_bytes(
             self.withdrawable.getter(addr).get(asset).to_le_bytes(),

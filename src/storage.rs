@@ -24,7 +24,7 @@ pub type StorageTickets =
     StorageMap<Address, StorageMap<Address, StorageMap<FixedBytes<32>, StorageU128>>>;
 
 #[storage]
-pub struct StoragePassport {
+pub struct Storage {
     // Owners of these addresses, using the ed25519 signatures.
     pub ed25519_owners: StorageMap<KeyEdAddr, StorageAddress>,
 
@@ -50,13 +50,13 @@ pub struct StoragePassport {
     pub details_asset_r: StorageMap<FixedBytes<32>, StorageAddress>,
 }
 
-unsafe impl stylus_sdk::stylus_core::storage::TopLevelStorage for StoragePassport {}
+unsafe impl stylus_sdk::stylus_core::storage::TopLevelStorage for Storage {}
 
 #[cfg(not(target_arch = "wasm32"))]
-impl Default for StoragePassport {
+impl Default for Storage {
     fn default() -> Self {
         use stylus_sdk::testing::vm::TestVM;
-        StoragePassport::from(&TestVM::new())
+        Storage::from(&TestVM::new())
     }
 }
 
@@ -72,7 +72,7 @@ fn err_checked_sub(_x: U128, _y: u128) -> Error {
     }
 }
 
-impl StoragePassport {
+impl Storage {
     pub fn set_hash_details_l(&mut self, h: &[u8; 64], owner: Address, asset: Address) {
         todo!()
     }

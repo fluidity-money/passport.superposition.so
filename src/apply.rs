@@ -1,7 +1,4 @@
-use stylus_sdk::{
-    alloy_primitives::{Address, U256},
-    prelude::HostAccess,
-};
+use stylus_sdk::alloy_primitives::{Address, U256};
 
 use crate::{
     call_erc20,
@@ -9,7 +6,7 @@ use crate::{
     state_machine::{
         Balance, BalanceArgs, Commit, CommitArgs, Order, OrderArgs, StateMachine, Withdraw,
     },
-    storage::StoragePassport,
+    storage::Storage,
 };
 
 pub type R<T> = Result<T, Error>;
@@ -291,7 +288,7 @@ pub fn withdraw_hash<'a>(w: &'a Withdraw) -> &'a [u8; 64] {
     }
 }
 
-impl StoragePassport {
+impl Storage {
     pub fn apply_balance_inline(&mut self, b: &Balance) -> R<()> {
         let owner = balance_owner(b);
         let amt = balance_amount(b)?;
@@ -403,7 +400,7 @@ impl StoragePassport {
         };
         self.decrease_interim(owner, asset, hash, amt)?;
         self.increase_withdrawal(owner, asset, amt)?;
-        call_erc20::transfer(self.vm(), asset, owner, u128_to_u256(amt))
+        call_erc20::transfer(self, asset, owner, u128_to_u256(amt))
     }
 
     pub fn apply(&mut self, s: StateMachine) -> R<()> {

@@ -35,7 +35,7 @@ use stylus_sdk::{
     prelude::{CalldataAccess, HostAccess},
 };
 
-pub use crate::{ops::Op, storage::StoragePassport};
+pub use crate::{ops::Op, storage::Storage};
 
 sol!("src/IErrors.sol");
 
@@ -62,7 +62,7 @@ pub extern "C" fn user_entrypoint(len: usize) -> usize {
     )
     .unwrap();
     let mut store = unsafe {
-        <StoragePassport as stylus_sdk::storage::StorageType>::new(
+        <Storage as stylus_sdk::storage::StorageType>::new(
             stylus_sdk::alloy_primitives::U256::ZERO,
             0,
             vm,
