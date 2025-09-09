@@ -1,5 +1,3 @@
-use alloc::{vec, vec::Vec};
-
 use borsh::{BorshDeserialize, BorshSerialize};
 
 use stylus_sdk::prelude::calls::errors::Error as StylusErr;
@@ -24,7 +22,7 @@ pub enum ErrorDiscriminant {
     UnusualRequestsAmount,
 
     /// Incorrect Applicative transition. To and from.
-    BadApplicativeTransition(ApplicativeLabel, ApplicativeLabel),
+    BadApplicativeTransition,
 
     /// We were unable to validate a signature.
     InvalidRequest,
@@ -51,7 +49,7 @@ pub enum ErrorDiscriminant {
     BadStrictVerify,
 
     /// The signer wasn't found using their id.
-    SignerNotFoundId([u8; 4]),
+    SignerNotFoundId,
 
     /// The signer wasn't found using a verifying key.
     SignerNotFoundKey,
@@ -60,7 +58,7 @@ pub enum ErrorDiscriminant {
     UnableToSignPrehashed,
 
     /// The convert stage couldn't find the ID given.
-    AccountIdNotFound([u8; 4]),
+    AccountIdNotFound,
 
     /// The convert stage couldn't find the address.
     AccountKeyNotFound,
@@ -83,10 +81,10 @@ pub enum ErrorDiscriminant {
     NoLeftExcess,
 
     /// Checked sub overflow in the math!
-    CheckedSub(u128, u128),
+    CheckedSub,
 
     /// Checked add overflow in the math!
-    CheckedAdd(u128, u128),
+    CheckedAdd,
 
     SameAssets,
 
@@ -111,12 +109,14 @@ pub enum ErrorDiscriminant {
     /// This happens if the amount that the user asked to transition from their balance to their
     /// order is incorrect during the Order stage.
     BalanceTransitionToOrderBad,
+
+    /// The hash was already seen onchain!
+    HashAlreadyOnchain([u8; 64]),
 }
 
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
 pub struct Error {
     pub typ: ErrorDiscriminant,
-    pub cd: Vec<u8>,
 }
 
 impl Error {
@@ -127,14 +127,14 @@ impl Error {
 
 impl From<ErrorDiscriminant> for Error {
     fn from(typ: ErrorDiscriminant) -> Self {
-        Error { typ, cd: vec![] }
+        Error { typ }
     }
 }
 
 pub type R = Result<Res, Error>;
 
-pub fn err_cd(typ: ErrorDiscriminant, cd: Vec<u8>) -> R {
-    Err(Error { typ, cd })
+pub fn err_cd(typ: ErrorDiscriminant) -> R {
+    Err(Error { typ })
 }
 
 pub fn map_stylus_err(
@@ -143,14 +143,8 @@ pub fn map_stylus_err(
     x: StylusErr,
 ) -> Error {
     match x {
-        StylusErr::AbiDecodingFailed(_) => Error {
-            typ: unpack_unp,
-            cd: vec![],
-        },
-        StylusErr::Revert(x) => Error {
-            typ: call_unp,
-            cd: x,
-        },
+        StylusErr::AbiDecodingFailed(_) => Error { typ: unpack_unp },
+        StylusErr::Revert(_) => Error { typ: call_unp },
     }
 }
 
@@ -166,13 +160,12 @@ impl From<alloy_sol_types::Error> for Error {
         // we're always assuming.
         Error {
             typ: ErrorDiscriminant::BadUnpack,
-            cd: vec![],
         }
     }
 }
 
 pub fn err(x: ErrorDiscriminant) -> R {
-    err_cd(x, vec![])
+    err_cd(x)
 }
 
 pub const NOOP: R = Ok(Res::Noop);

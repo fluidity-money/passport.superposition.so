@@ -1,31 +1,33 @@
 use crate::{
-    accounts::AccountsExpanded,
     applicative::*,
     error::*,
     state_machine::{self, StateMachine},
     storage::StoragePassport,
+    accounts::AccountsList,
+    immutables::SOLVER_KEY_TESTNET
 };
 
-use borsh::BorshSerialize;
-
 use arrayvec::ArrayVec;
+
+use stylus_sdk::alloy_primitives::{Address, FixedBytes};
+
+use borsh::BorshSerialize;
 
 use ed25519_dalek::{Signature, SigningKey, VerifyingKey};
 
 use sha2::{digest::Digest, Sha512};
 
-use alloc::{vec::Vec, boxed::Box};
+use alloc::{boxed::Box};
 
 fn err_sig() -> Error {
     Error {
         typ: ErrorDiscriminant::BadStrictVerify,
-        cd: Vec::new()
-    }}
+    }
+}
 
 fn err_prehashed() -> Error {
     Error {
         typ: ErrorDiscriminant::UnableToSignPrehashed,
-        cd: Vec::new()
     }
 }
 
@@ -114,10 +116,9 @@ fn label(x: &Applicative) -> ApplicativeLabel {
     ApplicativeLabel::from(x)
 }
 
-fn err_bad_ap_transition(from: ApplicativeLabel, to: &Applicative) -> Error {
+fn err_bad_ap_transition(_from: ApplicativeLabel, _to: &Applicative) -> Error {
     Error {
-        typ: ErrorDiscriminant::BadApplicativeTransition(from, label(to)),
-        cd: Vec::new(),
+        typ: ErrorDiscriminant::BadApplicativeTransition,
     }
 }
 
@@ -158,11 +159,25 @@ fn get_commit_hash(st: &state_machine::Commit) -> Hash {
     }
 }
 
+fn err_hash_already_onchain(h: &[u8; 64]) -> Error {
+    Error {
+        typ: ErrorDiscriminant::HashAlreadyOnchain(h.clone()),
+    }
+}
+
 impl StoragePassport {
+    fn ensure_hash_unseen(&self, hash: &[u8; 64]) -> Result<(), Error> {
+        // We need to truncate the first part of the hash to access it in the storage tree.
+        if !self.details_hash_owner_l.get(FixedBytes::<32>::from_slice(&hash[..32])).is_zero() {
+            return Err(err_hash_already_onchain(hash));
+        }
+        Ok(())
+    }
+
     /// Validate the Balance against the signature given using an array on the stack.
     fn validate_balance(
         &self,
-        accounts: &AccountsExpanded,
+        accounts: &AccountsList,
         (owner_id, owner_sig): &UserSig,
         ap: &ArgsBalance,
     ) -> Result<state_machine::Balance, Error> {
@@ -173,11 +188,12 @@ impl StoragePassport {
             &serialise_inplace::<_, { size_of::<ArgsBalance>() }>(ap),
             &[],
         )?;
+        self.ensure_hash_unseen(&hash)?;
         Ok(state_machine::Balance::Inline(
             state_machine::BalanceArgs {
                 ms_ts: ap.ms_timestamp,
                 owner: self.find_ed25519_key(o)?,
-                asset: ap.asset.x,
+                asset: Address::new(ap.asset),
                 amt: ap.amount,
             },
             hash,
@@ -186,7 +202,7 @@ impl StoragePassport {
 
     fn validate_commit_left_filled_to_bal(
         &self,
-        accounts: &AccountsExpanded,
+        accounts: &AccountsList,
         ap: &Applicative,
     ) -> Result<state_machine::Balance, Error> {
         let commit = self.validate_wrapped_commit(
@@ -195,15 +211,17 @@ impl StoragePassport {
             ap,
         )?;
         let c_hash = get_commit_hash(&commit);
+        let hash = chain_digests(&[Nonce::CommitLeftFilledToBalance.into()], &c_hash);
+        self.ensure_hash_unseen(&hash)?;
         Ok(state_machine::Balance::CommitLeftFilledToBal(
             Box::new(commit),
-            chain_digests(&[Nonce::CommitLeftFilledToBalance.into()], &c_hash),
+            hash,
         ))
     }
 
     fn validate_commit_right_filled_to_bal(
         &self,
-        accounts: &AccountsExpanded,
+        accounts: &AccountsList,
         ap: &Applicative,
     ) -> Result<state_machine::Balance, Error> {
         let commit = self.validate_wrapped_commit(
@@ -212,16 +230,18 @@ impl StoragePassport {
             ap,
         )?;
         let c_hash = get_commit_hash(&commit);
+        let hash = chain_digests(&[Nonce::CommitRightFilledToBalance.into()], &c_hash);
+        self.ensure_hash_unseen(&hash)?;
         Ok(state_machine::Balance::CommitRightFilledToBal(
             Box::new(commit),
-            chain_digests(&[Nonce::CommitRightFilledToBalance.into()], &c_hash),
+            hash,
         ))
     }
 
     fn validate_wrapped_balance(
         &self,
         from: ApplicativeLabel,
-        accounts: &AccountsExpanded,
+        accounts: &AccountsList,
         ap: &Applicative,
     ) -> Result<state_machine::Balance, Error> {
         match ap {
@@ -238,7 +258,7 @@ impl StoragePassport {
 
     fn validate_order(
         &self,
-        accounts: &AccountsExpanded,
+        accounts: &AccountsList,
         (owner_id, owner_sig): &UserSig,
         args: &ArgsOrder,
         ap: &Applicative,
@@ -251,9 +271,10 @@ impl StoragePassport {
             &digest_inplace::<_, { size_of::<ArgsOrder>() }>(args),
             &bal_hash,
         )?;
+        self.ensure_hash_unseen(&hash)?;
         Ok(state_machine::Order::Inline(
             state_machine::OrderArgs {
-                desired_asset: args.desired_asset.x,
+                desired_asset: Address::new(args.desired_asset),
                 from_amt: args.from_amt,
                 desired_amt: args.desired_amt,
                 max_pol_fee: 0,              // TODO
@@ -266,36 +287,40 @@ impl StoragePassport {
 
     fn validate_commit_left_excess_to_order(
         &self,
-        accounts: &AccountsExpanded,
+        accounts: &AccountsList,
         ap: &Applicative,
     ) -> Result<state_machine::Order, Error> {
         let commit =
             self.validate_wrapped_commit(ApplicativeLabel::CommitLeftExcessToOrder, accounts, ap)?;
         let c_hash = get_commit_hash(&commit);
+        let hash = chain_digests(&[Nonce::CommitLeftExcessToOrder.into()], &c_hash);
+        self.ensure_hash_unseen(&hash)?;
         Ok(state_machine::Order::CommitLeftExcessToOrder(
             Box::new(commit),
-            chain_digests(&[Nonce::CommitLeftExcessToOrder.into()], &c_hash),
+            hash,
         ))
     }
 
     fn validate_commit_right_excess_to_order(
         &self,
-        accounts: &AccountsExpanded,
+        accounts: &AccountsList,
         ap: &Applicative,
     ) -> Result<state_machine::Order, Error> {
         let commit =
             self.validate_wrapped_commit(ApplicativeLabel::CommitRightExcessToOrder, accounts, ap)?;
         let c_hash = get_commit_hash(&commit);
+        let hash = chain_digests(&[Nonce::CommitRightExcessToOrder.into()], &c_hash);
+        self.ensure_hash_unseen(&hash)?;
         Ok(state_machine::Order::CommitRightExcessToOrder(
             Box::new(commit),
-            chain_digests(&[Nonce::CommitRightExcessToOrder.into()], &c_hash),
+            hash,
         ))
     }
 
     fn validate_wrapped_order(
         &self,
         from: ApplicativeLabel,
-        accounts: &AccountsExpanded,
+        accounts: &AccountsList,
         ap: &Applicative,
     ) -> Result<state_machine::Order, Error> {
         match ap {
@@ -315,7 +340,7 @@ impl StoragePassport {
     /// machine to do the checking of the amounts and constraints.
     fn validate_commit(
         &self,
-        accounts: &AccountsExpanded,
+        accounts: &AccountsList,
         solver_sig: &[u8; 64],
         args: &ArgsCommit,
         left: &Applicative,
@@ -326,16 +351,20 @@ impl StoragePassport {
         let right_order = self.validate_wrapped_order(l, accounts, right)?;
         let left_hash = get_order_hash(&left_order);
         let right_hash = get_order_hash(&right_order);
+        let hash = check_sig(
+            &SOLVER_KEY_TESTNET,
+            solver_sig,
+            &digest_inplace::<_, { size_of::<ArgsCommit>() }>(args),
+            &chain_digests(&left_hash, &right_hash),
+        )?;
+        self.ensure_hash_unseen(&hash)?;
         Ok(state_machine::Commit::Inline(
-            state_machine::CommitArgs { ms_ts: args.ms_timestamp },
+            state_machine::CommitArgs {
+                ms_ts: args.ms_timestamp,
+            },
             Box::new(left_order),
             Box::new(right_order),
-            check_sig(
-                &accounts.solver,
-                solver_sig,
-                &digest_inplace::<_, { size_of::<ArgsCommit>() }>(args),
-                &chain_digests(&left_hash, &right_hash),
-            )?,
+            hash,
         ))
     }
 
@@ -347,7 +376,7 @@ impl StoragePassport {
     fn validate_wrapped_commit(
         &self,
         from: ApplicativeLabel,
-        accounts: &AccountsExpanded,
+        accounts: &AccountsList,
         ap: &Applicative,
     ) -> Result<state_machine::Commit, Error> {
         match ap {
@@ -364,7 +393,7 @@ impl StoragePassport {
     /// an amount that should be redeemed to the user by the contract.
     fn validate_withdraw(
         &self,
-        accounts: &AccountsExpanded,
+        accounts: &AccountsList,
         solver_sig: &[u8; 64],
         (owner_id, owner_sig): &UserSig,
         ap: &Applicative,
@@ -374,44 +403,42 @@ impl StoragePassport {
         // concatenation here. Very stack expensive.
         let bal = self.validate_wrapped_balance(label(ap), accounts, ap)?;
         let bal_hash = get_bal_hash(&bal);
-        Ok(state_machine::Withdraw::Inline(
-            Box::new(bal),
-            check_sig_two(
-                &accounts.solver,
-                solver_sig,
-                &accounts.find_key(*owner_id)?,
-                owner_sig,
-                &[Nonce::Withdraw.into()],
-                &bal_hash,
-            )?,
-        ))
+        let hash = check_sig_two(
+            &SOLVER_KEY_TESTNET,
+            solver_sig,
+            &accounts.find_key(*owner_id)?,
+            owner_sig,
+            &[Nonce::Withdraw.into()],
+            &bal_hash,
+        )?;
+        self.ensure_hash_unseen(&hash)?;
+        Ok(state_machine::Withdraw::Inline(Box::new(bal), hash))
     }
 
     fn validate_cancel(
         &self,
-        accounts: &AccountsExpanded,
+        accounts: &AccountsList,
         solver_sig: &[u8; 64],
         (owner_id, owner_sig): &UserSig,
         ap: &Applicative,
     ) -> Result<state_machine::Balance, Error> {
         let order = self.validate_wrapped_order(ApplicativeLabel::Cancel, accounts, ap)?;
         let order_hash = get_order_hash(&order);
-        Ok(state_machine::Balance::Cancel(
-            Box::new(order),
-            check_sig_two(
-                &accounts.solver,
-                solver_sig,
-                &accounts.find_key(*owner_id)?,
-                owner_sig,
-                &[Nonce::Cancel.into()],
-                &order_hash,
-            )?,
-        ))
+        let hash = check_sig_two(
+            &SOLVER_KEY_TESTNET,
+            solver_sig,
+            &accounts.find_key(*owner_id)?,
+            owner_sig,
+            &[Nonce::Cancel.into()],
+            &order_hash,
+        )?;
+        self.ensure_hash_unseen(&hash)?;
+        Ok(state_machine::Balance::Cancel(Box::new(order), hash))
     }
 
     fn validate_join(
         &self,
-        accounts: &AccountsExpanded,
+        accounts: &AccountsList,
         (owner_id, owner_sig): &UserSig,
         left: &Applicative,
         right: &Applicative,
@@ -437,7 +464,7 @@ impl StoragePassport {
     /// validation stage.
     pub fn validate(
         &self,
-        accounts: &AccountsExpanded,
+        accounts: &AccountsList,
         ap: Applicative,
     ) -> Result<StateMachine, Error> {
         match ap {

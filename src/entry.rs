@@ -1,20 +1,26 @@
-use crate::{
-    accounts::{AccountsExpanded, AccountsList},
-    applicative::Applicative,
-    call_erc20,
-    encoding::*,
-    error::*,
-    ops::*,
-    storage::*,
-};
+use crate::{accounts::AccountsList, applicative::Applicative, error::*, storage::*};
 
-use stylus_sdk::{alloy_primitives::U256, prelude::HostAccess};
+#[cfg(not(target_arch = "wasm32"))]
+use crate::{call_erc20, encoding::*, ops::*};
+
+#[cfg(not(target_arch = "wasm32"))]
+use stylus_sdk::prelude::HostAccess;
+
+use stylus_sdk::{alloy_primitives::U256};
 
 impl StoragePassport {
     pub fn dummy(&self) -> R {
         DONE_UNIT
     }
 
+    pub fn solve(&mut self, accounts: AccountsList, applicative: Applicative) -> R {
+        self.apply(self.validate(&accounts, applicative)?)?;
+        DONE_UNIT
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl StoragePassport {
     pub fn query_unused_liq(&self, addr: BAddress, asset: BAddress) -> R {
         DONE_U128(u128::from_le_bytes(
             self.withdrawable.getter(addr.x).get(asset.x).to_le_bytes(),
@@ -26,13 +32,9 @@ impl StoragePassport {
         DepositUnusedLiquidity {
             asset,
             amount,
-            permit,
             association,
         }: DepositUnusedLiquidity,
     ) -> R {
-        if let Some(_) = permit {
-            todo!();
-        }
         if let Some((_ed_addr, _ed_sig)) = association {
             todo!()
         }
@@ -45,12 +47,6 @@ impl StoragePassport {
             u128_to_u256(amount),
         )?;
         self.increase_withdrawal(sender, asset.x, amount)?;
-        DONE_UNIT
-    }
-
-    pub fn solve(&mut self, accounts: AccountsList, applicative: Applicative) -> R {
-        let accounts: AccountsExpanded = accounts.into();
-        self.apply(self.validate(&accounts, applicative)?)?;
         DONE_UNIT
     }
 }

@@ -4,44 +4,18 @@
 // converting to a derived state, which the program interrogates to
 // transfer ownership and partial amounts.
 
-use crate::{applicative::Applicative, encoding::*, accounts::AccountsList};
+use crate::{applicative::Applicative, accounts::AccountsList};
 
-use borsh::{BorshDeserialize, BorshSerialize};
+use borsh::{BorshDeserialize};
 
-/// The Permit part of the operation. The sender is not included in this
-/// input, as it's supplied during a part of the operation instead of this
-/// part of the structure.
-#[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq, Debug)]
-pub struct Permit {
-    pub owner: BAddress,
-    pub value: u128,
-    pub deadline: u128,
-    pub r: [u8; 32],
-    pub s: [u8; 32],
-    pub v: u8,
-}
+#[cfg(not(target_arch = "wasm32"))]
+use borsh::BorshSerialize;
 
-#[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq, Debug)]
-pub struct DepositUnusedLiquidity {
-    pub asset: BAddress,
-    pub amount: u128,
-    pub permit: Option<Permit>,
-    // If this is set, then we validate that the user signed a message of
-    // the address they want to associate with, and then set the address.
-    pub association: Option<(EdAddr, [u8; 32])>
-}
-
-
-#[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq)]
-#[cfg_attr(not(target_arch = "wasm32"), derive(Debug))]
+#[derive(BorshDeserialize, Clone, PartialEq)]
+#[cfg_attr(not(target_arch = "wasm32"), derive(Debug, BorshSerialize))]
 pub enum Op {
     /// Dummy operation.
     Dummy,
-    /// Deposit liquidity that can be consumed by the Solve feature in the form
-    /// of Balance creation. Makes it possible to roll up the balance creation later.
-    DepositUnusedLiquidity(DepositUnusedLiquidity),
-    /// Get unused liquidity that can be consumed for the asset given.
-    QueryUnusedLiquidity(BAddress, BAddress),
     // The recursive datatype entrypoint that represents the rolled up form
     // of every interaction. Each excess value creates a new value that could be
     // spent in the same transaction, or committed to the reusable pool of

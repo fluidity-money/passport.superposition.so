@@ -21,7 +21,6 @@ pub mod accounts;
 pub mod applicative;
 pub mod state_machine;
 
-pub mod encoding;
 pub mod ops;
 pub mod storage;
 
@@ -65,8 +64,6 @@ pub extern "C" fn user_entrypoint(len: usize) -> usize {
     };
     let r = match Op::deserialize(&mut (&args as &[u8])).unwrap() {
         Op::Dummy => store.dummy(),
-        Op::QueryUnusedLiquidity(addr, asset) => store.query_unused_liq(addr, asset),
-        Op::DepositUnusedLiquidity(l) => store.deposit_unused_liq(l),
         Op::Solve(accounts, args) => store.solve(accounts, args),
     };
     stylus_sdk::storage::StorageCache::flush();

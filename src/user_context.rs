@@ -3,10 +3,9 @@ use ed25519_dalek::SigningKey;
 use stylus_sdk::alloy_primitives::Address;
 
 use crate::{
-    accounts::AccountsExpanded,
+    accounts::AccountsList,
     applicative::{Applicative, ArgsBalance, ArgsCommit, ArgsOrder, UserApplicative},
     conversion::*,
-    encoding::BAddress,
     error::Error,
 };
 
@@ -18,13 +17,13 @@ use alloc::boxed::Box;
 /// table, which it provides during the conversion of this type to
 /// the state machine type.
 pub struct UserContext {
-    pub accounts: AccountsExpanded,
+    pub accounts: AccountsList,
     pub signer: SigningKey,
 }
 
 impl UserContext {
     /// Create a new Accounts and register the Signer given.
-    pub fn new_from_bytes(accounts: AccountsExpanded, signer_b: &[u8; 32]) -> Self {
+    pub fn new_from_bytes(accounts: AccountsList, signer_b: &[u8; 32]) -> Self {
         let key = SigningKey::from_bytes(signer_b);
         UserContext {
             accounts: accounts.register(key.verifying_key()),
@@ -54,7 +53,7 @@ impl UserApplicative for UserContext {
         ms_timestamp: u128,
     ) -> Applicative {
         let args = ArgsBalance {
-            asset: BAddress { x: asset },
+            asset: *asset.0,
             chain,
             amount,
             ms_timestamp,
@@ -83,7 +82,7 @@ impl UserApplicative for UserContext {
     ) -> Result<Applicative, Error> {
         let args = ArgsOrder {
             from_amt,
-            desired_asset: BAddress { x: desired_asset },
+            desired_asset: *desired_asset.0,
             desired_chain,
             desired_amt,
         };

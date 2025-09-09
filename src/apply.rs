@@ -1,36 +1,34 @@
-use stylus_sdk::{prelude::HostAccess, alloy_primitives::{Address, U256}};
+use stylus_sdk::{
+    alloy_primitives::{Address, U256},
+    prelude::HostAccess,
+};
 
 use crate::{
-    error::{Error, ErrorDiscriminant},
     call_erc20,
+    error::{Error, ErrorDiscriminant},
     state_machine::{
         Balance, BalanceArgs, Commit, CommitArgs, Order, OrderArgs, StateMachine, Withdraw,
     },
     storage::StoragePassport,
 };
 
-use alloc::vec;
-
 pub type R<T> = Result<T, Error>;
 
 fn err_same_assets() -> Error {
     Error {
         typ: ErrorDiscriminant::SameAssets,
-        cd: vec![],
     }
 }
 
 fn err_bad_asset_asks() -> Error {
     Error {
         typ: ErrorDiscriminant::BadAssetAsks,
-        cd: vec![],
     }
 }
 
 fn err_bad_balance_from_order() -> Error {
     Error {
         typ: ErrorDiscriminant::BalanceTransitionToOrderBad,
-        cd: vec![]
     }
 }
 
@@ -74,21 +72,21 @@ pub fn bal_amount(b: &Balance) -> R<u128> {
         Balance::Onchain(_) => todo!(),
         Balance::CommitLeftFilledToBal(c, _) => commit_left_amount_filled(c),
         Balance::CommitRightFilledToBal(c, _) => commit_right_amount_filled(c),
-        Balance::Cancel(o, _) => order_amount(o),
+        Balance::Cancel(o, _) => order_from(o),
         Balance::Join(b, _, _) => balance_amount(b),
     }
 }
 
 pub fn commit_left_amount_filled(c: &Commit) -> R<u128> {
     match c {
-        Commit::Inline(_, l, r, _) => Ok(u128::min(order_desired_amount(r)?, order_amount(l)?)),
+        Commit::Inline(_, l, r, _) => Ok(u128::min(order_desired_amount(r)?, order_from(l)?)),
         Commit::Onchain(_) => todo!(),
     }
 }
 
 pub fn commit_right_amount_filled(c: &Commit) -> R<u128> {
     match c {
-        Commit::Inline(_, l, r, _) => Ok(u128::min(order_desired_amount(l)?, order_amount(r)?)),
+        Commit::Inline(_, l, r, _) => Ok(u128::min(order_desired_amount(l)?, order_from(r)?)),
         Commit::Onchain(_) => todo!(),
     }
 }
@@ -104,31 +102,48 @@ pub fn order_desired_amount(c: &Order) -> R<u128> {
 
 fn checked_sub(x: u128, y: u128) -> R<u128> {
     x.checked_sub(y).ok_or(Error {
-        typ: ErrorDiscriminant::CheckedSub(x, y),
-        cd: vec![],
+        typ: ErrorDiscriminant::CheckedSub,
     })
 }
 
 pub fn commit_left_amount_unfilled(o: &Commit) -> R<u128> {
     match o {
-        Commit::Inline(_, l, r, _) => checked_sub(order_amount(l)?, order_desired_amount(r)?),
+        Commit::Inline(_, l, r, _) => checked_sub(order_from(l)?, order_desired_amount(r)?),
         Commit::Onchain(_) => todo!(),
     }
 }
 
 pub fn commit_right_amount_unfilled(o: &Commit) -> R<u128> {
     match o {
-        Commit::Inline(_, l, r, _) => checked_sub(order_amount(r)?, order_desired_amount(l)?),
+        Commit::Inline(_, l, r, _) => checked_sub(order_from(r)?, order_desired_amount(l)?),
         Commit::Onchain(_) => todo!(),
     }
 }
 
-pub fn order_amount(o: &Order) -> R<u128> {
+pub fn order_from(o: &Order) -> R<u128> {
     match o {
         Order::Inline(OrderArgs { from_amt, .. }, _, _) => Ok(*from_amt),
         Order::Onchain(_) => todo!(),
         Order::CommitLeftExcessToOrder(c, _) => commit_left_amount_unfilled(c),
         Order::CommitRightExcessToOrder(c, _) => commit_right_amount_unfilled(c),
+    }
+}
+
+pub fn order_underlying_amt(o: &Order) -> R<u128> {
+    match o {
+        Order::Inline(_, b, _) => balance_amount(b),
+        Order::Onchain(_) => todo!(),
+        Order::CommitLeftExcessToOrder(c, _) => commit_left_amount_unfilled(c),
+        Order::CommitRightExcessToOrder(c, _) => commit_right_amount_unfilled(c),
+    }
+}
+
+pub fn order_hash<'a>(o: &'a Order) -> &'a [u8; 64] {
+    match o {
+        Order::Inline(_, _, h)
+        | Order::Onchain(h)
+        | Order::CommitLeftExcessToOrder(_, h)
+        | Order::CommitRightExcessToOrder(_, h) => h,
     }
 }
 
@@ -139,7 +154,7 @@ pub fn balance_amount(b: &Balance) -> R<u128> {
         Balance::CommitLeftFilledToBal(c, _) => commit_left_amount_filled(c),
         Balance::CommitRightFilledToBal(c, _) => commit_right_amount_filled(c),
         Balance::Join(l, r, _) => Ok(balance_amount(l)? + balance_amount(r)?),
-        Balance::Cancel(o, _) => order_amount(o),
+        Balance::Cancel(o, _) => order_from(o),
     }
 }
 
@@ -229,18 +244,65 @@ pub fn order_desired_asset(o: &Order) -> Address {
     }
 }
 
+pub fn commit_l<'a>(c: &'a Commit) -> &'a Order {
+    match c {
+        Commit::Inline(_, l, _, _) => l,
+        Commit::Onchain(_) => todo!(),
+    }
+}
+
+pub fn commit_r<'a>(c: &'a Commit) -> &'a Order {
+    match c {
+        Commit::Inline(_, _, r, _) => r,
+        Commit::Onchain(_) => todo!(),
+    }
+}
+
+pub fn commit_hash<'a>(c: &'a Commit) -> &'a [u8; 64] {
+    match c {
+        Commit::Inline(_, _, _, h) | Commit::Onchain(h) => h,
+    }
+}
+
+pub fn withdraw_balance(w: &Withdraw) -> R<u128> {
+    match w {
+        Withdraw::Inline(b, _) => balance_amount(b),
+        Withdraw::Onchain(_) => todo!(),
+    }
+}
+
+pub fn withdraw_owner(w: &Withdraw) -> Address {
+    match w {
+        Withdraw::Inline(b, _) => balance_owner(b),
+        Withdraw::Onchain(_) => todo!(),
+    }
+}
+
+pub fn withdraw_asset(w: &Withdraw) -> Address {
+    match w {
+        Withdraw::Inline(b, _) => balance_asset(b),
+        Withdraw::Onchain(_) => todo!(),
+    }
+}
+
+pub fn withdraw_hash<'a>(w: &'a Withdraw) -> &'a [u8; 64] {
+    match w {
+        Withdraw::Inline(_, h) | Withdraw::Onchain(h) => h,
+    }
+}
+
 impl StoragePassport {
     pub fn apply_balance_inline(&mut self, b: &Balance) -> R<()> {
         let owner = balance_owner(b);
-        let ts = balance_timestamp(b);
         let amt = balance_amount(b)?;
         let asset = balance_asset(b);
-        self.increase_interim(owner, asset, ts, amt)?;
         // To increase the user's interim amount, we do so if the user made a
         // deposit and created the Balance::Inline object (after a Withdrawal).
-        let Balance::Inline(_, _) = b else {
+        let Balance::Inline(_, h) = b else {
             unreachable!();
         };
+        self.increase_interim(owner, asset, h, amt)?;
+        self.set_hash_details_l(h, owner, asset);
         self.decrease_withdrawal(owner, asset, amt)?;
         Ok(())
     }
@@ -249,16 +311,16 @@ impl StoragePassport {
         let amt = balance_amount(b)?;
         let owner = balance_owner(b);
         let asset = balance_asset(b);
-        let ts = balance_timestamp(b);
-        let Balance::Cancel(o, _) = b else {
+        let Balance::Cancel(o, h) = b else {
             unreachable!();
         };
         self.apply_order(o)?;
         if amt == 0 {
             return Ok(());
         }
-        self.increase_interim(owner, asset, ts, amt)?;
-        self.decrease_order(owner, asset, ts, amt)
+        self.set_hash_details_l(h, owner, asset);
+        self.increase_interim(owner, asset, h, amt)?;
+        self.decrease_order(owner, asset, h, amt)
     }
 
     pub fn apply_balance(&mut self, b: &Balance) -> R<()> {
@@ -273,12 +335,14 @@ impl StoragePassport {
         }
     }
 
-    pub fn apply_inline_commit(&mut self, c: &Commit) -> R<()> {
-        let Commit::Inline(CommitArgs { ms_ts }, l, r, _) = c else {
-            unreachable!();
-        };
+    pub fn apply_commit(&mut self, c: &Commit) -> R<()> {
+        let l = commit_l(c);
+        let r = commit_r(c);
+        let hash = commit_hash(c);
         let l_asset = order_asset(l);
+        let l_hash = order_hash(l);
         let r_asset = order_asset(r);
+        let r_hash = order_hash(r);
         let l_desired_asset = order_desired_asset(l);
         let r_desired_asset = order_desired_asset(r);
         let l_filled = commit_left_amount_filled(c)?;
@@ -293,71 +357,53 @@ impl StoragePassport {
         }
         self.apply_order(l)?;
         self.apply_order(r)?;
-        self.decrease_order(l_owner, l_asset, order_timestamp(l), l_filled)?;
-        self.decrease_order(r_owner, r_asset, order_timestamp(r), r_filled)?;
-        self.increase_interim(l_owner, r_asset, *ms_ts, l_filled)?;
-        self.increase_interim(r_owner, l_asset, *ms_ts, r_filled)
+        self.decrease_order(l_owner, l_asset, l_hash, l_filled)?;
+        self.decrease_order(r_owner, r_asset, r_hash, r_filled)?;
+        self.increase_interim(l_owner, r_asset, hash, l_filled)?;
+        self.increase_interim(r_owner, l_asset, hash, r_filled)?;
+        self.set_hash_details_l(hash, l_owner, l_asset);
+        self.set_hash_details_r(hash, r_owner, r_asset);
+        Ok(())
     }
 
-    pub fn apply_inline_order(&mut self, o: &Order) -> R<()> {
+    pub fn apply_order(&mut self, o: &Order) -> R<()> {
         let from_asset = order_asset(o);
         let owner = order_owner(o);
-	// This function should check the argument for the amount,
-	// instead of the underlying balance.
-        let amt = order_amount(o)?;
+        // This function should check the argument for the amount,
+        // instead of the underlying balance.
+        let amt = order_from(o)?;
+        let bal_amt = order_underlying_amt(o)?;
         let desired_asset = order_desired_asset(o);
-        let ts = order_timestamp(o);
-        let Order::Inline(_, b, _) = o else {
-            unreachable!();
+        let h = order_hash(o);
+        match o {
+            Order::Inline(_, b, _) => self.apply_balance(b)?,
+            Order::Onchain(_) => todo!(),
+            Order::CommitLeftExcessToOrder(c, _) | Order::CommitRightExcessToOrder(c, _) => {
+                self.apply_commit(c)?
+            }
         };
-        let bal_amt = balance_amount(b)?;
-        self.apply_balance(b)?;
         if from_asset == desired_asset {
             return Err(err_same_assets());
         }
         if bal_amt < amt {
             return Err(err_bad_balance_from_order());
         }
-        self.increase_order(owner, from_asset, ts, amt)?;
-        self.decrease_interim(owner, from_asset, ts, amt)
-    }
-
-    pub fn apply_commit(&mut self, c: &Commit) -> R<()> {
-        match c {
-            Commit::Inline(_, _, _, _) => self.apply_inline_commit(c),
-            Commit::Onchain(_) => todo!(),
-        }
-    }
-
-    pub fn apply_order(&mut self, o: &Order) -> R<()> {
-        match o {
-            Order::Inline(_, _, _) => self.apply_inline_order(o),
-            Order::Onchain(_) => todo!(),
-            Order::CommitLeftExcessToOrder(c, _) | Order::CommitRightExcessToOrder(c, _) => {
-                self.apply_commit(c)
-            }
-        }
-    }
-
-    pub fn apply_inline_withdraw(&mut self, w: &Withdraw) -> R<()> {
-        let Withdraw::Inline(b, _) = w else {
-            unreachable!()
-        };
-        let amt = balance_amount(b)?;
-        let owner = balance_owner(b);
-        let asset = balance_asset(b);
-        let ts = balance_timestamp(b);
-        self.apply_balance(b)?;
-        self.decrease_interim(owner, asset, ts, amt)?;
-        self.increase_withdrawal(owner, asset, amt)?;
-        call_erc20::transfer(self.vm(), asset, owner, u128_to_u256(amt))
+        self.increase_order(owner, from_asset, h, amt)?;
+        self.decrease_interim(owner, from_asset, h, amt)
     }
 
     pub fn apply_withdraw(&mut self, w: &Withdraw) -> R<()> {
+        let amt = withdraw_balance(w)?;
+        let owner = withdraw_owner(w);
+        let asset = withdraw_asset(w);
+        let hash = withdraw_hash(w);
         match w {
-            Withdraw::Inline(_, _) => self.apply_inline_withdraw(w),
+            Withdraw::Inline(b, _) => self.apply_balance(b)?,
             Withdraw::Onchain(_) => todo!(),
-        }
+        };
+        self.decrease_interim(owner, asset, hash, amt)?;
+        self.increase_withdrawal(owner, asset, amt)?;
+        call_erc20::transfer(self.vm(), asset, owner, u128_to_u256(amt))
     }
 
     pub fn apply(&mut self, s: StateMachine) -> R<()> {

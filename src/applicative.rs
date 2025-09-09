@@ -7,7 +7,7 @@ use borsh::{BorshDeserialize, BorshSerialize};
 
 use alloc::boxed::Box;
 
-use crate::{accounts::AccountId, encoding::*, error::Error};
+use crate::{accounts::AccountId, error::Error};
 
 // Concatenated form of the ed25519 r and s values for use with
 // ed25519_dalek.
@@ -50,7 +50,7 @@ impl From<Nonce> for u8 {
     derive(arbitrary::Arbitrary, proptest_derive::Arbitrary)
 )]
 pub struct ArgsBalance {
-    pub asset: BAddress,
+    pub asset: [u8; 20],
     pub chain: u128,
     pub amount: u128,
     // Owner and timestamp (milliseconds) are combined to create a snowflake.
@@ -71,7 +71,7 @@ pub struct ArgsOrder {
     /// From amount that the user is willing to consume from the
     /// previous balance on this operation.
     pub from_amt: u128,
-    pub desired_asset: BAddress,
+    pub desired_asset: [u8; 20],
     pub desired_chain: u128,
     /// Desired amount of the other asset to fill for.
     pub desired_amt: u128,

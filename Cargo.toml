@@ -55,18 +55,8 @@ mutants = "0.0.3"
 paste = "1.0.15"
 sha2 = { version = "0.10.9", default-features = false }
 subtle = { version = "2.6.1", default-features = false }
-
-[dependencies.ed25519-dalek]
-version = "2.1.1"
-default-features = false
-features = ["digest"]
-
-[dependencies.stylus-sdk]
-# This version of the SDK is considered insecure, but we can't upgrade due to stylus-core
-# having a hardstuck dependency on the std.
-version = "=0.8.3"
-default-features = false
-features = ["mini-alloc"]
+ed25519-dalek = { version = "2.1.1", default-features = false, features = ["digest"] }
+curve25519-dalek = { version = "4.1.3", default-features = false }
 
 [dependencies.arrayvec]
 # Pointing to this repo for now since the original didn't implement Borsh properly.
@@ -78,11 +68,6 @@ git = "https://github.com/af-afk/arrayvec"
 [dependencies.stylus-core]
 version = "=0.8.3"
 default-features = false
-
-[dependencies.hashbrown]
-version = "0.15.2"
-default-features = false
-features = ["allocator-api2", "default-hasher", "equivalent", "raw-entry"]
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 proptest-derive = "0.6.0"

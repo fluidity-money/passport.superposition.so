@@ -1,13 +1,13 @@
 use stylus_sdk::{alloy_primitives::*, prelude::*, storage::*};
 
 use crate::{
-    accounts::AccountsExpanded,
+    accounts::AccountsList,
     error::{Error, ErrorDiscriminant},
 };
 
-use ed25519_dalek::VerifyingKey;
-
 use alloc::{vec, vec::Vec};
+
+use ed25519_dalek::VerifyingKey;
 
 pub type KeyEdAddr = FixedBytes<32>;
 
@@ -20,18 +20,34 @@ pub struct StorageBucket {
 
 /// Storage for amounts available for spending at a timestamp. Is owner
 /// => asset => timestamp => amount.
-pub type StorageTickets = StorageMap<Address, StorageMap<Address, StorageMap<U128, StorageU128>>>;
+pub type StorageTickets =
+    StorageMap<Address, StorageMap<Address, StorageMap<FixedBytes<32>, StorageU128>>>;
 
 #[storage]
 pub struct StoragePassport {
     // Owners of these addresses, using the ed25519 signatures.
     pub ed25519_owners: StorageMap<KeyEdAddr, StorageAddress>,
 
+    /// Outstanding orders that could be used in another part of the operation.
     pub orders: StorageTickets,
 
+    /// Amounts that could be withdrawn from the system.
     pub withdrawable: StorageMap<Address, StorageMap<Address, StorageU128>>,
 
+    /// Interim balances that make up Balances.
     pub interim: StorageTickets,
+
+    /// The owner of the left side of the hash given. It should not be zero.
+    pub details_hash_owner_l: StorageMap<FixedBytes<32>, StorageU256>,
+
+    /// The owner of the right side of the hash given.
+    pub details_hash_owner_r: StorageMap<FixedBytes<32>, StorageU256>,
+
+    /// The first asset in this hash.
+    pub details_asset_l: StorageMap<FixedBytes<32>, StorageAddress>,
+
+    /// The second asset of the hash.
+    pub details_asset_r: StorageMap<FixedBytes<32>, StorageAddress>,
 }
 
 unsafe impl stylus_sdk::stylus_core::storage::TopLevelStorage for StoragePassport {}
@@ -46,29 +62,34 @@ impl Default for StoragePassport {
 
 fn err_checked_add(x: U128, y: u128) -> Error {
     Error {
-        typ: ErrorDiscriminant::CheckedAdd(u128::from_le_bytes(x.to_le_bytes()), y),
-        cd: vec![],
+        typ: ErrorDiscriminant::CheckedAdd,
     }
 }
 
-fn err_checked_sub(x: U128, y: u128) -> Error {
+fn err_checked_sub(_x: U128, _y: u128) -> Error {
     Error {
-        typ: ErrorDiscriminant::CheckedSub(u128::from_le_bytes(x.to_le_bytes()), y),
-        cd: vec![],
+        typ: ErrorDiscriminant::CheckedSub,
     }
 }
 
 impl StoragePassport {
+    pub fn set_hash_details_l(&mut self, h: &[u8; 64], owner: Address, asset: Address) {
+        todo!()
+    }
+
+    pub fn set_hash_details_r(&mut self, h: &[u8; 64], owner: Address, asset: Address) {
+        todo!()
+    }
+
     pub fn find_ed25519_addr(
         &self,
-        accounts: &AccountsExpanded,
+        accounts: &AccountsList,
         id: [u8; 4],
     ) -> Result<Address, Error> {
         let addr = self.ed25519_owners.get(accounts.find_key_bytes(id)?);
         if addr.is_zero() {
             Err(Error {
-                typ: ErrorDiscriminant::AccountIdNotFound(id),
-                cd: vec![],
+                typ: ErrorDiscriminant::AccountIdNotFound,
             })
         } else {
             Ok(addr)
@@ -81,7 +102,6 @@ impl StoragePassport {
         if addr.is_zero() {
             Err(Error {
                 typ: ErrorDiscriminant::AccountKeyNotFound,
-                cd: vec![],
             })
         } else {
             Ok(addr)
@@ -92,12 +112,12 @@ impl StoragePassport {
         &mut self,
         owner: Address,
         asset: Address,
-        ms_ts: u128,
+        h: &[u8; 64],
         y: u128,
     ) -> Result<(), Error> {
-        let ms_ts = U128::from_le_bytes(ms_ts.to_le_bytes());
-        let x = self.interim.getter(owner).getter(asset).get(ms_ts);
-        self.interim.setter(owner).setter(asset).setter(ms_ts).set(
+        let h = FixedBytes::from_slice(h);
+        let x = self.interim.getter(owner).getter(asset).get(h);
+        self.interim.setter(owner).setter(asset).setter(h).set(
             x.checked_add(U128::from_le_bytes(y.to_le_bytes()))
                 .ok_or(err_checked_add(x, y))?,
         );
@@ -108,12 +128,12 @@ impl StoragePassport {
         &mut self,
         owner: Address,
         asset: Address,
-        ms_ts: u128,
+        h: &[u8; 64],
         y: u128,
     ) -> Result<(), Error> {
-        let ms_ts = U128::from_le_bytes(ms_ts.to_le_bytes());
-        let x = self.interim.getter(owner).getter(asset).get(ms_ts);
-        self.interim.setter(owner).setter(asset).setter(ms_ts).set(
+        let h = FixedBytes::from_slice(&h[..32]);
+        let x = self.interim.getter(owner).getter(asset).get(h);
+        self.interim.setter(owner).setter(asset).setter(h).set(
             x.checked_sub(U128::from_le_bytes(y.to_le_bytes()))
                 .ok_or(err_checked_sub(x, y))?,
         );
@@ -133,6 +153,7 @@ impl StoragePassport {
         );
         Ok(())
     }
+
     pub fn decrease_withdrawal(
         &mut self,
         owner: Address,
@@ -151,12 +172,12 @@ impl StoragePassport {
         &mut self,
         owner: Address,
         asset: Address,
-        ms_ts: u128,
+        h: &[u8; 64],
         y: u128,
     ) -> Result<(), Error> {
-        let ms_ts = U128::from_le_bytes(ms_ts.to_le_bytes());
-        let x = self.orders.getter(owner).getter(asset).get(ms_ts);
-        self.orders.setter(owner).setter(asset).setter(ms_ts).set(
+    let h = FixedBytes::from_slice(h);
+        let x = self.orders.getter(owner).getter(asset).get(h);
+        self.orders.setter(owner).setter(asset).setter(h).set(
             x.checked_add(U128::from_le_bytes(y.to_le_bytes()))
                 .ok_or(err_checked_add(x, y))?,
         );
@@ -167,12 +188,12 @@ impl StoragePassport {
         &mut self,
         owner: Address,
         asset: Address,
-        ms_ts: u128,
+        h: &[u8; 64],
         y: u128,
     ) -> Result<(), Error> {
-        let ms_ts = U128::from_le_bytes(ms_ts.to_le_bytes());
-        let x = self.orders.getter(owner).getter(asset).get(ms_ts);
-        self.orders.setter(owner).setter(asset).setter(ms_ts).set(
+        let h = FixedBytes::from_slice(h);
+        let x = self.orders.getter(owner).getter(asset).get(h);
+        self.orders.setter(owner).setter(asset).setter(h).set(
             x.checked_sub(U128::from_le_bytes(y.to_le_bytes()))
                 .ok_or(err_checked_sub(x, y))?,
         );
