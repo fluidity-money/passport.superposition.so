@@ -1,11 +1,12 @@
 use crate::{
     applicative::*,
     error::*,
+    immutables::SOLVER_KEY_TESTNET,
     state_machine::{self, StateMachine},
     storage::Storage,
-    accounts::AccountsList,
-    immutables::SOLVER_KEY_TESTNET
 };
+
+use alloc::vec::Vec;
 
 use arrayvec::ArrayVec;
 
@@ -17,7 +18,7 @@ use ed25519_dalek::{Signature, SigningKey, VerifyingKey};
 
 use sha2::{digest::Digest, Sha512};
 
-use alloc::{boxed::Box};
+use alloc::boxed::Box;
 
 fn err_sig() -> Error {
     Error {
@@ -168,7 +169,11 @@ fn err_hash_already_onchain(h: &[u8; 64]) -> Error {
 impl Storage {
     fn ensure_hash_unseen(&self, hash: &[u8; 64]) -> Result<(), Error> {
         // We need to truncate the first part of the hash to access it in the storage tree.
-        if !self.details_hash_owner_l.get(FixedBytes::<32>::from_slice(&hash[..32])).is_zero() {
+        if !self
+            .details_hash_owner_l
+            .get(FixedBytes::<32>::from_slice(&hash[..32]))
+            .is_zero()
+        {
             return Err(err_hash_already_onchain(hash));
         }
         Ok(())
@@ -177,13 +182,14 @@ impl Storage {
     /// Validate the Balance against the signature given using an array on the stack.
     fn validate_balance(
         &self,
-        accounts: &AccountsList,
-        (owner_id, owner_sig): &UserSig,
+        accounts: &Vec<u64>,
+        (owner_i, owner_sig): &UserSig,
         ap: &ArgsBalance,
     ) -> Result<state_machine::Balance, Error> {
-        let o = &accounts.find_key(*owner_id)?;
+        let owner_id = accounts[*owner_i as usize];
+        let o = self.find_ed25519_key(owner_id)?;
         let hash = check_sig(
-            o,
+            &o,
             owner_sig,
             &serialise_inplace::<_, { size_of::<ArgsBalance>() }>(ap),
             &[],
@@ -192,7 +198,7 @@ impl Storage {
         Ok(state_machine::Balance::Inline(
             state_machine::BalanceArgs {
                 ms_ts: ap.ms_timestamp,
-                owner: self.find_ed25519_key(o)?,
+                owner: self.find_ed25519_addr(owner_id)?,
                 asset: Address::new(ap.asset),
                 amt: ap.amount,
             },
@@ -202,7 +208,7 @@ impl Storage {
 
     fn validate_commit_left_filled_to_bal(
         &self,
-        accounts: &AccountsList,
+        accounts: &Vec<u64>,
         ap: &Applicative,
     ) -> Result<state_machine::Balance, Error> {
         let commit = self.validate_wrapped_commit(
@@ -221,7 +227,7 @@ impl Storage {
 
     fn validate_commit_right_filled_to_bal(
         &self,
-        accounts: &AccountsList,
+        accounts: &Vec<u64>,
         ap: &Applicative,
     ) -> Result<state_machine::Balance, Error> {
         let commit = self.validate_wrapped_commit(
@@ -241,7 +247,7 @@ impl Storage {
     fn validate_wrapped_balance(
         &self,
         from: ApplicativeLabel,
-        accounts: &AccountsList,
+        accounts: &Vec<u64>,
         ap: &Applicative,
     ) -> Result<state_machine::Balance, Error> {
         match ap {
@@ -258,15 +264,17 @@ impl Storage {
 
     fn validate_order(
         &self,
-        accounts: &AccountsList,
-        (owner_id, owner_sig): &UserSig,
+        accounts: &Vec<u64>,
+        (owner_i, owner_sig): &UserSig,
         args: &ArgsOrder,
         ap: &Applicative,
     ) -> Result<state_machine::Order, Error> {
         let bal = self.validate_wrapped_balance(label(ap), accounts, ap)?;
         let bal_hash = get_bal_hash(&bal);
+        let owner_id = accounts[*owner_i as usize];
+        let o = self.find_ed25519_key(owner_id)?;
         let hash = check_sig(
-            &accounts.find_key(*owner_id)?,
+            &o,
             owner_sig,
             &digest_inplace::<_, { size_of::<ArgsOrder>() }>(args),
             &bal_hash,
@@ -287,7 +295,7 @@ impl Storage {
 
     fn validate_commit_left_excess_to_order(
         &self,
-        accounts: &AccountsList,
+        accounts: &Vec<u64>,
         ap: &Applicative,
     ) -> Result<state_machine::Order, Error> {
         let commit =
@@ -303,7 +311,7 @@ impl Storage {
 
     fn validate_commit_right_excess_to_order(
         &self,
-        accounts: &AccountsList,
+        accounts: &Vec<u64>,
         ap: &Applicative,
     ) -> Result<state_machine::Order, Error> {
         let commit =
@@ -320,7 +328,7 @@ impl Storage {
     fn validate_wrapped_order(
         &self,
         from: ApplicativeLabel,
-        accounts: &AccountsList,
+        accounts: &Vec<u64>,
         ap: &Applicative,
     ) -> Result<state_machine::Order, Error> {
         match ap {
@@ -340,7 +348,7 @@ impl Storage {
     /// machine to do the checking of the amounts and constraints.
     fn validate_commit(
         &self,
-        accounts: &AccountsList,
+        accounts: &Vec<u64>,
         solver_sig: &[u8; 64],
         args: &ArgsCommit,
         left: &Applicative,
@@ -376,7 +384,7 @@ impl Storage {
     fn validate_wrapped_commit(
         &self,
         from: ApplicativeLabel,
-        accounts: &AccountsList,
+        accounts: &Vec<u64>,
         ap: &Applicative,
     ) -> Result<state_machine::Commit, Error> {
         match ap {
@@ -393,9 +401,9 @@ impl Storage {
     /// an amount that should be redeemed to the user by the contract.
     fn validate_withdraw(
         &self,
-        accounts: &AccountsList,
+        accounts: &Vec<u64>,
         solver_sig: &[u8; 64],
-        (owner_id, owner_sig): &UserSig,
+        (owner_i, owner_sig): &UserSig,
         ap: &Applicative,
     ) -> Result<state_machine::Withdraw, Error> {
         // Since the argument to the right isn't known in the type here, we
@@ -403,10 +411,12 @@ impl Storage {
         // concatenation here. Very stack expensive.
         let bal = self.validate_wrapped_balance(label(ap), accounts, ap)?;
         let bal_hash = get_bal_hash(&bal);
+        let owner_id = accounts[*owner_i as usize];
+        let o = self.find_ed25519_key(owner_id)?;
         let hash = check_sig_two(
             &SOLVER_KEY_TESTNET,
             solver_sig,
-            &accounts.find_key(*owner_id)?,
+            &o,
             owner_sig,
             &[Nonce::Withdraw.into()],
             &bal_hash,
@@ -417,17 +427,19 @@ impl Storage {
 
     fn validate_cancel(
         &self,
-        accounts: &AccountsList,
+        accounts: &Vec<u64>,
         solver_sig: &[u8; 64],
-        (owner_id, owner_sig): &UserSig,
+        (owner_i, owner_sig): &UserSig,
         ap: &Applicative,
     ) -> Result<state_machine::Balance, Error> {
         let order = self.validate_wrapped_order(ApplicativeLabel::Cancel, accounts, ap)?;
         let order_hash = get_order_hash(&order);
+        let owner_id = accounts[*owner_i as usize];
+        let o = self.find_ed25519_key(owner_id)?;
         let hash = check_sig_two(
             &SOLVER_KEY_TESTNET,
             solver_sig,
-            &accounts.find_key(*owner_id)?,
+            &o,
             owner_sig,
             &[Nonce::Cancel.into()],
             &order_hash,
@@ -438,8 +450,8 @@ impl Storage {
 
     fn validate_join(
         &self,
-        accounts: &AccountsList,
-        (owner_id, owner_sig): &UserSig,
+        accounts: &Vec<u64>,
+        (owner_i, owner_sig): &UserSig,
         left: &Applicative,
         right: &Applicative,
     ) -> Result<state_machine::Balance, Error> {
@@ -448,11 +460,13 @@ impl Storage {
         let right_bal = self.validate_wrapped_balance(l, accounts, right)?;
         let left_hash = get_bal_hash(&left_bal);
         let right_hash = get_bal_hash(&right_bal);
+        let owner_id = accounts[*owner_i as usize];
+        let o = self.find_ed25519_key(owner_id)?;
         Ok(state_machine::Balance::Join(
             Box::new(left_bal),
             Box::new(right_bal),
             check_sig(
-                &accounts.find_key(*owner_id)?,
+                &o,
                 owner_sig,
                 &[Nonce::Join.into()],
                 &chain_digests(&left_hash, &right_hash),
@@ -462,11 +476,7 @@ impl Storage {
 
     /// Entrypoint validation function for a Applicative type during its
     /// validation stage.
-    pub fn validate(
-        &self,
-        accounts: &AccountsList,
-        ap: Applicative,
-    ) -> Result<StateMachine, Error> {
+    pub fn validate(&self, accounts: &Vec<u64>, ap: Applicative) -> Result<StateMachine, Error> {
         match ap {
             Applicative::Balance(sig, args) => Ok(StateMachine::Balance(
                 self.validate_balance(accounts, &sig, &args)?,

@@ -7,14 +7,14 @@ use borsh::{BorshDeserialize, BorshSerialize};
 
 use alloc::boxed::Box;
 
-use crate::{accounts::AccountId, error::Error};
+use crate::error::Error;
 
 // Concatenated form of the ed25519 r and s values for use with
 // ed25519_dalek.
 pub type EdSig = [u8; 64];
 
 /// User provided signature. Needs a lookup in the accounts table.
-pub type UserSig = (AccountId, EdSig);
+pub type UserSig = (u8, EdSig);
 
 /// Solver provided signature.
 pub type SolverSig = EdSig;

@@ -1,9 +1,6 @@
 use stylus_sdk::{alloy_primitives::*, prelude::*, storage::*};
 
-use crate::{
-    accounts::AccountsList,
-    error::{Error, ErrorDiscriminant},
-};
+use crate::error::{Error, ErrorDiscriminant};
 
 use alloc::{vec, vec::Vec};
 
@@ -25,8 +22,15 @@ pub type StorageTickets =
 
 #[storage]
 pub struct Storage {
-    // Owners of these addresses, using the ed25519 signatures.
-    pub ed25519_owners: StorageMap<KeyEdAddr, StorageAddress>,
+    // Count of the number of seen addresses, that we use our shortened
+    // accounts list form to look up.
+    pub ed25519_count: StorageU64,
+
+    // Tool to find the VerifyingKey using an id, to reduce codesize and the calldata.
+    pub ed25519_keys: StorageMap<u64, StorageFixedBytes<32>>,
+
+    // Owners of the offset of these addresses, using the ed25519 signatures.
+    pub ed25519_owners: StorageMap<u64, StorageAddress>,
 
     /// Outstanding orders that could be used in another part of the operation.
     pub orders: StorageTickets,
@@ -81,27 +85,25 @@ impl Storage {
         todo!()
     }
 
-    pub fn find_ed25519_addr(
-        &self,
-        accounts: &AccountsList,
-        id: [u8; 4],
-    ) -> Result<Address, Error> {
-        let addr = self.ed25519_owners.get(accounts.find_key_bytes(id)?);
-        if addr.is_zero() {
+    pub fn find_ed25519_key(&self, i: u64) -> Result<VerifyingKey, Error> {
+        let v = self.ed25519_keys.get(i);
+        let FixedBytes(b) = v;
+        if v.is_zero() {
             Err(Error {
                 typ: ErrorDiscriminant::AccountIdNotFound,
             })
         } else {
-            Ok(addr)
+            VerifyingKey::from_bytes(&b).map_err(|_| Error {
+                typ: ErrorDiscriminant::AccountIdNotFound,
+            })
         }
     }
 
-    pub fn find_ed25519_key(&self, key: &VerifyingKey) -> Result<Address, Error> {
-        let k = *key.as_bytes();
-        let addr = self.ed25519_owners.get(FixedBytes::new(k));
+    pub fn find_ed25519_addr(&self, i: u64) -> Result<Address, Error> {
+        let addr = self.ed25519_owners.get(i);
         if addr.is_zero() {
             Err(Error {
-                typ: ErrorDiscriminant::AccountKeyNotFound,
+                typ: ErrorDiscriminant::AccountIdNotFound,
             })
         } else {
             Ok(addr)
@@ -175,7 +177,7 @@ impl Storage {
         h: &[u8; 64],
         y: u128,
     ) -> Result<(), Error> {
-    let h = FixedBytes::from_slice(h);
+        let h = FixedBytes::from_slice(h);
         let x = self.orders.getter(owner).getter(asset).get(h);
         self.orders.setter(owner).setter(asset).setter(h).set(
             x.checked_add(U128::from_le_bytes(y.to_le_bytes()))

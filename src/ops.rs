@@ -4,7 +4,9 @@
 // converting to a derived state, which the program interrogates to
 // transfer ownership and partial amounts.
 
-use crate::{applicative::Applicative, accounts::AccountsList};
+use crate::{applicative::Applicative};
+
+use alloc::vec::Vec;
 
 use borsh::{BorshDeserialize};
 
@@ -19,6 +21,7 @@ pub enum Op {
     // The recursive datatype entrypoint that represents the rolled up form
     // of every interaction. Each excess value creates a new value that could be
     // spent in the same transaction, or committed to the reusable pool of
-    // on-chain state.
-    Solve(AccountsList, Applicative)
+    // on-chain state. The first argument to the Solve function is the location
+    // of the VerifyingKey in the mapping of the keys on-chain.
+    Solve(Vec<u64>, Applicative)
 }

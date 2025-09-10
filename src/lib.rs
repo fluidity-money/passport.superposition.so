@@ -16,8 +16,6 @@ pub mod user_context;
 
 pub mod immutables;
 
-pub mod accounts;
-
 pub mod applicative;
 pub mod state_machine;
 
@@ -92,4 +90,4 @@ mod implem {
 }
 
 #[cfg(target_arch = "wasm32")]
-use implem::*;
+pub use implem::*;
