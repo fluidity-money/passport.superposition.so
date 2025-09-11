@@ -481,7 +481,7 @@ impl Storage {
             Applicative::Balance(sig, args) => Ok(StateMachine::Balance(
                 self.validate_balance(accounts, &sig, &args)?,
             )),
-            Applicative::Withdraw(solver_sig, user_sig, ap) => Ok(StateMachine::Withdraw(
+            Applicative::Withdraw(solver_sig, user_sig, _, ap) => Ok(StateMachine::Withdraw(
                 self.validate_withdraw(accounts, &solver_sig, &user_sig, &ap)?,
             )),
             Applicative::Order(user_sig, args, ap) => Ok(StateMachine::Order(

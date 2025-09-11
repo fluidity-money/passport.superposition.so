@@ -48,10 +48,13 @@ pub struct Storage {
     pub details_hash_owner_r: StorageMap<FixedBytes<32>, StorageU256>,
 
     /// The first asset in this hash.
-    pub details_asset_l: StorageMap<FixedBytes<32>, StorageAddress>,
+    pub details_hash_asset_l: StorageMap<FixedBytes<32>, StorageAddress>,
 
-    /// The second asset of the hash.
-    pub details_asset_r: StorageMap<FixedBytes<32>, StorageAddress>,
+    /// The second asset of the hash. This is used by orders to store the desired asset.
+    pub details_hash_asset_r: StorageMap<FixedBytes<32>, StorageAddress>,
+
+    /// The desired asset by the order at this hash on its own.
+    pub details_hash_order_desired_amt: StorageMap<FixedBytes<32>, StorageU128>,
 }
 
 unsafe impl stylus_sdk::stylus_core::storage::TopLevelStorage for Storage {}
@@ -85,6 +88,29 @@ impl Storage {
         todo!()
     }
 
+    pub fn get_hash_asset_l(&self, h: &[u8; 64]) -> Address {
+        todo!()
+    }
+
+    pub fn get_hash_asset_r(&self, h: &[u8; 64]) -> Address {
+        todo!()
+    }
+
+    pub fn get_hash_owner_l(&self, h: &[u8; 64]) -> Address {
+        todo!()
+    }
+
+    pub fn get_hash_owner_r(&self, h: &[u8; 64]) -> Address {
+        todo!()
+    }
+
+    pub fn get_hash_order_desired_amount(&self, h: &[u8; 64]) -> u128 {
+        u128::from_be_bytes(
+            self.details_hash_order_desired_amt.get(FixedBytes::from_slice(&h[..32]))
+                .to_be_bytes(),
+        )
+    }
+
     pub fn find_ed25519_key(&self, i: u64) -> Result<VerifyingKey, Error> {
         let v = self.ed25519_keys.get(i);
         let FixedBytes(b) = v;
@@ -110,6 +136,16 @@ impl Storage {
         }
     }
 
+    pub fn get_interim(&self, owner: Address, asset: Address, h: &[u8; 64]) -> u128 {
+        u128::from_be_bytes(
+            self.interim
+                .getter(owner)
+                .getter(asset)
+                .get(FixedBytes::from_slice(&h[..32]))
+                .to_be_bytes(),
+        )
+    }
+
     pub fn increase_interim(
         &mut self,
         owner: Address,
@@ -117,7 +153,7 @@ impl Storage {
         h: &[u8; 64],
         y: u128,
     ) -> Result<(), Error> {
-        let h = FixedBytes::from_slice(h);
+        let h = FixedBytes::from_slice(&h[..32]);
         let x = self.interim.getter(owner).getter(asset).get(h);
         self.interim.setter(owner).setter(asset).setter(h).set(
             x.checked_add(U128::from_le_bytes(y.to_le_bytes()))
@@ -170,6 +206,11 @@ impl Storage {
         Ok(())
     }
 
+    pub fn get_order(&self, owner: Address, asset: Address, h: &[u8; 64]) -> u128 {
+        let h = FixedBytes::from_slice(&h[..32]);
+        u128::from_be_bytes(self.orders.getter(owner).getter(asset).get(h).to_be_bytes())
+    }
+
     pub fn increase_order(
         &mut self,
         owner: Address,
@@ -177,7 +218,7 @@ impl Storage {
         h: &[u8; 64],
         y: u128,
     ) -> Result<(), Error> {
-        let h = FixedBytes::from_slice(h);
+        let h = FixedBytes::from_slice(&h[..32]);
         let x = self.orders.getter(owner).getter(asset).get(h);
         self.orders.setter(owner).setter(asset).setter(h).set(
             x.checked_add(U128::from_le_bytes(y.to_le_bytes()))
@@ -193,7 +234,7 @@ impl Storage {
         h: &[u8; 64],
         y: u128,
     ) -> Result<(), Error> {
-        let h = FixedBytes::from_slice(h);
+        let h = FixedBytes::from_slice(&h[..32]);
         let x = self.orders.getter(owner).getter(asset).get(h);
         self.orders.setter(owner).setter(asset).setter(h).set(
             x.checked_sub(U128::from_le_bytes(y.to_le_bytes()))

@@ -53,7 +53,6 @@ pub enum Order {
 #[derive(Clone, Debug, PartialEq)]
 pub enum Withdraw {
     Inline(Box<Balance>, Hash),
-    Onchain(Hash),
 }
 
 #[derive(Clone, Debug, PartialEq)]

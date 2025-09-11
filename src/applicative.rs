@@ -19,6 +19,13 @@ pub type UserSig = (u8, EdSig);
 /// Solver provided signature.
 pub type SolverSig = EdSig;
 
+/// Vault provided signature. The location of the provider is the type
+/// of vault that was used here. The signature is screened to check if the
+/// vault arguments are consistent with the filling of the liquidity here.
+/// The vault will enforce restrictions on the type of asset that was used,
+/// including the amount.
+pub type VaultSig = (u8, EdSig);
+
 /// For situations where the conversion between the type lacks an
 /// argument, we include this in the supplied bytes to differentiate
 /// things so a signature can't be misused. This is like the state machine
@@ -120,7 +127,7 @@ pub enum Applicative {
     /// of the concatenation of the hash of the
     /// (Balance|CommitLeftFilledToBalance|CommitRightFilledToBalance|Cancel)
     /// input from the solver and the user.
-    Withdraw(SolverSig, UserSig, Box<Applicative>),
+    Withdraw(SolverSig, UserSig, Option<VaultSig>, Box<Applicative>),
     /// Only (Balance | CommitToBalance*) => Order as the argument here.
     /// Consumes a Balance. The signature is the concatenation of the inputs,
     /// and the hash from the balance.
@@ -152,7 +159,7 @@ impl From<&Applicative> for ApplicativeLabel {
     fn from(x: &Applicative) -> Self {
         match x {
             Applicative::Balance(_, _) => ApplicativeLabel::Balance,
-            Applicative::Withdraw(_, _, _) => ApplicativeLabel::Withdraw,
+            Applicative::Withdraw(_, _, _, _) => ApplicativeLabel::Withdraw,
             Applicative::Order(_, _, _) => ApplicativeLabel::Order,
             Applicative::Cancel(_, _, _) => ApplicativeLabel::Cancel,
             Applicative::Commit(_, _, _, _) => ApplicativeLabel::Commit,
