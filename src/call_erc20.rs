@@ -2,15 +2,15 @@ use crate::error::*;
 
 use stylus_sdk::{
     alloy_primitives::{Address, U256},
-    call::call,
     prelude::{HostAccess, TopLevelStorage},
-    stylus_core::Call,
 };
 
 #[cfg(target_arch = "wasm32")]
 #[allow(unused)]
 mod implem {
     use super::*;
+
+    use stylus_sdk::{call::call, stylus_core::Call};
 
     pub fn transfer(
         env: &mut (impl TopLevelStorage + HostAccess),

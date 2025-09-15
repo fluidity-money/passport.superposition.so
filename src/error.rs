@@ -172,10 +172,6 @@ pub const NOOP: R = Ok(Res::Noop);
 
 pub const DONE_UNIT: R = Ok(Res::DoneUnit);
 
-pub fn DONE_U128(x: u128) -> R {
-    Ok(Res::DoneU128(x))
-}
-
 #[macro_export]
 macro_rules! require {
     ($cond:expr, $err:ident) => {

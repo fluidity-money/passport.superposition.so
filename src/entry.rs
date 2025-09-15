@@ -1,11 +1,5 @@
 use crate::{applicative::Applicative, error::*, storage::*};
 
-#[cfg(not(target_arch = "wasm32"))]
-use crate::{call_erc20, ops::*};
-
-#[cfg(not(target_arch = "wasm32"))]
-use stylus_sdk::prelude::HostAccess;
-
 use alloc::vec::Vec;
 
 impl Storage {

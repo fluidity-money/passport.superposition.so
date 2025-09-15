@@ -42,10 +42,10 @@ pub struct Storage {
     pub interim: StorageTickets,
 
     /// The owner of the left side of the hash given. It should not be zero.
-    pub details_hash_owner_l: StorageMap<FixedBytes<32>, StorageU256>,
+    pub details_hash_owner_l: StorageMap<FixedBytes<32>, StorageAddress>,
 
     /// The owner of the right side of the hash given.
-    pub details_hash_owner_r: StorageMap<FixedBytes<32>, StorageU256>,
+    pub details_hash_owner_r: StorageMap<FixedBytes<32>, StorageAddress>,
 
     /// The first asset in this hash.
     pub details_hash_asset_l: StorageMap<FixedBytes<32>, StorageAddress>,
@@ -81,32 +81,37 @@ fn err_checked_sub(_x: U128, _y: u128) -> Error {
 
 impl Storage {
     pub fn set_hash_details_l(&mut self, h: &[u8; 64], owner: Address, asset: Address) {
-        todo!()
+        let h = FixedBytes::from_slice(&h[..32]);
+        self.details_hash_owner_l.setter(h).set(owner);
+        self.details_hash_asset_l.setter(h).set(asset);
     }
 
     pub fn set_hash_details_r(&mut self, h: &[u8; 64], owner: Address, asset: Address) {
-        todo!()
+        let h = FixedBytes::from_slice(&h[..32]);
+        self.details_hash_owner_r.setter(h).set(owner);
+        self.details_hash_asset_r.setter(h).set(asset);
     }
 
     pub fn set_hash_details_desired_asset(&mut self, h: &[u8; 64], asset: Address) {
         // Sets the right side asset.
-        todo!()
+        let h = FixedBytes::from_slice(&h[..32]);
+        self.details_hash_asset_r.setter(h).set(asset);
     }
 
     pub fn get_hash_asset_l(&self, h: &[u8; 64]) -> Address {
-        todo!()
+        self.details_hash_asset_l.get(FixedBytes::from_slice(&h[..32]))
     }
 
     pub fn get_hash_asset_r(&self, h: &[u8; 64]) -> Address {
-        todo!()
+        self.details_hash_asset_r.get(FixedBytes::from_slice(&h[..32]))
     }
 
     pub fn get_hash_owner_l(&self, h: &[u8; 64]) -> Address {
-        todo!()
+        self.details_hash_owner_l.get(FixedBytes::from_slice(&h[..32]))
     }
 
     pub fn get_hash_owner_r(&self, h: &[u8; 64]) -> Address {
-        todo!()
+        self.details_hash_owner_r.get(FixedBytes::from_slice(&h[..32]))
     }
 
     pub fn get_hash_order_desired_amount(&self, h: &[u8; 64]) -> u128 {

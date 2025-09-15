@@ -1,8 +1,8 @@
 #![cfg(not(target_arch = "wasm32"))]
 
 use libpassport::{
-    accounts::*, applicative::*, error::*, solver_context::*, user_context::*,
-    utils::strat_address_not_empty, StoragePassport,
+    applicative::*, error::*, solver_context::*, user_context::*, utils::strat_address_not_empty,
+    Storage,
 };
 
 use ed25519_dalek::SigningKey;
@@ -168,7 +168,7 @@ fn convert_test_balance<T: UserApplicative, S: SolverApplicative>(
                     amount,
                     ms_timestamp,
                 },
-        }) => Ok(user_app.balance(asset.x, *chain, *amount, *ms_timestamp)),
+        }) => Ok(user_app.balance(Address::from(asset), *chain, *amount, *ms_timestamp)),
         TestBalance::CommitLeftFilledToBalance(test_commit) => {
             let converted_commit = convert_test_commit(user_app, solver_app, test_commit)?;
             user_app.commit_left_filled_to_balance(converted_commit)
@@ -191,7 +191,7 @@ fn convert_test_order<T: UserApplicative, S: SolverApplicative>(
             let args = &order_inside.args;
             user_app.order(
                 args.from_amt,
-                args.desired_asset.x,
+                Address::from(args.desired_asset),
                 args.desired_chain,
                 args.desired_amt,
                 converted_from,
@@ -242,7 +242,7 @@ fn convert<T: UserApplicative, S: SolverApplicative>(
         Entry::Withdraw(test_balance) => {
             let converted_balance = convert_test_balance(user_app, solver_app, test_balance)?;
             let solver_sig = solver_app.withdraw(converted_balance.clone())?;
-            user_app.withdraw(solver_sig, converted_balance)
+            user_app.withdraw(solver_sig, converted_balance, None)
         }
         Entry::Order(test_balance) => user_app.order(
             0,
@@ -286,17 +286,17 @@ proptest! {
     ) {
         let solver_priv = SigningKey::from_bytes(&solver_priv_key);
         let signer_priv = SigningKey::from_bytes(&signer_priv_key);
-        let solver_key = solver_priv.verifying_key();
         let signer_key = signer_priv.verifying_key();
         let solver_ctx = SolverContext::new_from_bytes(solver_priv.as_bytes());
         // Implicitly registers the solver key.
         let user_ctx = UserContext::new_from_bytes(
-            AccountsExpanded::default().with_solver(solver_key.as_bytes()).unwrap(),
-            signer_key.as_bytes()
+            signer_key.as_bytes(),
+            0
         );
         let converted = convert(&user_ctx, &solver_ctx, &e).unwrap();
-        let mut s = StoragePassport::from(&stylus_sdk::testing::vm::TestVM::new());
-        s.ed25519_owners.setter(FixedBytes::new(signer_priv_key)).set(solver_addr);
+        let mut s = Storage::from(&stylus_sdk::testing::vm::TestVM::new());
+        s.ed25519_keys.setter(0).set(FixedBytes::from_slice(&signer_key.as_bytes()[..32]));
+        s.ed25519_owners.setter(0).set(solver_addr);
         s.validate(&user_ctx.accounts, converted).unwrap();
     }
 }
