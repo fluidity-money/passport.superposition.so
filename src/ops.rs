@@ -8,13 +8,10 @@ use crate::{applicative::Applicative};
 
 use alloc::vec::Vec;
 
-use borsh::{BorshDeserialize};
+use borsh::{BorshDeserialize, BorshSerialize};
 
-#[cfg(not(target_arch = "wasm32"))]
-use borsh::BorshSerialize;
-
-#[derive(BorshDeserialize, Clone, PartialEq)]
-#[cfg_attr(not(target_arch = "wasm32"), derive(Debug, BorshSerialize))]
+#[derive(BorshDeserialize, BorshSerialize, Clone, PartialEq)]
+#[cfg_attr(not(target_arch = "wasm32"), derive(Debug))]
 pub enum Op {
     /// Dummy operation.
     Dummy,
@@ -23,5 +20,5 @@ pub enum Op {
     // spent in the same transaction, or committed to the reusable pool of
     // on-chain state. The first argument to the Solve function is the location
     // of the VerifyingKey in the mapping of the keys on-chain.
-    Solve(Vec<u64>, Applicative)
+    Solve(Vec<u64>, Applicative),
 }

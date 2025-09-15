@@ -8,15 +8,17 @@ name = "libpassport"
 edition = "2021"
 
 [[bin]]
-name = "contract"
-path = "src/contract-main/main.rs"
+name = "contract-solver"
+path = "src/contract-solver/main.rs"
 
-[target.'cfg(target = "wasm-wasi-wasi")']
+[[bin]]
+name = "contract-setter"
+path = "src/contract-setter/main.rs"
+
 [[bin]]
 name = "webapp"
 path = "src/webapp-main/main.rs"
 
-[target.'cfg(not(target_arch = "wasm32"))']
 [[bin]]
 name = "generator"
 path = "src/gen-main/main.rs"

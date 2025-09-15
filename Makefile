@@ -5,12 +5,15 @@ CARGO_EXTRA_FEATURES := \
 CARGO_EXTRA_FEATURES := \
 	$(if ${SPN_ADJUST_TIME},${comma}e2e-adjust-time)${CARGO_EXTRA_FEATURES}
 
-CARGO_BUILD_STYLUS := \
+CARGO_BIN_WASM32 := \
 	cargo build \
 		--release \
-		--target wasm32-unknown-unknown \
-		--bin \
-		contract
+		--target wasm32-unknown-unknown
+
+CARGO_BIN_WASI := \
+	cargo build \
+		--release \
+		--target wasm-wasi-wasi
 
 RELEASE_PASSPORT_WASM := \
 	wasm-opt \
@@ -23,30 +26,32 @@ RELEASE_PASSPORT_WASM := \
 		-Oz target/wasm32-unknown-unknown/release/contract.wasm \
 		-o
 
-CARGO_BUILD_GENERATOR := \
-	cargo build --bin generator
-
 .PHONY: build
 
 OUT_SHARE := out/Share.sol/Share.json
 
-build: passport-superposition-so generator.out
+build: \
+	solver.passport-superposition-so.wasm \
+	setter.passport-superposition-so.wasm
 
-passport-superposition-so: passport-superposition-so.wasm
+solver.passport-superposition-so.wasm: $(shell find src -type f -name '*.rs')
+	@rm -f solver.passport-superposition-so.wasm
+	@${CARGO_BIN_WASM32}
+	@${RELEASE_PASSPORT_WASM} solver.passport-superposition-so.wasm
 
-passport-superposition-so.wasm: $(shell find src -type f -name '*.rs')
-	@rm -f passport-superposition-so.wasm
-	@${CARGO_BUILD_STYLUS}
-	@${RELEASE_PASSPORT_WASM} passport-superposition-so.wasm
+setter.passport-superposition-so.wasm: $(shell find src -type f -name '*.rs')
+	@rm -f setter.passport-superposition-so.wasm
+	@${CARGO_BIN_WASM32}
+	@${RELEASE_PASSPORT_WASM} setter.passport-superposition-so.wasm
 
 generator.out: $(shell find src -type f -name '*.rs')
 	@rm -f generator.out
-	@${CARGO_BUILD_GENERATOR}
+	@${CARGO_BIN_WASI}
 	@cp target/debug/generator generator.out
 
 clean:
 	@rm -rf \
-		passport-superposition-so.wasm \
+		solver.passport-superposition-so.wasm \
 		liblib9lives.rlib \
 		ninelives.wasm \
 		target

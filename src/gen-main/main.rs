@@ -1,40 +1,50 @@
-use clap::Parser;
+#[cfg(target_arch = "x86_64")]
 
-use libpassport::{ops::Op, OurLzss};
+mod host {
+    use clap::Parser;
 
-#[derive(Clone)]
-struct OurOp {
-    op: Op,
-}
+    use libpassport::{ops::Op, OurLzss};
 
-use lzss::{SliceReader, VecWriter};
+    #[derive(Clone)]
+    struct OurOp {
+        op: Op,
+    }
 
-use std::str::FromStr;
+    use lzss::{SliceReader, VecWriter};
 
-impl std::str::FromStr for OurOp {
-    type Err = String;
+    use std::str::FromStr;
 
-    fn from_str(_s: &str) -> Result<Self, Self::Err> {
-        Ok(OurOp { op: Op::Dummy })
+    impl std::str::FromStr for OurOp {
+        type Err = String;
+
+        fn from_str(_s: &str) -> Result<Self, Self::Err> {
+            Ok(OurOp { op: Op::Dummy })
+        }
+    }
+
+    #[derive(Parser)]
+    #[command(version, about)]
+    struct Args {
+        #[arg(value_parser = OurOp::from_str)]
+        op: OurOp,
+    }
+
+    fn main() {
+        println!(
+            "{}",
+            const_hex::encode(
+                OurLzss::compress_stack(
+                    SliceReader::new(&borsh::to_vec(&Args::parse().op.op).unwrap()),
+                    VecWriter::with_capacity(1024 * 10),
+                )
+                .unwrap()
+            )
+        );
     }
 }
 
-#[derive(Parser)]
-#[command(version, about)]
-struct Args {
-    #[arg(value_parser = OurOp::from_str)]
-    op: OurOp,
-}
+#[cfg(target_arch = "x86_64")]
+use host::*;
 
-fn main() {
-    println!(
-        "{}",
-        const_hex::encode(
-            OurLzss::compress_stack(
-                SliceReader::new(&borsh::to_vec(&Args::parse().op.op).unwrap()),
-                VecWriter::with_capacity(1024 * 10),
-            )
-            .unwrap()
-        )
-    );
-}
+#[cfg(not(target_arch = "x86_64"))]
+fn main() {}

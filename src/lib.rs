@@ -38,7 +38,7 @@ use stylus_sdk::{alloy_sol_types::SolError, prelude::HostAccess};
 #[cfg(target_arch = "wasm32")]
 use stylus_sdk::prelude::CalldataAccess;
 
-pub use crate::{error::DONE_UNIT, ops::Op, storage::Storage};
+pub use crate::{error::DONE_UNIT, ops::Op, storage::Storage, error::R};
 
 #[cfg(target_arch = "wasm32")]
 #[link(wasm_import_module = "vm_hooks")]
@@ -53,8 +53,7 @@ pub unsafe fn mark_used() {
     panic!();
 }
 
-#[no_mangle]
-pub extern "C" fn user_entrypoint(len: usize) -> usize {
+pub fn entry(len: usize, simulate: impl FnOnce(&mut Storage, Op) -> R) -> usize {
     #[cfg(target_arch = "wasm32")]
     let vm = stylus_sdk::host::VM(stylus_sdk::host::WasmVM {});
     #[cfg(not(target_arch = "wasm32"))]
@@ -70,6 +69,7 @@ pub extern "C" fn user_entrypoint(len: usize) -> usize {
         lzss::VecWriter::with_capacity(1024 * 10),
     )
     .unwrap();
+    #[allow(unused_mut)]
     let mut s = unsafe {
         <Storage as stylus_sdk::storage::StorageType>::new(
             stylus_sdk::alloy_primitives::U256::ZERO,
@@ -77,13 +77,7 @@ pub extern "C" fn user_entrypoint(len: usize) -> usize {
             vm,
         )
     };
-    let r = match Op::deserialize(&mut (&args as &[u8])).unwrap() {
-        Op::Dummy => DONE_UNIT,
-        Op::Solve(accounts, args) => s
-            .validate(&accounts, args)
-            .and_then(|x| s.apply(x))
-            .and_then(|_| DONE_UNIT),
-    };
+    let r = simulate(&mut s, Op::deserialize(&mut (&args as &[u8])).unwrap());
     let rd = match r {
         Ok(_) => 0,
         Err(_) => 1,

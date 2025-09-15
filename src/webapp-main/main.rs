@@ -1,6 +1,3 @@
-
-#![cfg_attr(target_arch = "wasm32", no_main)]
-
 use libpassport::ops::Op;
 
 #[unsafe(no_mangle)]
