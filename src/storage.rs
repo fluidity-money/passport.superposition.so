@@ -88,6 +88,11 @@ impl Storage {
         todo!()
     }
 
+    pub fn set_hash_details_desired_asset(&mut self, h: &[u8; 64], asset: Address) {
+        // Sets the right side asset.
+        todo!()
+    }
+
     pub fn get_hash_asset_l(&self, h: &[u8; 64]) -> Address {
         todo!()
     }

@@ -216,21 +216,21 @@ impl Storage {
     pub fn commit_left_asset(&self, c: &Commit) -> Address {
         match c {
             Commit::Inline(_, l, _, _) => self.order_asset(l),
-            Commit::Onchain(_) => todo!(),
+            Commit::Onchain(h) => self.get_hash_asset_l(h),
         }
     }
 
     pub fn commit_right_asset(&self, c: &Commit) -> Address {
         match c {
             Commit::Inline(_, _, r, _) => self.order_asset(r),
-            Commit::Onchain(_) => todo!(),
+            Commit::Onchain(h) => self.get_hash_asset_r(h),
         }
     }
 
     pub fn order_asset(&self, o: &Order) -> Address {
         match o {
             Order::Inline(_, b, _) => self.balance_asset(b),
-            Order::Onchain(_) => todo!(),
+            Order::Onchain(h) => self.get_hash_asset_l(h),
             Order::CommitLeftExcessToOrder(c, _) => self.commit_left_asset(c),
             Order::CommitRightExcessToOrder(c, _) => self.commit_right_asset(c),
         }
@@ -239,37 +239,23 @@ impl Storage {
     pub fn commit_left_desired_asset(&self, c: &Commit) -> Address {
         match c {
             Commit::Inline(_, o, _, _) => self.order_desired_asset(o),
-            Commit::Onchain(_) => todo!(),
+            Commit::Onchain(h) => self.get_hash_asset_r(h),
         }
     }
 
     pub fn commit_right_desired_asset(&self, c: &Commit) -> Address {
         match c {
             Commit::Inline(_, _, o, _) => self.order_desired_asset(o),
-            Commit::Onchain(_) => todo!(),
+            Commit::Onchain(h) => self.get_hash_asset_l(h),
         }
     }
 
     pub fn order_desired_asset(&self, o: &Order) -> Address {
         match o {
             Order::Inline(OrderArgs { desired_asset, .. }, _, _) => *desired_asset,
-            Order::Onchain(_) => todo!(),
+            Order::Onchain(h) => self.get_hash_asset_r(h),
             Order::CommitLeftExcessToOrder(c, _) => self.commit_left_desired_asset(c),
             Order::CommitRightExcessToOrder(c, _) => self.commit_right_desired_asset(c),
-        }
-    }
-
-    pub fn commit_l<'a>(&self, c: &'a Commit) -> &'a Order {
-        match c {
-            Commit::Inline(_, l, _, _) => l,
-            Commit::Onchain(_) => todo!(),
-        }
-    }
-
-    pub fn commit_r<'a>(&self, c: &'a Commit) -> &'a Order {
-        match c {
-            Commit::Inline(_, _, r, _) => r,
-            Commit::Onchain(_) => todo!(),
         }
     }
 
@@ -353,11 +339,9 @@ impl Storage {
     }
 
     pub fn apply_commit(&mut self, c: &Commit) -> R<()> {
-        if let Commit::Onchain(_) = c {
+        let Commit::Inline(_, l, r,_) = c else {
             return Ok(());
-        }
-        let l = self.commit_l(c);
-        let r = self.commit_r(c);
+        };
         let hash = self.commit_hash(c);
         let l_asset = self.order_asset(l);
         let l_hash = self.order_hash(l);
@@ -414,7 +398,10 @@ impl Storage {
             return Err(err_bad_balance_from_order());
         }
         self.increase_order(owner, from_asset, h, amt)?;
-        self.decrease_interim(owner, from_asset, h, amt)
+        self.decrease_interim(owner, from_asset, h, amt)?;
+        self.set_hash_details_l(h, owner, from_asset);
+        self.set_hash_details_desired_asset(h, desired_asset);
+        Ok(())
     }
 
     pub fn apply_withdraw(&mut self, w: &Withdraw) -> R<()> {

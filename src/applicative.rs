@@ -24,7 +24,7 @@ pub type SolverSig = EdSig;
 /// vault arguments are consistent with the filling of the liquidity here.
 /// The vault will enforce restrictions on the type of asset that was used,
 /// including the amount.
-pub type VaultSig = (u8, EdSig);
+pub type VaultSig = EdSig;
 
 /// For situations where the conversion between the type lacks an
 /// argument, we include this in the supplied bytes to differentiate
@@ -182,7 +182,12 @@ pub trait UserApplicative {
     fn balance(&self, asset: Address, chain: u128, amount: u128, ms_timestamp: u128)
         -> Applicative;
 
-    fn withdraw(&self, solver_sig: [u8; 64], ap: Applicative) -> Result<Applicative, Error>;
+    fn withdraw(
+        &self,
+        solver_sig: [u8; 64],
+        ap: Applicative,
+        vault_sig: Option<[u8; 64]>,
+    ) -> Result<Applicative, Error>;
 
     fn order(
         &self,

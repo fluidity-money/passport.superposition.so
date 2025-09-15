@@ -4,10 +4,11 @@ use stylus_sdk::alloy_primitives::Address;
 
 use crate::{
     applicative::{Applicative, ArgsBalance, ArgsCommit, ArgsOrder, UserApplicative},
+    conversion::*,
     error::Error,
 };
 
-use alloc::{boxed::Box, vec::Vec};
+use alloc::{boxed::Box, vec, vec::Vec};
 
 /// This code implements crypto's UserApplicative trait, to provide a
 /// user-friendly vehicle to construct the Applicative type including
@@ -15,17 +16,19 @@ use alloc::{boxed::Box, vec::Vec};
 /// table, which it provides during the conversion of this type to
 /// the state machine type.
 pub struct UserContext {
+    pub place: u8,
     pub accounts: Vec<u64>,
     pub signer: SigningKey,
 }
 
 impl UserContext {
     /// Create a new Accounts and register the Signer given.
-    pub fn new_from_bytes(accounts: Vec<u64>, signer_b: &[u8; 32]) -> Self {
+    pub fn new_from_bytes(signer_b: &[u8; 32], place: u64) -> Self {
         let key = SigningKey::from_bytes(signer_b);
         UserContext {
-            accounts,
             signer: key,
+            accounts: vec![place],
+            place: 0,
         }
     }
 }
@@ -44,21 +47,21 @@ impl UserApplicative for UserContext {
             amount,
             ms_timestamp,
         };
-        /*
-        Applicative::Balance(
-            (self.find_signer(), sign_balance(&self.signer, &args)),
-            args,
-        ) */
-        todo!()
+        Applicative::Balance((self.place, sign_balance(&self.signer, &args)), args)
     }
 
-    fn withdraw(&self, solver_sig: [u8; 64], ap: Applicative) -> Result<Applicative, Error> {
-        /*Ok(Applicative::Withdraw(
+    fn withdraw(
+        &self,
+        solver_sig: [u8; 64],
+        ap: Applicative,
+        vault_sig: Option<[u8; 64]>,
+    ) -> Result<Applicative, Error> {
+        Ok(Applicative::Withdraw(
             solver_sig,
-            (self.find_signer(), sign_withdraw(&self.signer, &ap)?),
+            (self.place, sign_withdraw(&self.signer, &ap)?),
+            vault_sig,
             Box::new(ap),
-        )) */
-        todo!()
+        ))
     }
 
     fn order(
@@ -75,21 +78,19 @@ impl UserApplicative for UserContext {
             desired_chain,
             desired_amt,
         };
-        /* Ok(Applicative::Order(
-            (self.find_signer(), sign_order(&self.signer, &args, &ap)?),
+        Ok(Applicative::Order(
+            (self.place, sign_order(&self.signer, &args, &ap)?),
             args,
             Box::new(ap),
-        )) */
-        todo!()
+        ))
     }
 
     fn cancel(&self, solver_sig: [u8; 64], ap: Applicative) -> Result<Applicative, Error> {
-        /*Ok(Applicative::Cancel(
+        Ok(Applicative::Cancel(
             solver_sig,
-            (self.find_signer(), sign_cancel(&self.signer, &ap)?),
+            (self.place, sign_cancel(&self.signer, &ap)?),
             Box::new(ap),
-        )) */
-        todo!()
+        ))
     }
 
     fn commit(
@@ -125,11 +126,10 @@ impl UserApplicative for UserContext {
     }
 
     fn join(&self, left: Applicative, right: Applicative) -> Result<Applicative, Error> {
-        /*Ok(Applicative::Join(
-            (self.find_signer(), sign_join(&self.signer, &left, &right)?),
+        Ok(Applicative::Join(
+            (self.place, sign_join(&self.signer, &left, &right)?),
             Box::new(left),
             Box::new(right),
-        )) */
-        todo!()
+        ))
     }
 }
