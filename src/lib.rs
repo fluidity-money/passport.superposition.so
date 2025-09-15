@@ -4,7 +4,6 @@
 
 extern crate alloc;
 
-pub mod entry;
 pub mod error;
 pub mod result;
 
@@ -39,7 +38,7 @@ use stylus_sdk::{alloy_sol_types::SolError, prelude::HostAccess};
 #[cfg(target_arch = "wasm32")]
 use stylus_sdk::prelude::CalldataAccess;
 
-pub use crate::{ops::Op, storage::Storage};
+pub use crate::{error::DONE_UNIT, ops::Op, storage::Storage};
 
 #[cfg(target_arch = "wasm32")]
 #[link(wasm_import_module = "vm_hooks")]
@@ -71,7 +70,7 @@ pub extern "C" fn user_entrypoint(len: usize) -> usize {
         lzss::VecWriter::with_capacity(1024 * 10),
     )
     .unwrap();
-    let mut store = unsafe {
+    let mut s = unsafe {
         <Storage as stylus_sdk::storage::StorageType>::new(
             stylus_sdk::alloy_primitives::U256::ZERO,
             0,
@@ -79,17 +78,20 @@ pub extern "C" fn user_entrypoint(len: usize) -> usize {
         )
     };
     let r = match Op::deserialize(&mut (&args as &[u8])).unwrap() {
-        Op::Dummy => store.dummy(),
-        Op::Solve(accounts, args) => store.solve(accounts, args),
+        Op::Dummy => DONE_UNIT,
+        Op::Solve(accounts, args) => s
+            .validate(&accounts, args)
+            .and_then(|x| s.apply(x))
+            .and_then(|_| DONE_UNIT),
     };
     let rd = match r {
         Ok(_) => 0,
         Err(_) => 1,
     };
-    store.vm().write_result(&match r {
+    s.vm().write_result(&match r {
         Ok(v) => borsh::to_vec(&v).unwrap(),
         Err(v) => PassportError(borsh::to_vec(&v).unwrap().into()).abi_encode(),
     });
-    store.vm().flush_cache(true);
+    s.vm().flush_cache(true);
     rd
 }
