@@ -9,6 +9,7 @@ fn panic(_: &core::panic::PanicInfo) -> ! {
     core::arch::wasm32::unreachable()
 }
 
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn user_entrypoint(len: usize) -> usize {
     entry(len, |s, op| match op {
         Op::Dummy => DONE_UNIT,
@@ -16,6 +17,7 @@ pub unsafe extern "C" fn user_entrypoint(len: usize) -> usize {
             .validate(&accounts, args)
             .and_then(|x| s.apply(x))
             .and_then(|_| DONE_UNIT),
+        _ => panic!()
     })
 }
 

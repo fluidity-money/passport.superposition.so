@@ -7,6 +7,8 @@ extern crate alloc;
 pub mod error;
 pub mod result;
 
+pub mod storage;
+
 pub mod apply;
 pub mod conversion;
 
@@ -19,9 +21,10 @@ pub mod applicative;
 pub mod state_machine;
 
 pub mod ops;
-pub mod storage;
 
 pub mod utils;
+
+pub mod onboard;
 
 mod call_erc20;
 

@@ -23,7 +23,8 @@ pub type StorageTickets =
 #[storage]
 pub struct Storage {
     // Count of the number of seen addresses, that we use our shortened
-    // accounts list form to look up.
+    // accounts list form to look up. We use this instead of a map so we can
+    // use a u64 instead of the native wasm word (u32).
     pub ed25519_count: StorageU64,
 
     // Tool to find the VerifyingKey using an id, to reduce codesize and the calldata.

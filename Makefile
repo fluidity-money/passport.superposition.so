@@ -23,8 +23,9 @@ RELEASE_PASSPORT_WASM := \
 		--strip-debug \
 		--enable-bulk-memory \
 		--strip-producers \
-		-Oz target/wasm32-unknown-unknown/release/contract.wasm \
-		-o
+		-Oz
+
+RELEASE_WASM := target/wasm32-unknown-unknown/release
 
 .PHONY: build
 
@@ -37,12 +38,16 @@ build: \
 solver.passport-superposition-so.wasm: $(shell find src -type f -name '*.rs')
 	@rm -f solver.passport-superposition-so.wasm
 	@${CARGO_BIN_WASM32}
-	@${RELEASE_PASSPORT_WASM} solver.passport-superposition-so.wasm
+	@${RELEASE_PASSPORT_WASM} \
+		${RELEASE_WASM}/contract-solver.wasm \
+		-o solver.passport-superposition-so.wasm
 
 setter.passport-superposition-so.wasm: $(shell find src -type f -name '*.rs')
 	@rm -f setter.passport-superposition-so.wasm
 	@${CARGO_BIN_WASM32}
-	@${RELEASE_PASSPORT_WASM} setter.passport-superposition-so.wasm
+	@${RELEASE_PASSPORT_WASM} \
+		${RELEASE_WASM}/contract-setter.wasm \
+		-o setter.passport-superposition-so.wasm
 
 generator.out: $(shell find src -type f -name '*.rs')
 	@rm -f generator.out
