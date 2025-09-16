@@ -3,8 +3,8 @@ pragma solidity 0.8.20;
 contract Proxy {
     function directDelegate(address to) internal {
         assembly {
-            calldatacopy(0, 0, calldatasize())
-            let result := delegatecall(gas(), to, 0, calldatasize(), 0, 0)
+            calldatacopy(0, 1, sub(calldatasize(), 1))
+            let result := delegatecall(gas(), to, 0, sub(calldatasize(), 1), 0, 0)
             returndatacopy(0, 0, returndatasize())
             switch result
             case 0 {
