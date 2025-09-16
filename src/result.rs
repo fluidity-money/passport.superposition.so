@@ -9,6 +9,9 @@ pub enum Res {
     /// The equivalent of returning a unit after a stateful action.
     DoneUnit,
 
+    /// A u64 number was returned alongside correct execution.
+    DoneU64(u64),
+
     /// A number was returned alongside correct execution.
     DoneU128(u128)
 }

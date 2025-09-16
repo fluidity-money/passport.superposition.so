@@ -25,21 +25,16 @@ pub enum OpSolver {
 pub enum OpSetter {
     /// Dummy operation.
     Dummy,
-    // Add liquidity to a position, allowing the user to use it later during a balance
-    // creation. Verifying key => ed25519 sig => nonce => owner => onboard v
-    // => onboard r => onboard s => token => permit blob for moving money to
-    // the contract. The verifying key is used to check with the signature if the user
-    // created this key for the association, and the other part of the signature is
-    // used to check if the user's wallet authorises the signature. The permit blob is used
-    // to onramp the user.
+    // Add liquidity to a position, allowing the user to use it later
+    // during a balance creation. Verifying key => ed25519 sig => nonce
+    // => token => permit blob for moving money to the contract. The
+    // verifying key is used to check with the signature if the user
+    // created this key for the association. We use the user's sender
+    // address to know if they're legitimate.
     Onboard(
         [u8; 32], // Verifying key
         [u8; 64], // Verifying signature
         u16,      // Nonce
-        [u8; 20], // Owner
-        u8,       // Onboard v
-        [u8; 32], // Onboard r
-        [u8; 32], // Onboard s
         [u8; 20], // Token
         u128,     // Value
         [u8; 32], // Deadline
@@ -48,5 +43,13 @@ pub enum OpSetter {
         [u8; 32], // Permit S
     ),
     // Add liquidity to a user's address without completing any onboarding.
-    AddLiquidity([u8; 20], [u8; 20], u128, [u8; 32], u8, [u8; 32], [u8; 32]),
+    AddLiquidity(
+        [u8; 20], // Token
+        [u8; 20], // Recipient
+        u128,     // Value
+        [u8; 32], // Deadline
+        u8,       // V
+        [u8; 32], // R
+        [u8; 32], // S
+    ),
 }

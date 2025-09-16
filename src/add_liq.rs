@@ -14,7 +14,7 @@ impl Storage {
     pub fn add_liq(
         &mut self,
         token: [u8; 20],
-        owner: [u8; 20],
+        recipient: [u8; 20],
         value: u128,
         deadline: [u8; 32],
         v: u8,
@@ -22,8 +22,8 @@ impl Storage {
         s: [u8; 32],
     ) -> R {
         let token = Address::from(token);
+        let recipient = Address::from(recipient);
         let owner = self.vm().msg_sender();
-        let recipient = Address::from(owner);
         let value_ = U128::from_le_bytes(value.to_le_bytes());
         let value = {
             let mut b = [0u8; 32];

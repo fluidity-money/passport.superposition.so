@@ -41,7 +41,7 @@ use stylus_sdk::{alloy_sol_types::SolError, prelude::HostAccess};
 use stylus_sdk::prelude::CalldataAccess;
 
 pub use crate::{
-    error::{R, DONE_UNIT, NOOP},
+    error::{R, done_u64, DONE_UNIT, NOOP},
     storage::Storage,
 };
 

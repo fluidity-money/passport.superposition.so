@@ -131,7 +131,7 @@ impl Storage {
             })
         } else {
             VerifyingKey::from_bytes(&b).map_err(|_| Error {
-                typ: ErrorDiscriminant::AccountIdNotFound,
+                typ: ErrorDiscriminant::BadVerifyingKey,
             })
         }
     }

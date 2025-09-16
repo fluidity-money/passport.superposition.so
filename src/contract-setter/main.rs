@@ -19,10 +19,6 @@ pub unsafe extern "C" fn user_entrypoint(len: usize) -> usize {
             key,
             sig,
             nonce,
-            owner,
-            onboard_v,
-            onboard_r,
-            onboard_s,
             token,
             value,
             deadline,
@@ -30,11 +26,10 @@ pub unsafe extern "C" fn user_entrypoint(len: usize) -> usize {
             permit_r,
             permit_s,
         ) => s.onboard(
-            key, sig, nonce, owner, onboard_v, onboard_r, onboard_s, token, value, deadline,
-            permit_v, permit_r, permit_s,
+            key, sig, nonce, token, value, deadline, permit_v, permit_r, permit_s,
         ),
-        OpSetter::AddLiquidity(owner, token, value, deadline, v, r, s_) => {
-            s.add_liq(owner, token, value, deadline, v, r, s_)
+        OpSetter::AddLiquidity(token, recipient, value, deadline, v, r, s_) => {
+            s.add_liq(token, recipient, value, deadline, v, r, s_)
         }
     })
 }
