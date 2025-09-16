@@ -34,7 +34,8 @@ OUT_SHARE := out/Share.sol/Share.json
 build: \
 	solver.passport-superposition-so.wasm \
 	setter.passport-superposition-so.wasm \
-	admin.passport-superposition-so.wasm
+	admin.passport-superposition-so.wasm \
+	vault.passport-superposition-so.wasm
 
 solver.passport-superposition-so.wasm: $(shell find src -type f -name '*.rs')
 	@rm -f solver.passport-superposition-so.wasm
@@ -56,6 +57,13 @@ admin.passport-superposition-so.wasm: $(shell find src -type f -name '*.rs')
 	@${RELEASE_PASSPORT_WASM} \
 		${RELEASE_WASM}/contract-admin.wasm \
 		-o admin.passport-superposition-so.wasm
+
+vault.passport-superposition-so.wasm: $(shell find src -type f -name '*.rs')
+	@rm -f vault.passport-superposition-so.wasm
+	@${CARGO_BIN_WASM32}
+	@${RELEASE_PASSPORT_WASM} \
+		${RELEASE_WASM}/contract-vault.wasm \
+		-o vault.passport-superposition-so.wasm
 
 generator.out: $(shell find src -type f -name '*.rs')
 	@rm -f generator.out

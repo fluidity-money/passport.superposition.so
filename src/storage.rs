@@ -21,7 +21,7 @@ pub type StorageTickets =
     StorageMap<Address, StorageMap<Address, StorageMap<FixedBytes<32>, StorageU128>>>;
 
 #[storage]
-pub struct StorageApplication {
+pub struct StorageApplicationV1 {
     // Count of the number of seen addresses, that we use our shortened
     // accounts list form to look up. We use this instead of a map so we can
     // use a u64 instead of the native wasm word (u32).
@@ -59,18 +59,27 @@ pub struct StorageApplication {
 }
 
 #[storage]
-pub struct StorageAdmin {
+pub struct StorageAdminV1 {
     pub owner: StorageAddress,
 }
 
+// Storage that's used as scratch space for a reentrant call to the Vault
+// functionality.
+#[storage]
+pub struct StorageVaultScratchV1 {}
+
+/// Toplevel storage for the entire application. TODO: figure out how to
+/// set offsets for each storage accessor here, then comment out the bits
+/// we don't use in each facet.
 #[storage]
 pub struct Storage {
-    pub app: StorageApplication,
-    pub admin: StorageAdmin,
+    pub app: StorageApplicationV1,
+    pub admin: StorageAdminV1,
+    pub vault: StorageVaultScratchV1,
 }
 
-unsafe impl stylus_sdk::stylus_core::storage::TopLevelStorage for Storage {}
-unsafe impl stylus_sdk::stylus_core::storage::TopLevelStorage for StorageApplication {}
+unsafe impl TopLevelStorage for Storage {}
+unsafe impl TopLevelStorage for StorageApplicationV1 {}
 
 #[cfg(not(target_arch = "wasm32"))]
 impl Default for Storage {
@@ -92,7 +101,7 @@ fn err_checked_sub(_x: U128, _y: u128) -> Error {
     }
 }
 
-impl StorageApplication {
+impl StorageApplicationV1 {
     pub fn set_hash_details_l(&mut self, h: &[u8; 64], owner: Address, asset: Address) {
         let h = FixedBytes::from_slice(&h[..32]);
         self.details_hash_owner_l.setter(h).set(owner);
@@ -112,24 +121,29 @@ impl StorageApplication {
     }
 
     pub fn get_hash_asset_l(&self, h: &[u8; 64]) -> Address {
-        self.details_hash_asset_l.get(FixedBytes::from_slice(&h[..32]))
+        self.details_hash_asset_l
+            .get(FixedBytes::from_slice(&h[..32]))
     }
 
     pub fn get_hash_asset_r(&self, h: &[u8; 64]) -> Address {
-        self.details_hash_asset_r.get(FixedBytes::from_slice(&h[..32]))
+        self.details_hash_asset_r
+            .get(FixedBytes::from_slice(&h[..32]))
     }
 
     pub fn get_hash_owner_l(&self, h: &[u8; 64]) -> Address {
-        self.details_hash_owner_l.get(FixedBytes::from_slice(&h[..32]))
+        self.details_hash_owner_l
+            .get(FixedBytes::from_slice(&h[..32]))
     }
 
     pub fn get_hash_owner_r(&self, h: &[u8; 64]) -> Address {
-        self.details_hash_owner_r.get(FixedBytes::from_slice(&h[..32]))
+        self.details_hash_owner_r
+            .get(FixedBytes::from_slice(&h[..32]))
     }
 
     pub fn get_hash_order_desired_amount(&self, h: &[u8; 64]) -> u128 {
         u128::from_be_bytes(
-            self.details_hash_order_desired_amt.get(FixedBytes::from_slice(&h[..32]))
+            self.details_hash_order_desired_amt
+                .get(FixedBytes::from_slice(&h[..32]))
                 .to_be_bytes(),
         )
     }

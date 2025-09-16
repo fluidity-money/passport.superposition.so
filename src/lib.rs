@@ -40,8 +40,10 @@ use stylus_sdk::{alloy_sol_types::SolError, prelude::HostAccess};
 #[cfg(target_arch = "wasm32")]
 use stylus_sdk::prelude::CalldataAccess;
 
+use crate::facet::Facet;
+
 pub use crate::{
-    error::{R, done_u64, DONE_UNIT, NOOP},
+    error::{done_u64, DONE_UNIT, NOOP, R},
     storage::Storage,
 };
 
@@ -58,6 +60,13 @@ pub unsafe fn mark_used() {
     panic!();
 }
 
+#[cfg(all(not(feature = "std"), target_arch = "wasm32"))]
+#[mutants::skip]
+#[panic_handler]
+fn panic(_: &core::panic::PanicInfo) -> ! {
+    core::arch::wasm32::unreachable()
+}
+
 pub fn entry(len: usize, simulate: impl FnOnce(&mut Storage, &mut &[u8]) -> R) -> usize {
     #[cfg(target_arch = "wasm32")]
     let vm = stylus_sdk::host::VM(stylus_sdk::host::WasmVM {});
@@ -71,11 +80,16 @@ pub fn entry(len: usize, simulate: impl FnOnce(&mut Storage, &mut &[u8]) -> R) -
     let args = vm.host.read_args(len);
     // Make sure we skip the first byte, which we assume is the magic byte
     // that was used to do the contract indirection using the proxy contract.
-    let args = OurLzss::decompress_stack(
-        lzss::SliceReader::new(&args[1..]),
-        lzss::VecWriter::with_capacity(1024 * 10),
-    )
-    .unwrap();
+    // Note that everything after the admin facet is considered a reentrant facet.
+    let mut args = if args[0] > Facet::UserAdmin as u8 {
+        &args[1..]
+    } else {
+        &OurLzss::decompress_stack(
+            lzss::SliceReader::new(&args[1..]),
+            lzss::VecWriter::with_capacity(1024 * 10),
+        )
+        .unwrap()
+    };
     #[allow(unused_mut)]
     let mut s = unsafe {
         <Storage as stylus_sdk::storage::StorageType>::new(
@@ -84,7 +98,7 @@ pub fn entry(len: usize, simulate: impl FnOnce(&mut Storage, &mut &[u8]) -> R) -
             vm,
         )
     };
-    let r = simulate(&mut s, &mut (&args as &[u8]));
+    let r = simulate(&mut s, &mut args);
     let rd = match r {
         Ok(_) => 0,
         Err(_) => 1,

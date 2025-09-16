@@ -9,6 +9,11 @@ The application processes the type in `src/applicative.rs`, after a validation s
 then confirms local balances, and gradually moves balances in different buckets
 denominated by the hash of each step in the application.
 
+Multiple facets are made available that can be used with the proxy contract. The facets
+after admin are not supported for end users, and the contract tests to see if the
+invocation was reentrant. If that's the case, then it doesn't attempt to decompress the
+calldata.
+
 ## Diagram
 
 ### High level infrastructure diagram

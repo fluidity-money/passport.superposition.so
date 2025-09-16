@@ -62,3 +62,8 @@ pub enum OpAdmin {
         [u8; 20], // Admin
     ),
 }
+
+#[derive(BorshDeserialize, BorshSerialize, Clone, PartialEq, Debug)]
+pub enum OpVault {
+    MoveLiquidity,
+}

@@ -4,7 +4,7 @@ use crate::{
     call_eip20_extras,
     error::{Error, ErrorDiscriminant},
     state_machine::{Balance, BalanceArgs, Commit, Order, OrderArgs, StateMachine, Withdraw},
-    storage::StorageApplication,
+    storage::StorageApplicationV1,
 };
 
 pub type R<T> = Result<T, Error>;
@@ -33,7 +33,7 @@ fn checked_sub(x: u128, y: u128) -> R<u128> {
     })
 }
 
-impl StorageApplication {
+impl StorageApplicationV1 {
     pub fn commit_left_owner(&self, c: &Commit) -> Address {
         match c {
             Commit::Inline(_, o, _, _) => self.order_owner(o),
