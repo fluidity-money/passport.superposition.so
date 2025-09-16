@@ -12,7 +12,8 @@ denominated by the hash of each step in the application.
 Multiple facets are made available that can be used with the proxy contract. The facets
 after admin are not supported for end users, and the contract tests to see if the
 invocation was reentrant. If that's the case, then it doesn't attempt to decompress the
-calldata.
+calldata, and it loads information using transient storage that's flushed before
+the reentrant operation.
 
 ## Diagram
 

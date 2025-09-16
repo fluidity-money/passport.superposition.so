@@ -27,7 +27,7 @@ pub struct StorageApplicationV1 {
     // use a u64 instead of the native wasm word (u32).
     pub ed25519_count: StorageU64,
 
-    // Tool to find the VerifyingKey using an id, to reduce codesize and the calldata.
+    // Tool to find the VerifyingKey using an id, to reduce calldata size.
     pub ed25519_keys: StorageMap<u64, StorageFixedBytes<32>>,
 
     // Owners of the offset of these addresses, using the ed25519 signatures.
@@ -63,11 +63,6 @@ pub struct StorageAdminV1 {
     pub owner: StorageAddress,
 }
 
-// Storage that's used as scratch space for a reentrant call to the Vault
-// functionality.
-#[storage]
-pub struct StorageVaultScratchV1 {}
-
 /// Toplevel storage for the entire application. TODO: figure out how to
 /// set offsets for each storage accessor here, then comment out the bits
 /// we don't use in each facet.
@@ -75,7 +70,6 @@ pub struct StorageVaultScratchV1 {}
 pub struct Storage {
     pub app: StorageApplicationV1,
     pub admin: StorageAdminV1,
-    pub vault: StorageVaultScratchV1,
 }
 
 unsafe impl TopLevelStorage for Storage {}

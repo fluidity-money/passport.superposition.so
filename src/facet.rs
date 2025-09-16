@@ -9,3 +9,17 @@ pub enum Facet {
     // use. Compression does not take place here.
     ReentrantVault = 3,
 }
+
+impl TryFrom<u8> for Facet {
+    type Error = ();
+
+    fn try_from(v: u8) -> Result<Self, Self::Error> {
+        match v {
+            0 => Ok(Facet::UserSolver),
+            1 => Ok(Facet::UserSetter),
+            2 => Ok(Facet::UserAdmin),
+            3 => Ok(Facet::ReentrantVault),
+            _ => Err(()),
+        }
+    }
+}
