@@ -53,3 +53,12 @@ pub enum OpSetter {
         [u8; 32], // S
     ),
 }
+
+#[derive(BorshDeserialize, BorshSerialize, Clone, PartialEq, Debug)]
+pub enum OpAdmin {
+    Upgrade(
+        [u8; 20], // Solver
+        [u8; 20], // Setter
+        [u8; 20], // Admin
+    ),
+}

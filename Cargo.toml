@@ -16,6 +16,10 @@ name = "contract-setter"
 path = "src/contract-setter/main.rs"
 
 [[bin]]
+name = "contract-admin"
+path = "src/contract-admin/main.rs"
+
+[[bin]]
 name = "webapp"
 path = "src/webapp-main/main.rs"
 

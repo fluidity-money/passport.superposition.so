@@ -3,4 +3,5 @@
 pub enum Facet {
     Solver = 0,
     Setter = 1,
+    Admin = 2,
 }
