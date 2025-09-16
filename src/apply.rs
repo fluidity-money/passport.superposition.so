@@ -1,7 +1,7 @@
 use stylus_sdk::alloy_primitives::{Address, U256};
 
 use crate::{
-    call_erc20,
+    call_eip20_extras,
     error::{Error, ErrorDiscriminant},
     state_machine::{Balance, BalanceArgs, Commit, Order, OrderArgs, StateMachine, Withdraw},
     storage::Storage,
@@ -413,7 +413,7 @@ impl Storage {
         self.apply_balance(b)?;
         self.decrease_interim(owner, asset, hash, amt)?;
         self.increase_withdrawal(owner, asset, amt)?;
-        call_erc20::transfer(self, asset, owner, u128_to_u256(amt))
+        call_eip20_extras::transfer(self, asset, owner, u128_to_u256(amt))
     }
 
     pub fn apply(&mut self, s: StateMachine) -> R<()> {

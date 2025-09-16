@@ -112,6 +112,9 @@ pub enum ErrorDiscriminant {
 
     /// The hash was already seen onchain!
     HashAlreadyOnchain([u8; 64]),
+
+    /// The token has no code!
+    TokenNoCode,
 }
 
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]

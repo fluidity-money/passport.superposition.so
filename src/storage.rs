@@ -36,7 +36,7 @@ pub struct Storage {
     /// Outstanding orders that could be used in another part of the operation.
     pub orders: StorageTickets,
 
-    /// Amounts that could be withdrawn from the system.
+    /// Amounts that could be withdrawn from the system. Owner => asset => amount.
     pub withdrawable: StorageMap<Address, StorageMap<Address, StorageU128>>,
 
     /// Interim balances that make up Balances.

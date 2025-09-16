@@ -1,6 +1,12 @@
 #![cfg_attr(target_arch = "wasm32", no_main, no_std)]
 
-use libpassport::{entry, Op, DONE_UNIT};
+use libpassport::{
+    entry,
+    ops::OpSolver,
+    {DONE_UNIT, NOOP},
+};
+
+use borsh::BorshDeserialize;
 
 #[cfg(target_arch = "wasm32")]
 #[mutants::skip]
@@ -11,13 +17,12 @@ fn panic(_: &core::panic::PanicInfo) -> ! {
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn user_entrypoint(len: usize) -> usize {
-    entry(len, |s, op| match op {
-        Op::Dummy => DONE_UNIT,
-        Op::Solve(accounts, args) => s
+    entry(len, |s, args| match OpSolver::deserialize(args).unwrap() {
+        OpSolver::Dummy => NOOP,
+        OpSolver::Solve(accounts, args) => s
             .validate(&accounts, args)
             .and_then(|x| s.apply(x))
             .and_then(|_| DONE_UNIT),
-        _ => panic!()
     })
 }
 

@@ -1,6 +1,5 @@
 #![cfg_attr(target_arch = "wasm32", no_std)]
 // We don't instantiate the VM context so this is needed.
-#![allow(deprecated)]
 
 extern crate alloc;
 
@@ -20,13 +19,15 @@ pub mod immutables;
 pub mod applicative;
 pub mod state_machine;
 
+pub mod facet;
 pub mod ops;
 
 pub mod utils;
 
+pub mod add_liq;
 pub mod onboard;
 
-mod call_erc20;
+mod call_eip20_extras;
 
 use stylus_sdk::alloy_sol_types::sol;
 
@@ -34,14 +35,15 @@ sol!("src/IErrors.sol");
 
 pub type OurLzss = lzss::Lzss<12, 11, 0, { 1 << 12 }, { 2 << 12 }>;
 
-use borsh::BorshDeserialize;
-
 use stylus_sdk::{alloy_sol_types::SolError, prelude::HostAccess};
 
 #[cfg(target_arch = "wasm32")]
 use stylus_sdk::prelude::CalldataAccess;
 
-pub use crate::{error::DONE_UNIT, ops::Op, storage::Storage, error::R};
+pub use crate::{
+    error::{R, DONE_UNIT, NOOP},
+    storage::Storage,
+};
 
 #[cfg(target_arch = "wasm32")]
 #[link(wasm_import_module = "vm_hooks")]
@@ -56,7 +58,7 @@ pub unsafe fn mark_used() {
     panic!();
 }
 
-pub fn entry(len: usize, simulate: impl FnOnce(&mut Storage, Op) -> R) -> usize {
+pub fn entry(len: usize, simulate: impl FnOnce(&mut Storage, &mut &[u8]) -> R) -> usize {
     #[cfg(target_arch = "wasm32")]
     let vm = stylus_sdk::host::VM(stylus_sdk::host::WasmVM {});
     #[cfg(not(target_arch = "wasm32"))]
@@ -67,8 +69,10 @@ pub fn entry(len: usize, simulate: impl FnOnce(&mut Storage, Op) -> R) -> usize 
     let args = vm.read_args(len);
     #[cfg(not(target_arch = "wasm32"))]
     let args = vm.host.read_args(len);
+    // Make sure we skip the first byte, which we assume is the magic byte
+    // that was used to do the contract indirection using the proxy contract.
     let args = OurLzss::decompress_stack(
-        lzss::SliceReader::new(&args),
+        lzss::SliceReader::new(&args[1..]),
         lzss::VecWriter::with_capacity(1024 * 10),
     )
     .unwrap();
@@ -80,7 +84,7 @@ pub fn entry(len: usize, simulate: impl FnOnce(&mut Storage, Op) -> R) -> usize 
             vm,
         )
     };
-    let r = simulate(&mut s, Op::deserialize(&mut (&args as &[u8])).unwrap());
+    let r = simulate(&mut s, &mut (&args as &[u8]));
     let rd = match r {
         Ok(_) => 0,
         Err(_) => 1,

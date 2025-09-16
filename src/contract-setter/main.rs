@@ -1,10 +1,8 @@
 #![cfg_attr(target_arch = "wasm32", no_main, no_std)]
 
-use libpassport::{
-    entry,
-    ops::{Op, PermitBlob},
-    DONE_UNIT,
-};
+use libpassport::{entry, ops::OpSetter, DONE_UNIT};
+
+use borsh::BorshDeserialize;
 
 #[cfg(target_arch = "wasm32")]
 #[mutants::skip]
@@ -15,20 +13,29 @@ fn panic(_: &core::panic::PanicInfo) -> ! {
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn user_entrypoint(len: usize) -> usize {
-    entry(len, |s, op| match op {
-        Op::Dummy => DONE_UNIT,
-        Op::Onboard(
+    entry(len, |s, args| match OpSetter::deserialize(args).unwrap() {
+        OpSetter::Dummy => DONE_UNIT,
+        OpSetter::Onboard(
             key,
+            sig,
+            nonce,
             owner,
-            PermitBlob {
-                value,
-                deadline,
-                v,
-                r,
-                s: s_,
-            },
-        ) => s.onboard(key, owner, value, deadline, v, r, s_),
-        _ => panic!(),
+            onboard_v,
+            onboard_r,
+            onboard_s,
+            token,
+            value,
+            deadline,
+            permit_v,
+            permit_r,
+            permit_s,
+        ) => s.onboard(
+            key, sig, nonce, owner, onboard_v, onboard_r, onboard_s, token, value, deadline,
+            permit_v, permit_r, permit_s,
+        ),
+        OpSetter::AddLiquidity(owner, token, value, deadline, v, r, s_) => {
+            s.add_liq(owner, token, value, deadline, v, r, s_)
+        }
     })
 }
 
