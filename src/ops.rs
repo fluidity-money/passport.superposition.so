@@ -60,6 +60,7 @@ pub enum OpAdmin {
         [u8; 20], // Solver
         [u8; 20], // Setter
         [u8; 20], // Admin
+        [u8; 20], // Vault
     ),
 }
 

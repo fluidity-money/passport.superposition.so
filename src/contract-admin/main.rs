@@ -7,7 +7,7 @@ use borsh::BorshDeserialize;
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn user_entrypoint(len: usize) -> usize {
     entry(len, |_, args| match OpAdmin::deserialize(args).unwrap() {
-        OpAdmin::Upgrade(_, _, _) => todo!(),
+        OpAdmin::Upgrade(_, _, _, _) => todo!(),
     })
 }
 
