@@ -41,15 +41,15 @@ impl Storage {
             .map_err(|_| Error {
                 typ: ErrorDiscriminant::BadStrictVerify,
             })?;
-        let key_count = u64::from_le_bytes(self.ed25519_count.get().to_le_bytes());
-        self.ed25519_count
+        let key_count = u64::from_le_bytes(self.app.ed25519_count.get().to_le_bytes());
+        self.app.ed25519_count
             .update_check_add(U64::from(1))
             .ok_or(Error {
                 typ: ErrorDiscriminant::CheckedAdd,
             })?;
         let key = FixedBytes(key);
-        self.ed25519_keys.setter(key_count).set(key);
-        self.ed25519_owners
+        self.app.ed25519_keys.setter(key_count).set(key);
+        self.app.ed25519_owners
             .setter(key_count)
             .set(Address::from(owner));
         self.add_liq(

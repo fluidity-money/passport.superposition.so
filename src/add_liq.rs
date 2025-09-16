@@ -36,7 +36,7 @@ impl Storage {
         let spender = self.vm().contract_address();
         call_eip20_extras::permit(self, token, owner, spender, value, deadline, v, r, s)?;
         call_eip20_extras::transfer_from(self, token, spender, owner, value)?;
-        self.withdrawable
+        self.app.withdrawable
             .setter(recipient)
             .setter(token)
             .update_check_add(value_)

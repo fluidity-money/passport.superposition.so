@@ -20,8 +20,9 @@ pub unsafe extern "C" fn user_entrypoint(len: usize) -> usize {
     entry(len, |s, args| match OpSolver::deserialize(args).unwrap() {
         OpSolver::Dummy => NOOP,
         OpSolver::Solve(accounts, args) => s
+            .app
             .validate(&accounts, args)
-            .and_then(|x| s.apply(x))
+            .and_then(|x| s.app.apply(x))
             .and_then(|_| DONE_UNIT),
     })
 }

@@ -21,7 +21,7 @@ pub type StorageTickets =
     StorageMap<Address, StorageMap<Address, StorageMap<FixedBytes<32>, StorageU128>>>;
 
 #[storage]
-pub struct Storage {
+pub struct StorageApplication {
     // Count of the number of seen addresses, that we use our shortened
     // accounts list form to look up. We use this instead of a map so we can
     // use a u64 instead of the native wasm word (u32).
@@ -58,7 +58,19 @@ pub struct Storage {
     pub details_hash_order_desired_amt: StorageMap<FixedBytes<32>, StorageU128>,
 }
 
+#[storage]
+pub struct StorageAdmin {
+    pub owner: StorageAddress,
+}
+
+#[storage]
+pub struct Storage {
+    pub app: StorageApplication,
+    pub admin: StorageAdmin,
+}
+
 unsafe impl stylus_sdk::stylus_core::storage::TopLevelStorage for Storage {}
+unsafe impl stylus_sdk::stylus_core::storage::TopLevelStorage for StorageApplication {}
 
 #[cfg(not(target_arch = "wasm32"))]
 impl Default for Storage {
@@ -80,7 +92,7 @@ fn err_checked_sub(_x: U128, _y: u128) -> Error {
     }
 }
 
-impl Storage {
+impl StorageApplication {
     pub fn set_hash_details_l(&mut self, h: &[u8; 64], owner: Address, asset: Address) {
         let h = FixedBytes::from_slice(&h[..32]);
         self.details_hash_owner_l.setter(h).set(owner);

@@ -3,7 +3,7 @@ use crate::{
     error::*,
     immutables::SOLVER_KEY_TESTNET,
     state_machine::{self, StateMachine},
-    storage::Storage,
+    storage::StorageApplication,
 };
 
 use alloc::vec::Vec;
@@ -166,7 +166,7 @@ fn err_hash_already_onchain(h: &[u8; 64]) -> Error {
     }
 }
 
-impl Storage {
+impl StorageApplication {
     fn ensure_hash_unseen(&self, hash: &[u8; 64]) -> Result<(), Error> {
         // We need to truncate the first part of the hash to access it in the storage tree.
         if !self
