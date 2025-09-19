@@ -65,7 +65,6 @@ fn check_sig(
             // encoding a message.
             err_verify(from)
         })?;
-    dbg!("check_sig was completed", from);
     Ok(d)
 }
 
@@ -756,6 +755,7 @@ pub fn sign_join(
     )
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 proptest! {
     #[test]
     fn test_sign_validate(
