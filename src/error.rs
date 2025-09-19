@@ -45,17 +45,17 @@ pub enum ErrorDiscriminant {
     /// Bad verifying key creation.
     BadVerifyingKey,
 
+    /// Bad creation of a signature from what's in the applicative structure.
+    BadSignatureCreation(ApplicativeLabel),
+
     /// Bad verifying of a signature using strict methods.
-    BadStrictVerify,
+    BadStrictVerify(ApplicativeLabel),
 
     /// The signer wasn't found using their id.
     SignerNotFoundId,
 
     /// The signer wasn't found using a verifying key.
     SignerNotFoundKey,
-
-    /// Unable to sign a prehashed blob.
-    UnableToSignPrehashed,
 
     /// The convert stage couldn't find the ID given.
     AccountIdNotFound,
@@ -115,6 +115,12 @@ pub enum ErrorDiscriminant {
 
     /// The token has no code!
     TokenNoCode,
+
+    /// The signature given during onboarding was bad!
+    BadOnboardingSig,
+
+    /// It wasn't possible to verify a signature during a sig_two validate.
+    BadStrictVerifyTwo(ApplicativeLabel, u8)
 }
 
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]

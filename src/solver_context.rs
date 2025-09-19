@@ -11,10 +11,8 @@ pub struct SolverContext {
 }
 
 impl SolverContext {
-    pub fn new_from_bytes(x: &[u8; 32]) -> Self {
-        SolverContext {
-            signer: SigningKey::from_bytes(x),
-        }
+    pub fn new(k: SigningKey) -> Self {
+        SolverContext { signer: k }
     }
 }
 

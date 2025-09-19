@@ -1,11 +1,14 @@
 use crate::error::*;
 
 use stylus_sdk::{
-    alloy_primitives::{Address, U256, FixedBytes},
+    alloy_primitives::{Address, FixedBytes, U256},
     prelude::{HostAccess, TopLevelStorage},
 };
 
-use stylus_sdk::alloy_sol_types::{sol, SolCall};
+use stylus_sdk::alloy_sol_types::sol;
+
+#[cfg(target_arch = "wasm32")]
+use stylus_sdk::alloy_sol_types::SolCall;
 
 // Some of the code here was handwritten to reduce codesize for the
 // solver path.
@@ -141,6 +144,20 @@ mod implem {
         addr: Address,
         recipient: Address,
         amt: U256,
+    ) -> Result<(), Error> {
+        Ok(())
+    }
+
+    pub fn permit(
+        _env: &mut (impl TopLevelStorage + HostAccess),
+        _addr: Address,
+        _owner: Address,
+        _spender: Address,
+        _value: U256,
+        _deadline: U256,
+        _v: u8,
+        _r: FixedBytes<32>,
+        _s: FixedBytes<32>,
     ) -> Result<(), Error> {
         Ok(())
     }

@@ -8,6 +8,8 @@ pub mod result;
 
 pub mod storage;
 
+pub mod network;
+
 pub mod apply;
 pub mod conversion;
 
@@ -15,6 +17,8 @@ pub mod solver_context;
 pub mod user_context;
 
 pub mod immutables;
+
+pub mod reentrancy;
 
 pub mod applicative;
 pub mod state_machine;
@@ -35,13 +39,10 @@ sol!("src/IErrors.sol");
 
 pub type OurLzss = lzss::Lzss<12, 11, 0, { 1 << 12 }, { 2 << 12 }>;
 
-use stylus_sdk::{
-    alloy_sol_types::SolError,
-    prelude::{AccountAccess, CalldataAccess, HostAccess},
-};
+use stylus_sdk::{alloy_sol_types::SolError, prelude::HostAccess};
 
 #[cfg(target_arch = "wasm32")]
-use stylus_sdk::prelude::MessageAccess;
+use stylus_sdk::prelude::{CalldataAccess};
 
 use crate::facet::Facet;
 
@@ -71,7 +72,13 @@ pub unsafe fn mark_used() {
 #[mutants::skip]
 #[panic_handler]
 fn panic(_: &core::panic::PanicInfo) -> ! {
-    core::arch::wasm32::unreachable()
+    // I don't know if there's a difference between exiting like this and
+    // using the unreachable operation, but this is also fine. It feels more
+    // appropriate.
+    unsafe {
+        exit_early(1);
+    }
+    loop {}
 }
 
 //uint256(keccak256(abi.encodePacked("superposition.passport.reentrancy-canary"))) - 1
@@ -83,12 +90,18 @@ pub const REENTRANCY_CANARY: [u8; 32] = match const_hex::const_decode_to_array(
     _ => panic!(),
 };
 
+#[cfg(target_arch = "wasm32")]
 fn is_reentrancy() -> bool {
     let mut b = [0u8; 32];
     unsafe {
         transient_load_bytes32(REENTRANCY_CANARY.as_ptr(), b.as_mut_ptr());
     }
     b[31] == 1
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn is_reentrancy() -> bool {
+    false
 }
 
 fn is_reentrant_facet(x: &Facet) -> bool {
@@ -116,15 +129,14 @@ pub fn entry(len: usize, simulate: impl FnOnce(&mut Storage, &mut &[u8]) -> R) -
     let are_we_reentrant = is_reentrancy();
     // Check the reentrancy canary to see if we're inside a facet that can be
     // used this way.
-    if are_we_reentrant && is_reentrant_facet(&f) {
-        // We need to make sure we're the only one invoking this operation.
-        if vm.msg_sender() != vm.contract_address() {
-            unsafe { exit_early(1) }
-        }
-    } else if are_we_reentrant {
-        unsafe { exit_early(1) }
+    if are_we_reentrant && !is_reentrant_facet(&f) {
+        // Roll back the state, we shouldn't be here!
+        return 1;
     }
     let mut args = if is_reentrant_facet(&f) {
+        // The reentrant calldata should be a single byte for the complex type
+        // here, so we can avoid lots of overhead. The reentrant code should load
+        // its parameters using transient storage.
         &args[1..]
     } else {
         &OurLzss::decompress_stack(

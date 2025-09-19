@@ -290,7 +290,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5f70d83b765fdc080dbcd4f4db70d8d23fe4761f2f02ebfa9146b833900634b4"
 dependencies = [
  "alloy-rlp-derive",
- "arrayvec 0.7.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "arrayvec",
  "bytes",
 ]
 
@@ -503,7 +503,7 @@ checksum = "e3412d52bb97c6c6cc27ccc28d4e6e8cf605469101193b50b0bd5813b1f990b5"
 dependencies = [
  "alloy-primitives",
  "alloy-rlp",
- "arrayvec 0.7.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "arrayvec",
  "derive_more",
  "nybbles",
  "serde",
@@ -729,14 +729,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7c02d123df017efcdfbd739ef81735b36c5ba83ec3c59c80a9d7ecc718f92e50"
 dependencies = [
  "serde",
-]
-
-[[package]]
-name = "arrayvec"
-version = "0.7.6"
-source = "git+https://github.com/af-afk/arrayvec#e8169ef60caa2f9d21f1f6db2f738717a2bd15fd"
-dependencies = [
- "borsh",
 ]
 
 [[package]]
@@ -1479,7 +1471,7 @@ version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "139834ddba373bbdd213dffe02c8d110508dcf1726c2be27e8d1f7d7e1856418"
 dependencies = [
- "arrayvec 0.7.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "arrayvec",
  "auto_impl",
  "bytes",
 ]
@@ -1490,7 +1482,7 @@ version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ce8dba4714ef14b8274c371879b175aa55b16b30f269663f19d576f380018dc4"
 dependencies = [
- "arrayvec 0.7.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "arrayvec",
  "auto_impl",
  "bytes",
 ]
@@ -1768,7 +1760,7 @@ version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5313b072ce3c597065a808dbf612c4c8e8590bdbf8b579508bf7a762c5eae6cd"
 dependencies = [
- "arrayvec 0.7.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "arrayvec",
 ]
 
 [[package]]
@@ -2450,7 +2442,7 @@ version = "3.7.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "799781ae679d79a948e13d4824a40970bfa500058d245760dd857301059810fa"
 dependencies = [
- "arrayvec 0.7.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "arrayvec",
  "bitvec",
  "byte-slice-cast",
  "const_format",
@@ -2508,7 +2500,6 @@ dependencies = [
  "alloy-sol-types",
  "arbitrary",
  "array-concat",
- "arrayvec 0.7.6 (git+https://github.com/af-afk/arrayvec)",
  "borsh",
  "clap",
  "const-hex",

@@ -3,11 +3,11 @@
 mod host {
     use clap::Parser;
 
-    use libpassport::{ops::Op, OurLzss};
+    use libpassport::{ops::OpSolver, OurLzss};
 
     #[derive(Clone)]
     struct OurOp {
-        op: Op,
+        op: OpSolver,
     }
 
     use lzss::{SliceReader, VecWriter};
@@ -18,7 +18,7 @@ mod host {
         type Err = String;
 
         fn from_str(_s: &str) -> Result<Self, Self::Err> {
-            Ok(OurOp { op: Op::Dummy })
+            Ok(OurOp { op: OpSolver::Dummy })
         }
     }
 
@@ -29,7 +29,7 @@ mod host {
         op: OurOp,
     }
 
-    fn main() {
+    pub fn entry() {
         println!(
             "{}",
             const_hex::encode(
@@ -44,7 +44,9 @@ mod host {
 }
 
 #[cfg(target_arch = "x86_64")]
-use host::*;
+fn main() {
+    host::entry()
+}
 
 #[cfg(not(target_arch = "x86_64"))]
 fn main() {}

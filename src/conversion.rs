@@ -1,42 +1,51 @@
 use crate::{
     applicative::*,
     error::*,
-    immutables::SOLVER_KEY_TESTNET,
+    immutables::pick_solver_key,
+    network::Network,
     state_machine::{self, StateMachine},
     storage::StorageApplicationV1,
 };
 
 use alloc::vec::Vec;
 
-use arrayvec::ArrayVec;
-
 use stylus_sdk::alloy_primitives::{Address, FixedBytes};
 
 use borsh::BorshSerialize;
 
-use ed25519_dalek::{Signature, SigningKey, VerifyingKey};
+use ed25519_dalek::{DigestSigner, DigestVerifier, Signature, SigningKey, VerifyingKey};
 
 use sha2::{digest::Digest, Sha512};
 
 use alloc::boxed::Box;
 
-fn err_sig() -> Error {
+#[cfg(not(target_arch = "wasm32"))]
+use proptest::prelude::*;
+
+fn err_sig(from: ApplicativeLabel) -> Error {
     Error {
-        typ: ErrorDiscriminant::BadStrictVerify,
+        typ: ErrorDiscriminant::BadSignatureCreation(from),
     }
 }
 
-fn err_prehashed() -> Error {
+fn err_verify(from: ApplicativeLabel) -> Error {
     Error {
-        typ: ErrorDiscriminant::UnableToSignPrehashed,
+        typ: ErrorDiscriminant::BadStrictVerify(from),
+    }
+}
+
+fn err_verify_two(from: ApplicativeLabel, x: u8) -> Error {
+    Error {
+        typ: ErrorDiscriminant::BadStrictVerifyTwo(from, x),
     }
 }
 
 pub type Hash = [u8; 64];
 
-pub type ValidateCarry = Result<Hash, Error>;
+pub type ValidateCarry = Result<Sha512, Error>;
 
 fn check_sig(
+    from: ApplicativeLabel,
     verifying_key: &VerifyingKey,
     sig: &[u8; 64],
     msg: &[u8],
@@ -46,21 +55,22 @@ fn check_sig(
         .chain_update(msg)
         .chain_update(prev_digest);
     verifying_key
-        .verify_prehashed_strict(
+        .verify_digest(
             d.clone(),
-            None,
-            &Signature::from_slice(sig).map_err(|_| err_sig())?,
+            &Signature::from_slice(sig).map_err(|_| err_sig(from))?,
         )
         .map_err(|_| {
             // When it comes to returning the error here, we can do so since the
             // caller will revert so we can be excessive with the penalties of
             // encoding a message.
-            err_sig()
+            err_verify(from)
         })?;
-    Ok(d.finalize().into())
+    dbg!("check_sig was completed", from);
+    Ok(d)
 }
 
 fn check_sig_two(
+    from: ApplicativeLabel,
     verifying_key1: &VerifyingKey,
     sig1: &[u8; 64],
     verifying_key2: &VerifyingKey,
@@ -71,42 +81,86 @@ fn check_sig_two(
     let d = Sha512::default()
         .chain_update(msg)
         .chain_update(prev_digest);
-    verifying_key1
-        .verify_prehashed_strict(
-            d.clone(),
-            None,
-            &Signature::from_slice(sig1).map_err(|_| err_sig())?,
-        )
-        .map_err(|_| err_sig())?;
     verifying_key2
         .verify_prehashed_strict(
             d.clone(),
             None,
-            &Signature::from_slice(sig2).map_err(|_| err_sig())?,
+            &Signature::from_slice(sig2).map_err(|_| err_sig(from))?,
         )
-        .map_err(|_| err_sig())?;
-    Ok(d.finalize().into())
+        .map_err(|_| err_verify_two(from, 2))?;
+    verifying_key1
+        .verify_prehashed_strict(
+            d.clone(),
+            None,
+            &Signature::from_slice(sig1).map_err(|_| err_sig(from))?,
+        )
+        .map_err(|_| err_verify_two(from, 1))?;
+    Ok(d)
 }
 
 pub fn make_sig(key: &SigningKey, sig: &[u8], prev_digest: &[u8]) -> Result<[u8; 64], Error> {
     Ok(key
-        .sign_prehashed(
+        .sign_digest(
             Sha512::default()
                 .chain_update(sig)
-                .chain_update(prev_digest),
-            None,
+                .chain_update(&prev_digest),
         )
-        .map_err(|_| err_prehashed())?
-        .to_bytes())
+        .into())
 }
 
-pub fn serialise_inplace<'a, T: BorshSerialize, const CAP: usize>(x: &T) -> ArrayVec<u8, CAP> {
-    let mut b = ArrayVec::<u8, CAP>::new();
+struct Scratch<const CAP: usize> {
+    x: [u8; CAP],
+    c: usize,
+}
+
+impl<const CAP: usize> Default for Scratch<CAP> {
+    fn default() -> Self {
+        Scratch {
+            x: [0u8; CAP],
+            c: 0,
+        }
+    }
+}
+
+impl<const CAP: usize> borsh::io::Write for Scratch<CAP> {
+    fn write(&mut self, buf: &[u8]) -> Result<usize, borsh::io::Error> {
+        // We don't bother with runtime protection here since we'll be
+        // the only users. It's a compile time error if a type somehow
+        // gets through that exceeds the size restriction.
+        if buf.len() == 0 {
+            return Ok(0);
+        }
+        self.x[self.c..self.c + buf.len()].copy_from_slice(buf);
+        self.c += buf.len();
+        Ok(buf.len())
+    }
+
+    fn flush(&mut self) -> Result<(), borsh::io::Error> {
+        Ok(())
+    }
+}
+
+impl<const CAP: usize> AsRef<[u8]> for Scratch<CAP> {
+    fn as_ref(&self) -> &[u8] {
+        &self.x[..self.c]
+    }
+}
+
+impl<const CAP: usize> core::ops::Deref for Scratch<CAP> {
+    type Target = [u8];
+
+    fn deref(&self) -> &Self::Target {
+        &self.x[..self.c]
+    }
+}
+
+fn serialise_inplace<'a, T: BorshSerialize, const CAP: usize>(x: &T) -> Scratch<CAP> {
+    let mut b = Scratch::default();
     x.serialize(&mut b).unwrap();
     b
 }
 
-pub fn digest_inplace<'a, T: BorshSerialize, const CAP: usize>(x: &T) -> [u8; 64] {
+fn digest_inplace<'a, T: BorshSerialize, const CAP: usize>(x: &T) -> [u8; 64] {
     Sha512::default()
         .chain_update(&serialise_inplace::<_, CAP>(x))
         .finalize()
@@ -184,34 +238,36 @@ impl StorageApplicationV1 {
         &self,
         accounts: &Vec<u64>,
         (owner_i, owner_sig): &UserSig,
-        ap: &ArgsBalance,
+        args: &ArgsBalance,
     ) -> Result<state_machine::Balance, Error> {
         let owner_id = accounts[*owner_i as usize];
         let o = self.find_ed25519_key(owner_id)?;
-        let hash = check_sig(
+        let d = check_sig(
+            ApplicativeLabel::Balance,
             &o,
             owner_sig,
-            &serialise_inplace::<_, { size_of::<ArgsBalance>() }>(ap),
+            &serialise_inplace::<_, { size_of::<ArgsBalance>() }>(args),
             &[],
         )?;
-        self.ensure_hash_unseen(&hash)?;
         Ok(state_machine::Balance::Inline(
             state_machine::BalanceArgs {
-                ms_ts: ap.ms_timestamp,
+                ms_ts: args.ms_timestamp,
                 owner: self.find_ed25519_addr(owner_id)?,
-                asset: Address::new(ap.asset),
-                amt: ap.amount,
+                asset: Address::new(args.asset),
+                amt: args.amount,
             },
-            hash,
+            d.finalize().into(),
         ))
     }
 
     fn validate_commit_left_filled_to_bal(
         &self,
+        n: Network,
         accounts: &Vec<u64>,
         ap: &Applicative,
     ) -> Result<state_machine::Balance, Error> {
         let commit = self.validate_wrapped_commit(
+            n,
             ApplicativeLabel::CommitLeftFilledToBalance,
             accounts,
             ap,
@@ -227,10 +283,12 @@ impl StorageApplicationV1 {
 
     fn validate_commit_right_filled_to_bal(
         &self,
+        n: Network,
         accounts: &Vec<u64>,
         ap: &Applicative,
     ) -> Result<state_machine::Balance, Error> {
         let commit = self.validate_wrapped_commit(
+            n,
             ApplicativeLabel::CommitRightFilledToBalance,
             accounts,
             ap,
@@ -246,6 +304,7 @@ impl StorageApplicationV1 {
 
     fn validate_wrapped_balance(
         &self,
+        n: Network,
         from: ApplicativeLabel,
         accounts: &Vec<u64>,
         ap: &Applicative,
@@ -253,10 +312,10 @@ impl StorageApplicationV1 {
         match ap {
             Applicative::Balance(sig, args) => self.validate_balance(accounts, sig, args),
             Applicative::CommitLeftFilledToBalance(ap) => {
-                self.validate_commit_left_filled_to_bal(accounts, ap)
+                self.validate_commit_left_filled_to_bal(n, accounts, ap)
             }
             Applicative::CommitRightFilledToBalance(ap) => {
-                self.validate_commit_right_filled_to_bal(accounts, ap)
+                self.validate_commit_right_filled_to_bal(n, accounts, ap)
             }
             _ => Err(err_bad_ap_transition(from, ap)),
         }
@@ -264,22 +323,23 @@ impl StorageApplicationV1 {
 
     fn validate_order(
         &self,
+        n: Network,
         accounts: &Vec<u64>,
         (owner_i, owner_sig): &UserSig,
         args: &ArgsOrder,
         ap: &Applicative,
     ) -> Result<state_machine::Order, Error> {
-        let bal = self.validate_wrapped_balance(label(ap), accounts, ap)?;
+        let bal = self.validate_wrapped_balance(n, label(ap), accounts, ap)?;
         let bal_hash = get_bal_hash(&bal);
         let owner_id = accounts[*owner_i as usize];
         let o = self.find_ed25519_key(owner_id)?;
-        let hash = check_sig(
+        let d = check_sig(
+            ApplicativeLabel::Order,
             &o,
             owner_sig,
             &digest_inplace::<_, { size_of::<ArgsOrder>() }>(args),
             &bal_hash,
         )?;
-        self.ensure_hash_unseen(&hash)?;
         Ok(state_machine::Order::Inline(
             state_machine::OrderArgs {
                 desired_asset: Address::new(args.desired_asset),
@@ -289,17 +349,22 @@ impl StorageApplicationV1 {
                 ord_partial_fill_okay: true, // TODO
             },
             Box::new(bal),
-            hash,
+            d.finalize().into(),
         ))
     }
 
     fn validate_commit_left_excess_to_order(
         &self,
+        n: Network,
         accounts: &Vec<u64>,
         ap: &Applicative,
     ) -> Result<state_machine::Order, Error> {
-        let commit =
-            self.validate_wrapped_commit(ApplicativeLabel::CommitLeftExcessToOrder, accounts, ap)?;
+        let commit = self.validate_wrapped_commit(
+            n,
+            ApplicativeLabel::CommitLeftExcessToOrder,
+            accounts,
+            ap,
+        )?;
         let c_hash = get_commit_hash(&commit);
         let hash = chain_digests(&[Nonce::CommitLeftExcessToOrder.into()], &c_hash);
         self.ensure_hash_unseen(&hash)?;
@@ -311,11 +376,16 @@ impl StorageApplicationV1 {
 
     fn validate_commit_right_excess_to_order(
         &self,
+        n: Network,
         accounts: &Vec<u64>,
         ap: &Applicative,
     ) -> Result<state_machine::Order, Error> {
-        let commit =
-            self.validate_wrapped_commit(ApplicativeLabel::CommitRightExcessToOrder, accounts, ap)?;
+        let commit = self.validate_wrapped_commit(
+            n,
+            ApplicativeLabel::CommitRightExcessToOrder,
+            accounts,
+            ap,
+        )?;
         let c_hash = get_commit_hash(&commit);
         let hash = chain_digests(&[Nonce::CommitRightExcessToOrder.into()], &c_hash);
         self.ensure_hash_unseen(&hash)?;
@@ -327,17 +397,18 @@ impl StorageApplicationV1 {
 
     fn validate_wrapped_order(
         &self,
+        n: Network,
         from: ApplicativeLabel,
         accounts: &Vec<u64>,
         ap: &Applicative,
     ) -> Result<state_machine::Order, Error> {
         match ap {
-            Applicative::Order(sig, args, ap) => self.validate_order(accounts, sig, args, ap),
+            Applicative::Order(sig, args, ap) => self.validate_order(n, accounts, sig, args, ap),
             Applicative::CommitLeftExcessToOrder(ap) => {
-                self.validate_commit_left_excess_to_order(accounts, ap)
+                self.validate_commit_left_excess_to_order(n, accounts, ap)
             }
             Applicative::CommitRightExcessToOrder(ap) => {
-                self.validate_commit_right_excess_to_order(accounts, ap)
+                self.validate_commit_right_excess_to_order(n, accounts, ap)
             }
             _ => Err(err_bad_ap_transition(from, ap)),
         }
@@ -348,6 +419,7 @@ impl StorageApplicationV1 {
     /// machine to do the checking of the amounts and constraints.
     fn validate_commit(
         &self,
+        n: Network,
         accounts: &Vec<u64>,
         solver_sig: &[u8; 64],
         args: &ArgsCommit,
@@ -355,24 +427,24 @@ impl StorageApplicationV1 {
         right: &Applicative,
     ) -> Result<state_machine::Commit, Error> {
         let l = ApplicativeLabel::Commit;
-        let left_order = self.validate_wrapped_order(l, accounts, left)?;
-        let right_order = self.validate_wrapped_order(l, accounts, right)?;
+        let left_order = self.validate_wrapped_order(n, l, accounts, left)?;
+        let right_order = self.validate_wrapped_order(n, l, accounts, right)?;
         let left_hash = get_order_hash(&left_order);
         let right_hash = get_order_hash(&right_order);
-        let hash = check_sig(
-            &SOLVER_KEY_TESTNET,
+        let d = check_sig(
+            ApplicativeLabel::Commit,
+            &pick_solver_key(n),
             solver_sig,
             &digest_inplace::<_, { size_of::<ArgsCommit>() }>(args),
             &chain_digests(&left_hash, &right_hash),
         )?;
-        self.ensure_hash_unseen(&hash)?;
         Ok(state_machine::Commit::Inline(
             state_machine::CommitArgs {
                 ms_ts: args.ms_timestamp,
             },
             Box::new(left_order),
             Box::new(right_order),
-            hash,
+            d.finalize().into(),
         ))
     }
 
@@ -383,13 +455,14 @@ impl StorageApplicationV1 {
     /// Does not do any validation except validate the contained value.
     fn validate_wrapped_commit(
         &self,
+        n: Network,
         from: ApplicativeLabel,
         accounts: &Vec<u64>,
         ap: &Applicative,
     ) -> Result<state_machine::Commit, Error> {
         match ap {
             Applicative::Commit(sig, args, left, right) => {
-                self.validate_commit(accounts, sig, args, left, right)
+                self.validate_commit(n, accounts, sig, args, left, right)
             }
             _ => Err(err_bad_ap_transition(from, ap)),
         }
@@ -401,6 +474,7 @@ impl StorageApplicationV1 {
     /// an amount that should be redeemed to the user by the contract.
     fn validate_withdraw(
         &self,
+        n: Network,
         accounts: &Vec<u64>,
         solver_sig: &[u8; 64],
         (owner_i, owner_sig): &UserSig,
@@ -409,55 +483,63 @@ impl StorageApplicationV1 {
         // Since the argument to the right isn't known in the type here, we
         // validate the signature, and we feed the computed digest into a
         // concatenation here. Very stack expensive.
-        let bal = self.validate_wrapped_balance(label(ap), accounts, ap)?;
+        let bal = self.validate_wrapped_balance(n, label(ap), accounts, ap)?;
         let bal_hash = get_bal_hash(&bal);
         let owner_id = accounts[*owner_i as usize];
         let o = self.find_ed25519_key(owner_id)?;
-        let hash = check_sig_two(
-            &SOLVER_KEY_TESTNET,
+        let d = check_sig_two(
+            ApplicativeLabel::Withdraw,
+            &pick_solver_key(n),
             solver_sig,
             &o,
             owner_sig,
             &[Nonce::Withdraw.into()],
             &bal_hash,
         )?;
-        self.ensure_hash_unseen(&hash)?;
-        Ok(state_machine::Withdraw::Inline(Box::new(bal), hash))
+        Ok(state_machine::Withdraw::Inline(
+            Box::new(bal),
+            d.finalize().into(),
+        ))
     }
 
     fn validate_cancel(
         &self,
+        n: Network,
         accounts: &Vec<u64>,
         solver_sig: &[u8; 64],
         (owner_i, owner_sig): &UserSig,
         ap: &Applicative,
     ) -> Result<state_machine::Balance, Error> {
-        let order = self.validate_wrapped_order(ApplicativeLabel::Cancel, accounts, ap)?;
+        let order = self.validate_wrapped_order(n, ApplicativeLabel::Cancel, accounts, ap)?;
         let order_hash = get_order_hash(&order);
         let owner_id = accounts[*owner_i as usize];
         let o = self.find_ed25519_key(owner_id)?;
-        let hash = check_sig_two(
-            &SOLVER_KEY_TESTNET,
+        let d = check_sig_two(
+            ApplicativeLabel::Cancel,
+            &pick_solver_key(n),
             solver_sig,
             &o,
             owner_sig,
             &[Nonce::Cancel.into()],
             &order_hash,
         )?;
-        self.ensure_hash_unseen(&hash)?;
-        Ok(state_machine::Balance::Cancel(Box::new(order), hash))
+        Ok(state_machine::Balance::Cancel(
+            Box::new(order),
+            d.finalize().into(),
+        ))
     }
 
     fn validate_join(
         &self,
+        n: Network,
         accounts: &Vec<u64>,
         (owner_i, owner_sig): &UserSig,
         left: &Applicative,
         right: &Applicative,
     ) -> Result<state_machine::Balance, Error> {
         let l = ApplicativeLabel::Join;
-        let left_bal = self.validate_wrapped_balance(l, accounts, left)?;
-        let right_bal = self.validate_wrapped_balance(l, accounts, right)?;
+        let left_bal = self.validate_wrapped_balance(n, l, accounts, left)?;
+        let right_bal = self.validate_wrapped_balance(n, l, accounts, right)?;
         let left_hash = get_bal_hash(&left_bal);
         let right_hash = get_bal_hash(&right_bal);
         let owner_id = accounts[*owner_i as usize];
@@ -466,47 +548,55 @@ impl StorageApplicationV1 {
             Box::new(left_bal),
             Box::new(right_bal),
             check_sig(
+                ApplicativeLabel::Join,
                 &o,
                 owner_sig,
                 &[Nonce::Join.into()],
                 &chain_digests(&left_hash, &right_hash),
-            )?,
+            )?
+            .finalize()
+            .into(),
         ))
     }
 
     /// Entrypoint validation function for a Applicative type during its
     /// validation stage.
-    pub fn validate(&self, accounts: &Vec<u64>, ap: Applicative) -> Result<StateMachine, Error> {
+    pub fn validate(
+        &self,
+        n: Network,
+        accounts: &Vec<u64>,
+        ap: Applicative,
+    ) -> Result<StateMachine, Error> {
         match ap {
             Applicative::Balance(sig, args) => Ok(StateMachine::Balance(
                 self.validate_balance(accounts, &sig, &args)?,
             )),
             Applicative::Withdraw(solver_sig, user_sig, _, ap) => Ok(StateMachine::Withdraw(
-                self.validate_withdraw(accounts, &solver_sig, &user_sig, &ap)?,
+                self.validate_withdraw(n, accounts, &solver_sig, &user_sig, &ap)?,
             )),
             Applicative::Order(user_sig, args, ap) => Ok(StateMachine::Order(
-                self.validate_order(accounts, &user_sig, &args, &ap)?,
+                self.validate_order(n, accounts, &user_sig, &args, &ap)?,
             )),
             Applicative::Cancel(solver_sig, user_sig, ap) => Ok(StateMachine::Balance(
-                self.validate_cancel(accounts, &solver_sig, &user_sig, &ap)?,
+                self.validate_cancel(n, accounts, &solver_sig, &user_sig, &ap)?,
             )),
             Applicative::Commit(solver_sig, args, ap1, ap2) => Ok(StateMachine::Commit(
-                self.validate_commit(accounts, &solver_sig, &args, &ap1, &ap2)?,
+                self.validate_commit(n, accounts, &solver_sig, &args, &ap1, &ap2)?,
             )),
             Applicative::CommitLeftFilledToBalance(ap) => Ok(StateMachine::Balance(
-                self.validate_commit_left_filled_to_bal(accounts, &ap)?,
+                self.validate_commit_left_filled_to_bal(n, accounts, &ap)?,
             )),
             Applicative::CommitRightFilledToBalance(ap) => Ok(StateMachine::Balance(
-                self.validate_commit_right_filled_to_bal(accounts, &ap)?,
+                self.validate_commit_right_filled_to_bal(n, accounts, &ap)?,
             )),
             Applicative::CommitLeftExcessToOrder(ap) => Ok(StateMachine::Order(
-                self.validate_commit_left_excess_to_order(accounts, &ap)?,
+                self.validate_commit_left_excess_to_order(n, accounts, &ap)?,
             )),
             Applicative::CommitRightExcessToOrder(ap) => Ok(StateMachine::Order(
-                self.validate_commit_right_excess_to_order(accounts, &ap)?,
+                self.validate_commit_right_excess_to_order(n, accounts, &ap)?,
             )),
             Applicative::Join(user_sig, left, right) => Ok(StateMachine::Balance(
-                self.validate_join(accounts, &user_sig, &left, &right)?,
+                self.validate_join(n, accounts, &user_sig, &left, &right)?,
             )),
         }
     }
@@ -515,7 +605,7 @@ impl StorageApplicationV1 {
 pub fn sign_balance(k: &SigningKey, args: &ArgsBalance) -> [u8; 64] {
     make_sig(
         k,
-        &serialise_inplace::<ArgsBalance, { size_of::<ArgsBalance>() }>(args),
+        &serialise_inplace::<_, { size_of::<ArgsBalance>() }>(args),
         &[],
     )
     .unwrap()
@@ -527,10 +617,20 @@ pub fn digest_wrapped_balance(from: ApplicativeLabel, ap: &Applicative) -> Resul
             Ok(digest_inplace::<_, { size_of::<ArgsBalance>() }>(args))
         }
         Applicative::CommitLeftFilledToBalance(ap) => {
-            digest_wrapped_commit(ApplicativeLabel::CommitLeftFilledToBalance, ap)
+            let commit_hash =
+                digest_wrapped_commit(ApplicativeLabel::CommitLeftFilledToBalance, ap)?;
+            Ok(chain_digests(
+                &[Nonce::CommitLeftFilledToBalance.into()],
+                &commit_hash,
+            ))
         }
         Applicative::CommitRightFilledToBalance(ap) => {
-            digest_wrapped_commit(ApplicativeLabel::CommitRightFilledToBalance, ap)
+            let commit_hash =
+                digest_wrapped_commit(ApplicativeLabel::CommitRightFilledToBalance, ap)?;
+            Ok(chain_digests(
+                &[Nonce::CommitRightFilledToBalance.into()],
+                &commit_hash,
+            ))
         }
         ap => Err(err_bad_ap_transition(from, ap)),
     }
@@ -547,10 +647,19 @@ fn digest_wrapped_order(from: ApplicativeLabel, ap: &Applicative) -> Result<[u8;
     match ap {
         Applicative::Order(_, args, ap) => digest_order(args, ap),
         Applicative::CommitLeftExcessToOrder(ap) => {
-            digest_wrapped_commit(ApplicativeLabel::CommitLeftExcessToOrder, ap)
+            let commit_hash = digest_wrapped_commit(ApplicativeLabel::CommitLeftExcessToOrder, ap)?;
+            Ok(chain_digests(
+                &[Nonce::CommitLeftExcessToOrder.into()],
+                &commit_hash,
+            ))
         }
         Applicative::CommitRightExcessToOrder(ap) => {
-            digest_wrapped_commit(ApplicativeLabel::CommitRightExcessToOrder, ap)
+            let commit_hash =
+                digest_wrapped_commit(ApplicativeLabel::CommitRightExcessToOrder, ap)?;
+            Ok(chain_digests(
+                &[Nonce::CommitRightExcessToOrder.into()],
+                &commit_hash,
+            ))
         }
         ap => Err(err_bad_ap_transition(from, ap)),
     }
@@ -575,14 +684,22 @@ pub fn sign_withdraw(key: &SigningKey, ap: &Applicative) -> Result<[u8; 64], Err
         key,
         &[Nonce::Withdraw.into()],
         &match ap {
-            Applicative::Balance(_, args) => {
-                Ok(digest_inplace::<_, { size_of::<ArgsBalance>() }>(args))
-            }
+            Applicative::Balance(_, _) => digest_wrapped_balance(ApplicativeLabel::Balance, ap),
             Applicative::CommitLeftFilledToBalance(ap) => {
-                digest_wrapped_commit(ApplicativeLabel::CommitLeftFilledToBalance, ap)
+                let commit_hash =
+                    digest_wrapped_commit(ApplicativeLabel::CommitLeftFilledToBalance, ap)?;
+                Ok(chain_digests(
+                    &[Nonce::CommitLeftFilledToBalance.into()],
+                    &commit_hash,
+                ))
             }
             Applicative::CommitRightFilledToBalance(ap) => {
-                digest_wrapped_commit(ApplicativeLabel::CommitRightFilledToBalance, ap)
+                let commit_hash =
+                    digest_wrapped_commit(ApplicativeLabel::CommitRightFilledToBalance, ap)?;
+                Ok(chain_digests(
+                    &[Nonce::CommitRightFilledToBalance.into()],
+                    &commit_hash,
+                ))
             }
             ap => Err(err_bad_ap_transition(ApplicativeLabel::Withdraw, ap)),
         }?,
@@ -590,11 +707,12 @@ pub fn sign_withdraw(key: &SigningKey, ap: &Applicative) -> Result<[u8; 64], Err
 }
 
 pub fn sign_order(key: &SigningKey, args: &ArgsOrder, ap: &Applicative) -> Result<[u8; 64], Error> {
-    make_sig(
+    let s = make_sig(
         key,
         &digest_inplace::<_, { size_of::<ArgsOrder>() }>(args),
         &digest_wrapped_balance(ApplicativeLabel::Order, ap)?,
-    )
+    )?;
+    Ok(s)
 }
 
 pub fn sign_cancel(k: &SigningKey, ap: &Applicative) -> Result<[u8; 64], Error> {
@@ -636,4 +754,51 @@ pub fn sign_join(
             &digest_wrapped_balance(l, right)?,
         ),
     )
+}
+
+proptest! {
+    #[test]
+    fn test_sign_validate(
+        p in any::<[u8; 32]>(),
+        msg in any::<[u8; 32]>(),
+        prev_digest in any::<Option<[u8; 64]>>()
+    ) {
+        let p = SigningKey::from_bytes(&p);
+        let prev_digest = match prev_digest {
+            Some(v) => v.to_vec(),
+            None => vec![]
+        };
+        let s = make_sig(&p, &msg, &prev_digest).unwrap();
+        check_sig(
+            ApplicativeLabel::Balance,
+            &p.verifying_key(),
+            &s,
+            &msg,
+            &prev_digest
+        )
+        .unwrap();
+    }
+}
+
+#[test]
+fn test_signing_assumptions() {
+    let args = ArgsBalance {
+        asset: [
+            139, 154, 122, 66, 30, 11, 80, 120, 198, 114, 248, 170, 10, 100, 108, 141, 208, 224,
+            170, 129,
+        ],
+        chain: 129970619555590522921543446309823384767,
+        amount: 226069396470166194839733876294202945097,
+        ms_timestamp: 285894907003591006624805008666230249480,
+    };
+    let signer_priv = SigningKey::from_bytes(&[1u8; 32]);
+    let sig = sign_balance(&signer_priv, &args);
+    check_sig(
+        ApplicativeLabel::Balance,
+        &signer_priv.verifying_key(),
+        &sig,
+        &serialise_inplace::<_, { size_of::<ArgsBalance>() }>(&args),
+        &[],
+    )
+    .unwrap();
 }

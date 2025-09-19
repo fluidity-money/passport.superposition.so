@@ -144,13 +144,12 @@ impl StorageApplicationV1 {
 
     pub fn find_ed25519_key(&self, i: u64) -> Result<VerifyingKey, Error> {
         let v = self.ed25519_keys.get(i);
-        let FixedBytes(b) = v;
         if v.is_zero() {
             Err(Error {
                 typ: ErrorDiscriminant::AccountIdNotFound,
             })
         } else {
-            VerifyingKey::from_bytes(&b).map_err(|_| Error {
+            VerifyingKey::from_bytes(&v.0).map_err(|_| Error {
                 typ: ErrorDiscriminant::BadVerifyingKey,
             })
         }

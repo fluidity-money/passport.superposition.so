@@ -4,6 +4,7 @@ use libpassport::{
     entry,
     ops::OpSolver,
     {DONE_UNIT, NOOP},
+    network::Network
 };
 
 use borsh::BorshDeserialize;
@@ -14,7 +15,7 @@ pub unsafe extern "C" fn user_entrypoint(len: usize) -> usize {
         OpSolver::Dummy => NOOP,
         OpSolver::Solve(accounts, args) => s
             .app
-            .validate(&accounts, args)
+            .validate(Network::MAINNET, &accounts, args)
             .and_then(|x| s.app.apply(x))
             .and_then(|_| DONE_UNIT),
     })

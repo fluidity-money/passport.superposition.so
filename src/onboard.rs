@@ -39,7 +39,7 @@ impl Storage {
             })?
             .verify_strict(&addr_and_nonce, &Signature::from_bytes(&sig))
             .map_err(|_| Error {
-                typ: ErrorDiscriminant::BadStrictVerify,
+                typ: ErrorDiscriminant::BadOnboardingSig,
             })?;
         let key_count = u64::from_le_bytes(self.app.ed25519_count.get().to_le_bytes());
         self.app.ed25519_count
