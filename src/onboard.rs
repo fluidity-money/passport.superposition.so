@@ -1,5 +1,5 @@
 use crate::{
-    error::{Error, ErrorDiscriminant},
+    error::{Error, ErrorDiscriminant, MathContext},
     Storage, done_u64, R,
 };
 
@@ -45,14 +45,14 @@ impl Storage {
         self.app.ed25519_count
             .update_check_add(U64::from(1))
             .ok_or(Error {
-                typ: ErrorDiscriminant::CheckedAdd,
+                typ: ErrorDiscriminant::CheckedAdd(MathContext::Onboard),
             })?;
         let key = FixedBytes(key);
         self.app.ed25519_keys.setter(key_count).set(key);
         self.app.ed25519_owners
             .setter(key_count)
             .set(Address::from(owner));
-        self.add_liq(
+        self.app.add_liq(
             token,
             owner.into_array(),
             value,

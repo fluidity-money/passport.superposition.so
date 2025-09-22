@@ -1,6 +1,6 @@
 use stylus_sdk::{alloy_primitives::*, prelude::*, storage::*};
 
-use crate::error::{Error, ErrorDiscriminant};
+use crate::error::{MathContext, Error, ErrorDiscriminant};
 
 use alloc::{vec, vec::Vec};
 
@@ -20,8 +20,25 @@ pub struct StorageBucket {
 pub type StorageTickets =
     StorageMap<Address, StorageMap<Address, StorageMap<FixedBytes<32>, StorageU128>>>;
 
+// Testing storage that's used for EIP20 and more.
+#[storage]
+#[cfg(not(target_arch = "wasm32"))]
+pub struct StorageTest {
+    pub balances: StorageMap<Address, StorageMap<Address, StorageU256>>,
+    // Contract => Owner (user) => Spender (passport) => Amount
+    pub allowances: StorageMap<Address, StorageMap<Address, StorageMap<Address, StorageU256>>>,
+}
+
+#[storage]
+#[cfg(target_arch = "wasm32")]
+pub struct StorageTest;
+
 #[storage]
 pub struct StorageApplicationV1 {
+    // It's very important that this contains nothing during a on-chain
+    // deployment.
+    pub test_eip20: StorageTest,
+
     // Count of the number of seen addresses, that we use our shortened
     // accounts list form to look up. We use this instead of a map so we can
     // use a u64 instead of the native wasm word (u32).
@@ -83,15 +100,15 @@ impl Default for Storage {
     }
 }
 
-fn err_checked_add(_x: U128, _y: u128) -> Error {
+fn err_checked_add(c: MathContext, _x: U128, _y: u128) -> Error {
     Error {
-        typ: ErrorDiscriminant::CheckedAdd,
+        typ: ErrorDiscriminant::CheckedAdd(c),
     }
 }
 
-fn err_checked_sub(_x: U128, _y: u128) -> Error {
+fn err_checked_sub(c: MathContext, _x: U128, _y: u128) -> Error {
     Error {
-        typ: ErrorDiscriminant::CheckedSub,
+        typ: ErrorDiscriminant::CheckedSub(c),
     }
 }
 
@@ -187,7 +204,7 @@ impl StorageApplicationV1 {
         let x = self.interim.getter(owner).getter(asset).get(h);
         self.interim.setter(owner).setter(asset).setter(h).set(
             x.checked_add(U128::from_le_bytes(y.to_le_bytes()))
-                .ok_or(err_checked_add(x, y))?,
+                .ok_or(err_checked_add(MathContext::IncreaseInterim, x, y))?,
         );
         Ok(())
     }
@@ -203,7 +220,7 @@ impl StorageApplicationV1 {
         let x = self.interim.getter(owner).getter(asset).get(h);
         self.interim.setter(owner).setter(asset).setter(h).set(
             x.checked_sub(U128::from_le_bytes(y.to_le_bytes()))
-                .ok_or(err_checked_sub(x, y))?,
+                .ok_or(err_checked_sub(MathContext::DecreaseInterim, x, y))?,
         );
         Ok(())
     }
@@ -217,7 +234,7 @@ impl StorageApplicationV1 {
         let x = self.withdrawable.getter(owner).getter(asset).get();
         self.withdrawable.setter(owner).setter(asset).set(
             x.checked_add(U128::from_le_bytes(y.to_le_bytes()))
-                .ok_or(err_checked_add(x, y))?,
+                .ok_or(err_checked_add(MathContext::IncreaseWithdrawal, x, y))?,
         );
         Ok(())
     }
@@ -231,7 +248,7 @@ impl StorageApplicationV1 {
         let x = self.withdrawable.getter(owner).getter(asset).get();
         self.withdrawable.setter(owner).setter(asset).set(
             x.checked_sub(U128::from_le_bytes(y.to_le_bytes()))
-                .ok_or(err_checked_sub(x, y))?,
+                .ok_or(err_checked_sub(MathContext::DecreaseWithdrawal, x, y))?,
         );
         Ok(())
     }
@@ -252,7 +269,7 @@ impl StorageApplicationV1 {
         let x = self.orders.getter(owner).getter(asset).get(h);
         self.orders.setter(owner).setter(asset).setter(h).set(
             x.checked_add(U128::from_le_bytes(y.to_le_bytes()))
-                .ok_or(err_checked_add(x, y))?,
+                .ok_or(err_checked_add(MathContext::IncreaseOrder, x, y))?,
         );
         Ok(())
     }
@@ -268,7 +285,7 @@ impl StorageApplicationV1 {
         let x = self.orders.getter(owner).getter(asset).get(h);
         self.orders.setter(owner).setter(asset).setter(h).set(
             x.checked_sub(U128::from_le_bytes(y.to_le_bytes()))
-                .ok_or(err_checked_sub(x, y))?,
+                .ok_or(err_checked_sub(MathContext::DecreaseOrder, x, y))?,
         );
         Ok(())
     }

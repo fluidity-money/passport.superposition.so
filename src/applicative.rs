@@ -60,7 +60,6 @@ pub struct ArgsBalance {
     pub asset: [u8; 20],
     pub chain: u128,
     pub amount: u128,
-    // Owner and timestamp (milliseconds) are combined to create a snowflake.
     pub ms_timestamp: u128,
 }
 

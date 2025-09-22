@@ -2,7 +2,7 @@ use stylus_sdk::alloy_primitives::{Address, U256};
 
 use crate::{
     call_eip20_extras,
-    error::{Error, ErrorDiscriminant},
+    error::{Error, ErrorDiscriminant, MathContext},
     state_machine::{Balance, BalanceArgs, Commit, Order, OrderArgs, StateMachine, Withdraw},
     storage::StorageApplicationV1,
 };
@@ -27,9 +27,9 @@ fn err_bad_balance_from_order() -> Error {
     }
 }
 
-fn checked_sub(x: u128, y: u128) -> R<u128> {
+fn checked_sub(c: MathContext, x: u128, y: u128) -> R<u128> {
     x.checked_sub(y).ok_or(Error {
-        typ: ErrorDiscriminant::CheckedSub,
+        typ: ErrorDiscriminant::CheckedSub(c),
     })
 }
 
@@ -81,7 +81,7 @@ impl StorageApplicationV1 {
                 .balance_amount(owner, asset, l)?
                 .checked_add(self.balance_amount(owner, asset, r)?)
                 .ok_or(Error {
-                    typ: ErrorDiscriminant::CheckedAdd,
+                    typ: ErrorDiscriminant::CheckedAdd(MathContext::ApplyCommitBalanceAmount),
                 }),
         }
     }
@@ -137,6 +137,7 @@ impl StorageApplicationV1 {
     ) -> R<u128> {
         match o {
             Commit::Inline(_, l, r, _) => checked_sub(
+                MathContext::ApplyCommitLeftAmtUnfilled,
                 self.order_from(owner, asset, l)?,
                 self.order_desired_amount(owner, asset, r)?,
             ),
@@ -156,6 +157,7 @@ impl StorageApplicationV1 {
     ) -> R<u128> {
         match o {
             Commit::Inline(_, l, r, _) => checked_sub(
+                MathContext::ApplyCommitRightAmtUnfilled,
                 self.order_from(owner, asset, r)?,
                 self.order_desired_amount(owner, asset, l)?,
             ),
@@ -339,7 +341,7 @@ impl StorageApplicationV1 {
     }
 
     pub fn apply_commit(&mut self, c: &Commit) -> R<()> {
-        let Commit::Inline(_, l, r,_) = c else {
+        let Commit::Inline(_, l, r, _) = c else {
             return Ok(());
         };
         let hash = self.commit_hash(c);

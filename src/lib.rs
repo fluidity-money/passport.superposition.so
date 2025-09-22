@@ -31,7 +31,7 @@ pub mod utils;
 pub mod add_liq;
 pub mod onboard;
 
-mod call_eip20_extras;
+pub mod call_eip20_extras;
 
 use stylus_sdk::alloy_sol_types::sol;
 

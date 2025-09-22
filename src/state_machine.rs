@@ -19,12 +19,12 @@ pub enum Balance {
     CommitLeftFilledToBal(Box<Commit>, Hash),
     CommitRightFilledToBal(Box<Commit>, Hash),
     Cancel(Box<Order>, Hash),
-    Join(Box<Balance>, Box<Balance>, Hash)
+    Join(Box<Balance>, Box<Balance>, Hash),
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct CommitArgs {
-    pub ms_ts: u128
+    pub ms_ts: u128,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -39,7 +39,7 @@ pub struct OrderArgs {
     pub desired_amt: u128,
     pub from_amt: u128,
     pub max_pol_fee: u16,
-    pub ord_partial_fill_okay: bool
+    pub ord_partial_fill_okay: bool,
 }
 
 #[derive(Clone, Debug, PartialEq)]

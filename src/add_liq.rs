@@ -1,7 +1,7 @@
 use crate::{
     call_eip20_extras,
-    error::{Error, ErrorDiscriminant},
-    Storage, R,
+    error::{Error, ErrorDiscriminant, MathContext},
+    storage::StorageApplicationV1, R,
     DONE_UNIT,
 };
 
@@ -10,7 +10,7 @@ use stylus_sdk::{
     prelude::HostAccess,
 };
 
-impl Storage {
+impl StorageApplicationV1 {
     pub fn add_liq(
         &mut self,
         token: [u8; 20],
@@ -36,12 +36,12 @@ impl Storage {
         let spender = self.vm().contract_address();
         call_eip20_extras::permit(self, token, owner, spender, value, deadline, v, r, s)?;
         call_eip20_extras::transfer_from(self, token, spender, owner, value)?;
-        self.app.withdrawable
+        self.withdrawable
             .setter(recipient)
             .setter(token)
             .update_check_add(value_)
             .ok_or(Error {
-                typ: ErrorDiscriminant::CheckedAdd,
+                typ: ErrorDiscriminant::CheckedAdd(MathContext::AddLiq),
             })?;
         DONE_UNIT
     }

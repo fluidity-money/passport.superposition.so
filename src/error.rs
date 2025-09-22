@@ -4,12 +4,29 @@ use stylus_sdk::prelude::calls::errors::Error as StylusErr;
 
 pub use crate::{applicative::ApplicativeLabel, result::Res};
 
+#[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq, Debug)]
+pub enum MathContext {
+    ApplyCommitLeftAmtFilled,
+    ApplyCommitRightAmtFilled,
+    IncreaseInterim,
+    DecreaseInterim,
+    IncreaseWithdrawal,
+    DecreaseWithdrawal,
+    IncreaseOrder,
+    DecreaseOrder,
+    ApplyCommitBalanceAmount,
+    ApplyCommitLeftAmtUnfilled,
+    ApplyCommitRightAmtUnfilled,
+    AddLiq,
+    Onboard,
+}
+
 /// ErrorDiscriminant is not shown to users, even if it contains any
 /// information. It could have its contents printed while running on the
 /// native host.
 #[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq, Debug)]
 pub enum ErrorDiscriminant {
-    /// Bad call was made! It reverted.
+    /// Generic call error that we translated directly.
     BadCall,
 
     /// A token was taken that's inconsistent with the user's goal.
@@ -18,14 +35,8 @@ pub enum ErrorDiscriminant {
     /// Goal not met for checking goal amounts.
     GoalNotMet,
 
-    /// The requests array isn't even.
-    UnusualRequestsAmount,
-
     /// Incorrect Applicative transition. To and from.
     BadApplicativeTransition,
-
-    /// We were unable to validate a signature.
-    InvalidRequest,
 
     /// The nonce was inconsistent with our local storage of it!
     BadNonce,
@@ -38,9 +49,6 @@ pub enum ErrorDiscriminant {
 
     /// Bad signer of a ecrecover call.
     BadEcrecoverSigner,
-
-    /// Bad keccak call.
-    BadKeccakCall,
 
     /// Bad verifying key creation.
     BadVerifyingKey,
@@ -81,10 +89,10 @@ pub enum ErrorDiscriminant {
     NoLeftExcess,
 
     /// Checked sub overflow in the math!
-    CheckedSub,
+    CheckedSub(MathContext),
 
     /// Checked add overflow in the math!
-    CheckedAdd,
+    CheckedAdd(MathContext),
 
     SameAssets,
 
@@ -128,15 +136,9 @@ pub struct Error {
     pub typ: ErrorDiscriminant,
 }
 
-impl Error {
-    pub fn is_typ(&self, x: ErrorDiscriminant) -> bool {
-        self.typ == x
-    }
-}
-
-impl From<ErrorDiscriminant> for Error {
-    fn from(typ: ErrorDiscriminant) -> Self {
-        Error { typ }
+impl From<StylusErr> for Error {
+    fn from(x: StylusErr) -> Error {
+        map_stylus_err(ErrorDiscriminant::BadCall, ErrorDiscriminant::BadUnpack, x)
     }
 }
 
@@ -154,12 +156,6 @@ pub fn map_stylus_err(
     match x {
         StylusErr::AbiDecodingFailed(_) => Error { typ: unpack_unp },
         StylusErr::Revert(_) => Error { typ: call_unp },
-    }
-}
-
-impl From<StylusErr> for Error {
-    fn from(x: StylusErr) -> Error {
-        map_stylus_err(ErrorDiscriminant::BadCall, ErrorDiscriminant::BadUnpack, x)
     }
 }
 

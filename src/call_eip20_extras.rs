@@ -2,7 +2,7 @@ use crate::error::*;
 
 use stylus_sdk::{
     alloy_primitives::{Address, FixedBytes, U256},
-    prelude::{HostAccess, TopLevelStorage},
+    prelude::HostAccess,
 };
 
 use stylus_sdk::alloy_sol_types::sol;
@@ -23,7 +23,7 @@ sol! {
 mod implem {
     use super::*;
 
-    use stylus_sdk::{call::call, stylus_core::Call};
+    use stylus_sdk::{call::call, prelude::TopLevelStorage, stylus_core::Call};
 
     pub fn transfer(
         env: &mut (impl TopLevelStorage + HostAccess),
@@ -127,29 +127,72 @@ mod implem {
 #[cfg(not(target_arch = "wasm32"))]
 #[allow(unused)]
 mod implem {
+    use crate::storage::StorageApplicationV1;
+
     use super::*;
 
-    pub fn transfer_from(
-        _env: &mut (impl TopLevelStorage + HostAccess),
-        _addr: Address,
-        _from: Address,
-        _to: Address,
-        _amt: U256,
+    pub fn give(env: &mut StorageApplicationV1, addr: Address, owner: Address, amt: U256) {
+        env.test_eip20
+            .balances
+            .setter(addr)
+            .setter(owner)
+            .update_check_add(amt)
+            .unwrap();
+    }
+
+    fn _transfer(
+        env: &mut StorageApplicationV1,
+        addr: Address,
+        from: Address,
+        recipient: Address,
+        amt: U256,
     ) -> Result<(), Error> {
+        env.test_eip20
+            .balances
+            .setter(addr)
+            .setter(from)
+            .update_check_sub(amt)
+            .expect("Not enough sending balance");
+        env.test_eip20
+            .balances
+            .setter(addr)
+            .setter(recipient)
+            .update_check_add(amt)
+            .expect("Too much sent");
         Ok(())
     }
 
+    pub fn transfer_from(
+        env: &mut StorageApplicationV1,
+        addr: Address,
+        from: Address,
+        to: Address,
+        amt: U256,
+    ) -> Result<(), Error> {
+        if env
+            .test_eip20
+            .allowances
+            .getter(addr)
+            .getter(from)
+            .get(env.vm().contract_address())
+            < amt
+        {
+            panic!("Not enough allowance for the spend");
+        }
+        _transfer(env, addr, env.vm().contract_address(), to, amt)
+    }
+
     pub fn transfer(
-        _env: &mut (impl TopLevelStorage + HostAccess),
+        env: &mut StorageApplicationV1,
         addr: Address,
         recipient: Address,
         amt: U256,
     ) -> Result<(), Error> {
-        Ok(())
+        _transfer(env, addr, env.vm().contract_address(), recipient, amt)
     }
 
     pub fn permit(
-        _env: &mut (impl TopLevelStorage + HostAccess),
+        _env: &mut StorageApplicationV1,
         _addr: Address,
         _owner: Address,
         _spender: Address,
@@ -159,7 +202,7 @@ mod implem {
         _r: FixedBytes<32>,
         _s: FixedBytes<32>,
     ) -> Result<(), Error> {
-        Ok(())
+        todo!()
     }
 }
 

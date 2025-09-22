@@ -248,6 +248,8 @@ impl StorageApplicationV1 {
             &serialise_inplace::<_, { size_of::<ArgsBalance>() }>(args),
             &[],
         )?;
+        let h = d.finalize().into();
+        self.ensure_hash_unseen(&h)?;
         Ok(state_machine::Balance::Inline(
             state_machine::BalanceArgs {
                 ms_ts: args.ms_timestamp,
@@ -255,7 +257,7 @@ impl StorageApplicationV1 {
                 asset: Address::new(args.asset),
                 amt: args.amount,
             },
-            d.finalize().into(),
+            h
         ))
     }
 
@@ -272,11 +274,11 @@ impl StorageApplicationV1 {
             ap,
         )?;
         let c_hash = get_commit_hash(&commit);
-        let hash = chain_digests(&[Nonce::CommitLeftFilledToBalance.into()], &c_hash);
-        self.ensure_hash_unseen(&hash)?;
+        let h = chain_digests(&[Nonce::CommitLeftFilledToBalance.into()], &c_hash);
+        self.ensure_hash_unseen(&h)?;
         Ok(state_machine::Balance::CommitLeftFilledToBal(
             Box::new(commit),
-            hash,
+            h,
         ))
     }
 
@@ -293,11 +295,11 @@ impl StorageApplicationV1 {
             ap,
         )?;
         let c_hash = get_commit_hash(&commit);
-        let hash = chain_digests(&[Nonce::CommitRightFilledToBalance.into()], &c_hash);
-        self.ensure_hash_unseen(&hash)?;
+        let h = chain_digests(&[Nonce::CommitRightFilledToBalance.into()], &c_hash);
+        self.ensure_hash_unseen(&h)?;
         Ok(state_machine::Balance::CommitRightFilledToBal(
             Box::new(commit),
-            hash,
+            h,
         ))
     }
 
