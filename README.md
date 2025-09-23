@@ -43,3 +43,13 @@ flowchart LR
   -->|The applicative form is validated| StateMachine[State machine]
   -->|The state machine form is applied to the storage| Application
 ```
+
+The validation step during the applicative from does the following:
+
+1. Validate the conversion process is taking place correctly
+
+2. Validates the objects logically follow the correct flow
+
+It does not do the following:
+
+1. Checking if the user has enough balance to actually do things in the eip20 asset

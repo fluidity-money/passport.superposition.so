@@ -52,43 +52,30 @@ mod implem {
     }
 
     pub fn transfer_from(
-        env: &mut (impl TopLevelStorage + HostAccess),
+        env: &mut StorageApplicationV1,
         addr: Address,
-        spender: Address,
-        recipient: Address,
+        from: Address,
+        to: Address,
         amt: U256,
     ) -> Result<(), Error> {
-        if env.vm().code_size(addr) == 0 {
-            return Err(Error {
-                typ: ErrorDiscriminant::TokenNoCode,
-            });
+        let spender = env.vm().contract_address();
+        let allowance = env
+            .test_eip20
+            .allowances
+            .getter(addr) // Token address
+            .getter(from) // Token owner
+            .get(spender); // Spender (us)
+        if allowance < amt {
+            panic!("Not enough allowance for the spend: {allowance} < {amt}");
         }
-        let c = Call::new_mutating(env);
-        let rd = call(
-            env.vm(),
-            c,
-            addr,
-            &transferFromCall {
-                spender,
-                recipient,
-                amount: amt,
-            }
-            .abi_encode(),
-        )?;
-        if rd.len() == 0 {
-            return Ok(());
-        }
-        if rd.len() != 32 {
-            return Err(Error {
-                typ: ErrorDiscriminant::Erc20TransferFromDecode,
-            });
-        }
-        if rd[31] != 1 {
-            return Err(Error {
-                typ: ErrorDiscriminant::Erc20TransferFromFalse,
-            });
-        }
-        Ok(())
+        env.test_eip20
+            .allowances
+            .setter(addr)
+            .setter(from)
+            .setter(spender)
+            .update_check_sub(amt)
+            .unwrap();
+        _transfer(env, addr, from, to, amt)
     }
 
     pub fn permit(
@@ -131,6 +118,16 @@ mod implem {
 
     use super::*;
 
+    fn name_addr(env: &StorageApplicationV1, x: Address) -> &'static str {
+        if x == env.vm().msg_sender() {
+            "MSG SENDER"
+        } else if x == env.vm().contract_address() {
+            "CONTRACT ADDRESS"
+        } else {
+            "UNKNOWN ADDR"
+        }
+    }
+
     pub fn give(env: &mut StorageApplicationV1, addr: Address, owner: Address, amt: U256) {
         env.test_eip20
             .balances
@@ -147,12 +144,19 @@ mod implem {
         recipient: Address,
         amt: U256,
     ) -> Result<(), Error> {
+        let available = env.test_eip20.balances.setter(addr).get(from);
+        if amt > available {
+            panic!(
+                "Not enough balance for transfer: {amt} > {available} for {from}, owner {}",
+                name_addr(env, from)
+            );
+        }
         env.test_eip20
             .balances
             .setter(addr)
             .setter(from)
             .update_check_sub(amt)
-            .expect("Not enough sending balance");
+            .unwrap();
         env.test_eip20
             .balances
             .setter(addr)
@@ -169,17 +173,17 @@ mod implem {
         to: Address,
         amt: U256,
     ) -> Result<(), Error> {
-        if env
+        let spender = env.vm().contract_address();
+        let exp = env
             .test_eip20
             .allowances
-            .getter(addr)
-            .getter(from)
-            .get(env.vm().contract_address())
-            < amt
-        {
-            panic!("Not enough allowance for the spend");
+            .getter(addr) // Token address
+            .getter(from) // Source
+            .get(spender); // Us
+        if exp < amt {
+            panic!("Not enough allowance for the spend: {exp} < {amt}");
         }
-        _transfer(env, addr, env.vm().contract_address(), to, amt)
+        _transfer(env, addr, from, to, amt)
     }
 
     pub fn transfer(
@@ -192,17 +196,25 @@ mod implem {
     }
 
     pub fn permit(
-        _env: &mut StorageApplicationV1,
-        _addr: Address,
-        _owner: Address,
-        _spender: Address,
-        _value: U256,
+        env: &mut StorageApplicationV1,
+        addr: Address,
+        owner: Address,
+        spender: Address,
+        value: U256,
         _deadline: U256,
         _v: u8,
         _r: FixedBytes<32>,
         _s: FixedBytes<32>,
     ) -> Result<(), Error> {
-        todo!()
+        // We don't check the signature!
+        env.test_eip20
+            .allowances
+            .setter(addr)
+            .setter(owner)
+            .setter(spender)
+            .update_check_add(value)
+            .expect("Overflow doing allowance in permit");
+        Ok(())
     }
 }
 

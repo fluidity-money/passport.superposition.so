@@ -23,21 +23,15 @@ use alloc::boxed::Box;
 use proptest::prelude::*;
 
 fn err_sig(from: ApplicativeLabel) -> Error {
-    Error {
-        typ: ErrorDiscriminant::BadSignatureCreation(from),
-    }
+    Error::from(ErrorDiscriminant::BadSignatureCreation(from))
 }
 
 fn err_verify(from: ApplicativeLabel) -> Error {
-    Error {
-        typ: ErrorDiscriminant::BadStrictVerify(from),
-    }
+    Error::from(ErrorDiscriminant::BadStrictVerify(from))
 }
 
 fn err_verify_two(from: ApplicativeLabel, x: u8) -> Error {
-    Error {
-        typ: ErrorDiscriminant::BadStrictVerifyTwo(from, x),
-    }
+    Error::from(ErrorDiscriminant::BadStrictVerifyTwo(from, x))
 }
 
 pub type Hash = [u8; 64];
@@ -171,9 +165,7 @@ fn label(x: &Applicative) -> ApplicativeLabel {
 }
 
 fn err_bad_ap_transition(_from: ApplicativeLabel, _to: &Applicative) -> Error {
-    Error {
-        typ: ErrorDiscriminant::BadApplicativeTransition,
-    }
+    Error::from(ErrorDiscriminant::BadApplicativeTransition)
 }
 
 fn chain_digests(x: &[u8], y: &[u8]) -> [u8; 64] {
@@ -214,9 +206,7 @@ fn get_commit_hash(st: &state_machine::Commit) -> Hash {
 }
 
 fn err_hash_already_onchain(h: &[u8; 64]) -> Error {
-    Error {
-        typ: ErrorDiscriminant::HashAlreadyOnchain(h.clone()),
-    }
+    Error::from(ErrorDiscriminant::HashAlreadyOnchain(h.clone()))
 }
 
 impl StorageApplicationV1 {
@@ -250,6 +240,9 @@ impl StorageApplicationV1 {
         )?;
         let h = d.finalize().into();
         self.ensure_hash_unseen(&h)?;
+        if args.amount == 0 {
+            return Err(Error::from(ErrorDiscriminant::ZeroBalanceAmount));
+        }
         Ok(state_machine::Balance::Inline(
             state_machine::BalanceArgs {
                 ms_ts: args.ms_timestamp,
@@ -257,7 +250,7 @@ impl StorageApplicationV1 {
                 asset: Address::new(args.asset),
                 amt: args.amount,
             },
-            h
+            h,
         ))
     }
 

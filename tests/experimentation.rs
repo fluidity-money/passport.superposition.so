@@ -320,6 +320,9 @@ pub fn apply_balances(s: &mut Storage, v: Vec<(Address, u128)>) {
         let mut b = [0u8; 32];
         b[16..32].copy_from_slice(&amt.to_be_bytes());
         let sender = s.vm().msg_sender();
-        call_eip20_extras::give(&mut s.app, asset, sender, U256::from_be_bytes(b))
+        call_eip20_extras::give(&mut s.app, asset, sender, U256::from_be_bytes(b));
+        s.app
+            .add_liq(**asset, **sender, amt, [0u8; 32], 0, [0u8; 32], [0u8; 32])
+            .unwrap();
     }
 }

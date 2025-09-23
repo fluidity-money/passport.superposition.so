@@ -4,6 +4,9 @@ use stylus_sdk::prelude::calls::errors::Error as StylusErr;
 
 pub use crate::{applicative::ApplicativeLabel, result::Res};
 
+#[cfg(not(target_arch = "wasm32"))]
+use crate::Storage;
+
 #[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq, Debug)]
 pub enum MathContext {
     ApplyCommitLeftAmtFilled,
@@ -26,6 +29,9 @@ pub enum MathContext {
 /// native host.
 #[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq, Debug)]
 pub enum ErrorDiscriminant {
+    /// The error wasn't created properly.
+    Unknown,
+
     /// Generic call error that we translated directly.
     BadCall,
 
@@ -89,10 +95,13 @@ pub enum ErrorDiscriminant {
     NoLeftExcess,
 
     /// Checked sub overflow in the math!
-    CheckedSub(MathContext),
+    CheckedSub(MathContext, u128, u128),
 
     /// Checked add overflow in the math!
-    CheckedAdd(MathContext),
+    CheckedAdd(MathContext, u128, u128),
+
+    /// Zero amount in the balance object.
+    ZeroBalanceAmount,
 
     SameAssets,
 
@@ -128,12 +137,38 @@ pub enum ErrorDiscriminant {
     BadOnboardingSig,
 
     /// It wasn't possible to verify a signature during a sig_two validate.
-    BadStrictVerifyTwo(ApplicativeLabel, u8)
+    BadStrictVerifyTwo(ApplicativeLabel, u8),
 }
 
-#[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug)]
 pub struct Error {
     pub typ: ErrorDiscriminant,
+    // Used to hint information about the app when an error happens if this
+    // is tagged on.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub storage: Storage,
+}
+
+impl Default for Error {
+    fn default() -> Self {
+        Error {
+            typ: ErrorDiscriminant::Unknown,
+            #[cfg(not(target_arch = "wasm32"))]
+            storage: Storage::default(),
+        }
+    }
+}
+
+impl borsh::ser::BorshSerialize for Error {
+    fn serialize<W: borsh::io::Write>(&self, writer: &mut W) -> borsh::io::Result<()> {
+        self.typ.serialize(writer)
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl std::fmt::Debug for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+        Ok(())
+    }
 }
 
 impl From<StylusErr> for Error {
@@ -145,7 +180,7 @@ impl From<StylusErr> for Error {
 pub type R = Result<Res, Error>;
 
 pub fn err_cd(typ: ErrorDiscriminant) -> R {
-    Err(Error { typ })
+    Err(Error::from(typ))
 }
 
 pub fn map_stylus_err(
@@ -154,18 +189,30 @@ pub fn map_stylus_err(
     x: StylusErr,
 ) -> Error {
     match x {
-        StylusErr::AbiDecodingFailed(_) => Error { typ: unpack_unp },
-        StylusErr::Revert(_) => Error { typ: call_unp },
+        StylusErr::AbiDecodingFailed(_) => Error {
+            typ: unpack_unp,
+            storage: Storage::default(),
+        },
+        StylusErr::Revert(_) => Error {
+            typ: call_unp,
+            storage: Storage::default(),
+        },
+    }
+}
+
+impl From<ErrorDiscriminant> for Error {
+    fn from(x: ErrorDiscriminant) -> Self {
+        let mut e = Error::default();
+        e.typ = x;
+        e
     }
 }
 
 impl From<alloy_sol_types::Error> for Error {
-    fn from(_: alloy_sol_types::Error) -> Error {
+    fn from(_: alloy_sol_types::Error) -> Self {
         // It's likely we're using this for a failed decoding, so that's what
         // we're always assuming.
-        Error {
-            typ: ErrorDiscriminant::BadUnpack,
-        }
+        Error::from(ErrorDiscriminant::BadUnpack)
     }
 }
 

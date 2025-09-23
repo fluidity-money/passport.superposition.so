@@ -1,6 +1,6 @@
 use stylus_sdk::{alloy_primitives::*, prelude::*, storage::*};
 
-use crate::error::{MathContext, Error, ErrorDiscriminant};
+use crate::error::{Error, ErrorDiscriminant, MathContext};
 
 use alloc::{vec, vec::Vec};
 
@@ -93,6 +93,19 @@ unsafe impl TopLevelStorage for Storage {}
 unsafe impl TopLevelStorage for StorageApplicationV1 {}
 
 #[cfg(not(target_arch = "wasm32"))]
+use std::{cell::RefCell, collections::HashMap};
+
+#[cfg(not(target_arch = "wasm32"))]
+thread_local! {
+    // This field is used as a local thread helper to make it possible to
+    // scan the hashes in the interim balances and others when this is
+    // used in an offline (non-contract) context. It's scanned to see
+    // if we saw any hashes. It shouldn't be trusted completely.
+    pub static SEEN_HASHES: RefCell<HashMap<[u8; 64], bool>> =
+        RefCell::new(HashMap::new());
+}
+
+#[cfg(not(target_arch = "wasm32"))]
 impl Default for Storage {
     fn default() -> Self {
         use stylus_sdk::testing::vm::TestVM;
@@ -100,16 +113,25 @@ impl Default for Storage {
     }
 }
 
-fn err_checked_add(c: MathContext, _x: U128, _y: u128) -> Error {
-    Error {
-        typ: ErrorDiscriminant::CheckedAdd(c),
-    }
+fn err_checked_add(c: MathContext, x: U128, y: u128) -> Error {
+    Error::from(ErrorDiscriminant::CheckedAdd(
+        c,
+        u128::from_le_bytes(x.to_le_bytes()),
+        y,
+    ))
 }
 
-fn err_checked_sub(c: MathContext, _x: U128, _y: u128) -> Error {
-    Error {
-        typ: ErrorDiscriminant::CheckedSub(c),
-    }
+fn err_checked_sub(c: MathContext, x: U128, y: u128) -> Error {
+    Error::from(ErrorDiscriminant::CheckedSub(
+        c,
+        u128::from_le_bytes(x.to_le_bytes()),
+        y,
+    ))
+}
+
+fn track_hash(x: &[u8; 64]) {
+    #[cfg(not(target_arch = "wasm32"))]
+    SEEN_HASHES.with(|h| h.borrow_mut().insert(*x, true));
 }
 
 impl StorageApplicationV1 {
@@ -162,28 +184,24 @@ impl StorageApplicationV1 {
     pub fn find_ed25519_key(&self, i: u64) -> Result<VerifyingKey, Error> {
         let v = self.ed25519_keys.get(i);
         if v.is_zero() {
-            Err(Error {
-                typ: ErrorDiscriminant::AccountIdNotFound,
-            })
+            Err(Error::from(ErrorDiscriminant::AccountIdNotFound))
         } else {
-            VerifyingKey::from_bytes(&v.0).map_err(|_| Error {
-                typ: ErrorDiscriminant::BadVerifyingKey,
-            })
+            VerifyingKey::from_bytes(&v.0)
+                .map_err(|_| Error::from(ErrorDiscriminant::BadVerifyingKey))
         }
     }
 
     pub fn find_ed25519_addr(&self, i: u64) -> Result<Address, Error> {
         let addr = self.ed25519_owners.get(i);
         if addr.is_zero() {
-            Err(Error {
-                typ: ErrorDiscriminant::AccountIdNotFound,
-            })
+            Err(Error::from(ErrorDiscriminant::AccountIdNotFound))
         } else {
             Ok(addr)
         }
     }
 
     pub fn get_interim(&self, owner: Address, asset: Address, h: &[u8; 64]) -> u128 {
+        track_hash(h);
         u128::from_be_bytes(
             self.interim
                 .getter(owner)
@@ -200,6 +218,7 @@ impl StorageApplicationV1 {
         h: &[u8; 64],
         y: u128,
     ) -> Result<(), Error> {
+        track_hash(h);
         let h = FixedBytes::from_slice(&h[..32]);
         let x = self.interim.getter(owner).getter(asset).get(h);
         self.interim.setter(owner).setter(asset).setter(h).set(
@@ -216,6 +235,7 @@ impl StorageApplicationV1 {
         h: &[u8; 64],
         y: u128,
     ) -> Result<(), Error> {
+        track_hash(h);
         let h = FixedBytes::from_slice(&h[..32]);
         let x = self.interim.getter(owner).getter(asset).get(h);
         self.interim.setter(owner).setter(asset).setter(h).set(

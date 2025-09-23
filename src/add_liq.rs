@@ -1,8 +1,8 @@
 use crate::{
     call_eip20_extras,
     error::{Error, ErrorDiscriminant, MathContext},
-    storage::StorageApplicationV1, R,
-    DONE_UNIT,
+    storage::StorageApplicationV1,
+    DONE_UNIT, R,
 };
 
 use stylus_sdk::{
@@ -27,7 +27,7 @@ impl StorageApplicationV1 {
         let value_ = U128::from_le_bytes(value.to_le_bytes());
         let value = {
             let mut b = [0u8; 32];
-            b[16..].copy_from_slice(&value.to_le_bytes());
+            b[16..].copy_from_slice(&value.to_be_bytes());
             U256::from_be_bytes(b)
         };
         let deadline = U256::from_be_bytes(deadline);
@@ -35,14 +35,16 @@ impl StorageApplicationV1 {
         let s = FixedBytes(s);
         let spender = self.vm().contract_address();
         call_eip20_extras::permit(self, token, owner, spender, value, deadline, v, r, s)?;
-        call_eip20_extras::transfer_from(self, token, spender, owner, value)?;
+        call_eip20_extras::transfer_from(self, token, owner, spender, value)?;
         self.withdrawable
             .setter(recipient)
             .setter(token)
             .update_check_add(value_)
-            .ok_or(Error {
-                typ: ErrorDiscriminant::CheckedAdd(MathContext::AddLiq),
-            })?;
+            .ok_or(Error::from(ErrorDiscriminant::CheckedAdd(
+                MathContext::AddLiq,
+                u128::from_le_bytes(self.withdrawable.getter(recipient).get(token).to_le_bytes()),
+                u128::from_le_bytes(value_.to_le_bytes()),
+            )))?;
         DONE_UNIT
     }
 }

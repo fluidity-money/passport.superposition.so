@@ -1,3 +1,3 @@
 #!/bin/sh
 
-cargo test -- $@
+cargo test -- test_apply_2

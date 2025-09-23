@@ -10,27 +10,20 @@ use crate::{
 pub type R<T> = Result<T, Error>;
 
 fn err_same_assets() -> Error {
-    Error {
-        typ: ErrorDiscriminant::SameAssets,
-    }
+    Error::from(ErrorDiscriminant::SameAssets)
 }
 
 fn err_bad_asset_asks() -> Error {
-    Error {
-        typ: ErrorDiscriminant::BadAssetAsks,
-    }
+    Error::from(ErrorDiscriminant::BadAssetAsks)
 }
 
 fn err_bad_balance_from_order() -> Error {
-    Error {
-        typ: ErrorDiscriminant::BalanceTransitionToOrderBad,
-    }
+    Error::from(ErrorDiscriminant::BalanceTransitionToOrderBad)
 }
 
 fn checked_sub(c: MathContext, x: u128, y: u128) -> R<u128> {
-    x.checked_sub(y).ok_or(Error {
-        typ: ErrorDiscriminant::CheckedSub(c),
-    })
+    x.checked_sub(y)
+        .ok_or(Error::from(ErrorDiscriminant::CheckedSub(c, x, y)))
 }
 
 impl StorageApplicationV1 {
@@ -77,12 +70,17 @@ impl StorageApplicationV1 {
                 self.commit_right_amount_filled(owner, asset, c)
             }
             Balance::Cancel(o, _) => self.order_from(owner, asset, o),
-            Balance::Join(l, r, _) => self
-                .balance_amount(owner, asset, l)?
-                .checked_add(self.balance_amount(owner, asset, r)?)
-                .ok_or(Error {
-                    typ: ErrorDiscriminant::CheckedAdd(MathContext::ApplyCommitBalanceAmount),
-                }),
+            Balance::Join(l, r, _) => {
+                let l_bal_amt = self.balance_amount(owner, asset, l)?;
+                let r_bal_amt = self.balance_amount(owner, asset, r)?;
+                l_bal_amt
+                    .checked_add(r_bal_amt)
+                    .ok_or(Error::from(ErrorDiscriminant::CheckedAdd(
+                        MathContext::ApplyCommitBalanceAmount,
+                        l_bal_amt,
+                        r_bal_amt,
+                    )))
+            }
         }
     }
 
@@ -303,9 +301,7 @@ impl StorageApplicationV1 {
 
     pub fn apply_balance_join(&mut self, l: &Balance, r: &Balance) -> R<()> {
         if self.balance_owner(l) != self.balance_owner(r) {
-            return Err(Error {
-                typ: ErrorDiscriminant::InconsistentOwners,
-            });
+            return Err(Error::from(ErrorDiscriminant::InconsistentOwners))
         }
         self.apply_balance(l)?;
         self.apply_balance(r)?;

@@ -1,6 +1,7 @@
 use crate::{
+    done_u64,
     error::{Error, ErrorDiscriminant, MathContext},
-    Storage, done_u64, R,
+    Storage, R,
 };
 
 use ed25519_dalek::{Signature, VerifyingKey};
@@ -34,22 +35,22 @@ impl Storage {
         addr_and_nonce[..20].copy_from_slice(owner.as_slice());
         addr_and_nonce[20..].copy_from_slice(&nonce.to_be_bytes());
         VerifyingKey::from_bytes(&key)
-            .map_err(|_| Error {
-                typ: ErrorDiscriminant::BadVerifyingKey,
-            })?
+            .map_err(|_| Error::from(ErrorDiscriminant::BadVerifyingKey))?
             .verify_strict(&addr_and_nonce, &Signature::from_bytes(&sig))
-            .map_err(|_| Error {
-                typ: ErrorDiscriminant::BadOnboardingSig,
-            })?;
+            .map_err(|_| Error::from(ErrorDiscriminant::BadOnboardingSig))?;
         let key_count = u64::from_le_bytes(self.app.ed25519_count.get().to_le_bytes());
-        self.app.ed25519_count
+        self.app
+            .ed25519_count
             .update_check_add(U64::from(1))
-            .ok_or(Error {
-                typ: ErrorDiscriminant::CheckedAdd(MathContext::Onboard),
-            })?;
+            .ok_or(Error::from(ErrorDiscriminant::CheckedAdd(
+                MathContext::Onboard,
+                u128::from_le_bytes(self.app.ed25519_count.get().to_le_bytes()),
+                1,
+            )))?;
         let key = FixedBytes(key);
         self.app.ed25519_keys.setter(key_count).set(key);
-        self.app.ed25519_owners
+        self.app
+            .ed25519_owners
             .setter(key_count)
             .set(Address::from(owner));
         self.app.add_liq(
