@@ -4,8 +4,7 @@ use stylus_sdk::prelude::calls::errors::Error as StylusErr;
 
 pub use crate::{applicative::ApplicativeLabel, result::Res};
 
-#[cfg(not(target_arch = "wasm32"))]
-use crate::Storage;
+use stylus_sdk::alloy_primitives::{Address, U256, FixedBytes};
 
 #[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq, Debug)]
 pub enum MathContext {
@@ -138,22 +137,66 @@ pub enum ErrorDiscriminant {
 
     /// It wasn't possible to verify a signature during a sig_two validate.
     BadStrictVerifyTwo(ApplicativeLabel, u8),
+
+    /// During testing, there wasn't enough balance for a transfer!
+    TestNotEnoughBalForTransfer,
+
+    /// During testing, there wasn't enough allowance!
+    TestNotEnoughAllowance,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ErrorTestContext {
+    pub sender: Address,
+    pub recipient: Address,
+    pub asset: Address,
+    pub amt: U256,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ErrorTestInterimDetails {
+    pub owner_l: Address,
+    pub owner_r: Address,
+    pub asset_l: Address,
+    pub asset_r: Address,
+    pub amt: u128,
+    pub hash: FixedBytes<32>,
+    pub thread_recorded_owner: Address,
+    pub thread_recorded_asset: Address,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ErrorInterimAccessContext {
+    pub accessed_hash: FixedBytes<32>,
+    pub interim_hashes: Vec<ErrorTestInterimDetails>
 }
 
 pub struct Error {
     pub typ: ErrorDiscriminant,
     // Used to hint information about the app when an error happens if this
     // is tagged on.
-    #[cfg(not(target_arch = "wasm32"))]
-    pub storage: Storage,
+    pub test_context: Option<ErrorTestContext>,
+    pub test_interim: Option<ErrorInterimAccessContext>,
+}
+
+impl Error {
+    pub fn test_context(mut self, e: ErrorTestContext) -> Self {
+        self.test_context = Some(e);
+        self
+    }
+
+    pub fn test_interim(mut self, v: ErrorInterimAccessContext) -> Self {
+        self.test_interim = Some(v);
+        self
+    }
 }
 
 impl Default for Error {
     fn default() -> Self {
         Error {
             typ: ErrorDiscriminant::Unknown,
-            #[cfg(not(target_arch = "wasm32"))]
-            storage: Storage::default(),
+            test_context: None,
+            test_interim: None
         }
     }
 }
@@ -164,10 +207,23 @@ impl borsh::ser::BorshSerialize for Error {
     }
 }
 
-#[cfg(not(target_arch = "wasm32"))]
-impl std::fmt::Debug for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
-        Ok(())
+impl borsh::de::BorshDeserialize for Error {
+    fn deserialize_reader<R: borsh::io::Read>(r: &mut R) -> borsh::io::Result<Self> {
+        Ok(Error::from(ErrorDiscriminant::deserialize_reader(r)?))
+    }
+}
+
+impl core::fmt::Debug for Error {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
+        let mut d = f.debug_struct("Error");
+        d.field("typ", &self.typ);
+        if let Some(ref c) = self.test_context {
+            d.field("eip20 context", c);
+        }
+        if let Some(ref c) = self.test_interim {
+            d.field("interim values", c);
+        }
+        d.finish()
     }
 }
 
@@ -189,14 +245,8 @@ pub fn map_stylus_err(
     x: StylusErr,
 ) -> Error {
     match x {
-        StylusErr::AbiDecodingFailed(_) => Error {
-            typ: unpack_unp,
-            storage: Storage::default(),
-        },
-        StylusErr::Revert(_) => Error {
-            typ: call_unp,
-            storage: Storage::default(),
-        },
+        StylusErr::AbiDecodingFailed(_) => Error::from(unpack_unp),
+        StylusErr::Revert(_) => Error::from(call_unp),
     }
 }
 

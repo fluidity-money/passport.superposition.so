@@ -7,9 +7,6 @@ use stylus_sdk::{
 
 use stylus_sdk::alloy_sol_types::sol;
 
-#[cfg(target_arch = "wasm32")]
-use stylus_sdk::alloy_sol_types::SolCall;
-
 // Some of the code here was handwritten to reduce codesize for the
 // solver path.
 
@@ -23,7 +20,9 @@ sol! {
 mod implem {
     use super::*;
 
-    use stylus_sdk::{call::call, prelude::TopLevelStorage, stylus_core::Call};
+    use stylus_sdk::{
+        alloy_sol_types::SolCall, call::call, prelude::TopLevelStorage, stylus_core::Call,
+    };
 
     pub fn transfer(
         env: &mut (impl TopLevelStorage + HostAccess),
@@ -32,9 +31,7 @@ mod implem {
         amt: U256,
     ) -> Result<(), Error> {
         if env.vm().code_size(addr) == 0 {
-            return Err(Error {
-                typ: ErrorDiscriminant::TokenNoCode,
-            });
+            return Err(Error::from(ErrorDiscriminant::TokenNoCode));
         }
         let sel = [0xa9, 0x05, 0x9c, 0xbb];
         let mut b = [0u8; 32 * 2 + 4];
@@ -42,9 +39,8 @@ mod implem {
         b[4 + 12..4 + 12 + 20].copy_from_slice(recipient.as_slice());
         let c = Call::new_mutating(env);
         b[4 + 32..].copy_from_slice(&amt.to_be_bytes() as &[u8; 32]);
-        let rd = call(env.vm(), c, addr, &b).map_err(|_| Error {
-            typ: ErrorDiscriminant::Erc20TransferCall,
-        })?;
+        let rd = call(env.vm(), c, addr, &b)
+            .map_err(|_| Error::from(ErrorDiscriminant::Erc20TransferCall))?;
         if rd.len() == 0 {
             return Ok(());
         }
@@ -52,30 +48,37 @@ mod implem {
     }
 
     pub fn transfer_from(
-        env: &mut StorageApplicationV1,
+        env: &mut (impl TopLevelStorage + HostAccess),
         addr: Address,
         from: Address,
         to: Address,
         amt: U256,
     ) -> Result<(), Error> {
-        let spender = env.vm().contract_address();
-        let allowance = env
-            .test_eip20
-            .allowances
-            .getter(addr) // Token address
-            .getter(from) // Token owner
-            .get(spender); // Spender (us)
-        if allowance < amt {
-            panic!("Not enough allowance for the spend: {allowance} < {amt}");
+        if env.vm().code_size(addr) == 0 {
+            return Err(Error::from(ErrorDiscriminant::TokenNoCode));
         }
-        env.test_eip20
-            .allowances
-            .setter(addr)
-            .setter(from)
-            .setter(spender)
-            .update_check_sub(amt)
-            .unwrap();
-        _transfer(env, addr, from, to, amt)
+        let c = Call::new_mutating(env);
+        let rd = call(
+            env.vm(),
+            c,
+            addr,
+            &transferFromCall {
+                spender: from,
+                recipient: to,
+                amount: amt,
+            }
+            .abi_encode(),
+        )?;
+        if rd.len() == 0 {
+            return Ok(());
+        }
+        if rd.len() != 32 {
+            return Err(Error::from(ErrorDiscriminant::Erc20TransferFromDecode));
+        }
+        if rd[31] != 1 {
+            return Err(Error::from(ErrorDiscriminant::Erc20TransferFromFalse));
+        }
+        Ok(())
     }
 
     pub fn permit(
@@ -146,9 +149,15 @@ mod implem {
     ) -> Result<(), Error> {
         let available = env.test_eip20.balances.setter(addr).get(from);
         if amt > available {
-            panic!(
-                "Not enough balance for transfer: {amt} > {available} for {from}, owner {}",
-                name_addr(env, from)
+            return Err(
+                Error::from(ErrorDiscriminant::TestNotEnoughBalForTransfer).test_context(
+                    ErrorTestContext {
+                        sender: from,
+                        recipient,
+                        asset: addr,
+                        amt,
+                    },
+                ),
             );
         }
         env.test_eip20
@@ -181,7 +190,16 @@ mod implem {
             .getter(from) // Source
             .get(spender); // Us
         if exp < amt {
-            panic!("Not enough allowance for the spend: {exp} < {amt}");
+            return Err(
+                Error::from(ErrorDiscriminant::TestNotEnoughAllowance).test_context(
+                    ErrorTestContext {
+                        sender: from,
+                        recipient: spender,
+                        asset: addr,
+                        amt,
+                    },
+                ),
+            );
         }
         _transfer(env, addr, from, to, amt)
     }

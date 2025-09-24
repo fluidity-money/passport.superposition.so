@@ -1,10 +1,15 @@
 use stylus_sdk::{alloy_primitives::*, prelude::*, storage::*};
 
-use crate::error::{Error, ErrorDiscriminant, MathContext};
+use crate::error::{
+    Error, ErrorDiscriminant, ErrorInterimAccessContext, ErrorTestInterimDetails, MathContext,
+};
 
 use alloc::{vec, vec::Vec};
 
 use ed25519_dalek::VerifyingKey;
+
+#[cfg(not(target_arch = "wasm32"))]
+use std::{cell::RefCell, collections::HashMap};
 
 pub type KeyEdAddr = FixedBytes<32>;
 
@@ -20,13 +25,20 @@ pub struct StorageBucket {
 pub type StorageTickets =
     StorageMap<Address, StorageMap<Address, StorageMap<FixedBytes<32>, StorageU128>>>;
 
-// Testing storage that's used for EIP20 and more.
+// Testing storage that's used for offline testing context.
 #[storage]
 #[cfg(not(target_arch = "wasm32"))]
 pub struct StorageTest {
     pub balances: StorageMap<Address, StorageMap<Address, StorageU256>>,
     // Contract => Owner (user) => Spender (passport) => Amount
     pub allowances: StorageMap<Address, StorageMap<Address, StorageMap<Address, StorageU256>>>,
+    pub hashes: StorageVec<StorageFixedBytes<32>>,
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+thread_local! {
+    pub static SEEN_HASHES: RefCell<HashMap<([u8; 64], Address, Address), bool>> =
+        RefCell::new(HashMap::new());
 }
 
 #[storage]
@@ -93,19 +105,6 @@ unsafe impl TopLevelStorage for Storage {}
 unsafe impl TopLevelStorage for StorageApplicationV1 {}
 
 #[cfg(not(target_arch = "wasm32"))]
-use std::{cell::RefCell, collections::HashMap};
-
-#[cfg(not(target_arch = "wasm32"))]
-thread_local! {
-    // This field is used as a local thread helper to make it possible to
-    // scan the hashes in the interim balances and others when this is
-    // used in an offline (non-contract) context. It's scanned to see
-    // if we saw any hashes. It shouldn't be trusted completely.
-    pub static SEEN_HASHES: RefCell<HashMap<[u8; 64], bool>> =
-        RefCell::new(HashMap::new());
-}
-
-#[cfg(not(target_arch = "wasm32"))]
 impl Default for Storage {
     fn default() -> Self {
         use stylus_sdk::testing::vm::TestVM;
@@ -127,11 +126,6 @@ fn err_checked_sub(c: MathContext, x: U128, y: u128) -> Error {
         u128::from_le_bytes(x.to_le_bytes()),
         y,
     ))
-}
-
-fn track_hash(x: &[u8; 64]) {
-    #[cfg(not(target_arch = "wasm32"))]
-    SEEN_HASHES.with(|h| h.borrow_mut().insert(*x, true));
 }
 
 impl StorageApplicationV1 {
@@ -201,7 +195,6 @@ impl StorageApplicationV1 {
     }
 
     pub fn get_interim(&self, owner: Address, asset: Address, h: &[u8; 64]) -> u128 {
-        track_hash(h);
         u128::from_be_bytes(
             self.interim
                 .getter(owner)
@@ -211,19 +204,49 @@ impl StorageApplicationV1 {
         )
     }
 
+    pub fn test_tag_hashes(&self, x: &[u8; 64], owner: Address, asset: Address, e: Error) -> Error {
+        #[cfg(not(target_arch = "wasm32"))]
+        let e = SEEN_HASHES.with(|h| {
+            let mut h = h.borrow_mut();
+            h.insert((*x, owner, asset), true);
+            e.test_interim(ErrorInterimAccessContext {
+                accessed_hash: FixedBytes::from_slice(&x[..32]),
+                interim_hashes: h
+                    .keys()
+                    .map(|(k, owner, asset)| ErrorTestInterimDetails {
+                        asset_l: self.get_hash_asset_l(k),
+                        asset_r: self.get_hash_asset_r(k),
+                        owner_l: self.get_hash_owner_l(k),
+                        owner_r: self.get_hash_owner_r(k),
+                        amt: self.get_interim(*owner, *asset, k),
+                        hash: FixedBytes::from_slice(&k[..32]),
+                        thread_recorded_owner: *owner,
+                        thread_recorded_asset: *asset,
+                    })
+                    .collect::<Vec<_>>(),
+            })
+        });
+        e
+    }
+
     pub fn increase_interim(
         &mut self,
         owner: Address,
         asset: Address,
-        h: &[u8; 64],
+        hx: &[u8; 64],
         y: u128,
     ) -> Result<(), Error> {
-        track_hash(h);
-        let h = FixedBytes::from_slice(&h[..32]);
+        let h = FixedBytes::from_slice(&hx[..32]);
         let x = self.interim.getter(owner).getter(asset).get(h);
+        let e = self.test_tag_hashes(
+            hx,
+            owner,
+            asset,
+            err_checked_add(MathContext::IncreaseInterim, x, y),
+        );
         self.interim.setter(owner).setter(asset).setter(h).set(
             x.checked_add(U128::from_le_bytes(y.to_le_bytes()))
-                .ok_or(err_checked_add(MathContext::IncreaseInterim, x, y))?,
+                .ok_or(e)?,
         );
         Ok(())
     }
@@ -232,15 +255,20 @@ impl StorageApplicationV1 {
         &mut self,
         owner: Address,
         asset: Address,
-        h: &[u8; 64],
+        hx: &[u8; 64],
         y: u128,
     ) -> Result<(), Error> {
-        track_hash(h);
-        let h = FixedBytes::from_slice(&h[..32]);
+        let h = FixedBytes::from_slice(&hx[..32]);
         let x = self.interim.getter(owner).getter(asset).get(h);
+        let e = self.test_tag_hashes(
+            hx,
+            owner,
+            asset,
+            err_checked_sub(MathContext::DecreaseInterim, x, y),
+        );
         self.interim.setter(owner).setter(asset).setter(h).set(
             x.checked_sub(U128::from_le_bytes(y.to_le_bytes()))
-                .ok_or(err_checked_sub(MathContext::DecreaseInterim, x, y))?,
+                .ok_or(e)?,
         );
         Ok(())
     }

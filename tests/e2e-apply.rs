@@ -38,7 +38,7 @@ proptest! {
         let msg_sender = s.vm().msg_sender();
         s.app.ed25519_keys.setter(0).set(FixedBytes::from_slice(signer_pub.as_bytes()));
         s.app.ed25519_owners.setter(0).set(msg_sender);
-        apply_balances(&mut s, starting_amts(&e));
+        apply_balances(&mut s, starting_amts(&e)).unwrap();
         s.app.apply(
             s.app.validate(Network::OFFLINE, &user_ctx.accounts, converted)
                 .unwrap()
@@ -302,7 +302,7 @@ fn test_apply_2() {
         .setter(0)
         .set(FixedBytes::from_slice(signer_pub.as_bytes()));
     s.app.ed25519_owners.setter(0).set(msg_sender);
-    apply_balances(&mut s, starting_amts(&e));
+    apply_balances(&mut s, starting_amts(&e)).unwrap();
     s.app
         .apply(
             s.app
