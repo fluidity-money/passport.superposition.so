@@ -2,7 +2,7 @@ use stylus_sdk::alloy_primitives::{Address, U256};
 
 use crate::{
     call_eip20_extras,
-    error::{Error, ErrorDiscriminant, MathContext},
+    error::{ApplyContext, Error, ErrorDiscriminant},
     state_machine::{Balance, BalanceArgs, Commit, Order, OrderArgs, StateMachine, Withdraw},
     storage::StorageApplicationV1,
 };
@@ -21,7 +21,7 @@ fn err_bad_balance_from_order() -> Error {
     Error::from(ErrorDiscriminant::BalanceTransitionToOrderBad)
 }
 
-fn checked_sub(c: MathContext, x: u128, y: u128) -> R<u128> {
+fn checked_sub(c: ApplyContext, x: u128, y: u128) -> R<u128> {
     x.checked_sub(y)
         .ok_or(Error::from(ErrorDiscriminant::CheckedSub(c, x, y)))
 }
@@ -76,7 +76,7 @@ impl StorageApplicationV1 {
                 l_bal_amt
                     .checked_add(r_bal_amt)
                     .ok_or(Error::from(ErrorDiscriminant::CheckedAdd(
-                        MathContext::ApplyCommitBalanceAmount,
+                        ApplyContext::ApplyCommitBalanceAmount,
                         l_bal_amt,
                         r_bal_amt,
                     )))
@@ -135,7 +135,7 @@ impl StorageApplicationV1 {
     ) -> R<u128> {
         match o {
             Commit::Inline(_, l, r, _) => checked_sub(
-                MathContext::ApplyCommitLeftAmtUnfilled,
+                ApplyContext::ApplyCommitLeftAmtUnfilled,
                 self.order_from(owner, asset, l)?,
                 self.order_desired_amount(owner, asset, r)?,
             ),
@@ -155,7 +155,7 @@ impl StorageApplicationV1 {
     ) -> R<u128> {
         match o {
             Commit::Inline(_, l, r, _) => checked_sub(
-                MathContext::ApplyCommitRightAmtUnfilled,
+                ApplyContext::ApplyCommitRightAmtUnfilled,
                 self.order_from(owner, asset, r)?,
                 self.order_desired_amount(owner, asset, l)?,
             ),
@@ -293,15 +293,20 @@ impl StorageApplicationV1 {
         let Balance::Inline(_, h) = b else {
             unreachable!();
         };
-        self.increase_interim(owner, asset, h, amt)?;
+        let ctx = ApplyContext::ApplyBalanceInline;
+        eprintln!(
+            "Increased interim for hash {} amount {amt}, asset {asset}, owner {owner}",
+            const_hex::encode(&h)
+        );
+        self.increase_interim(ctx, owner, asset, h, amt)?;
         self.set_hash_details_l(h, owner, asset);
-        self.decrease_withdrawal(owner, asset, amt)?;
+        self.decrease_withdrawal(ctx, owner, asset, amt)?;
         Ok(())
     }
 
     pub fn apply_balance_join(&mut self, l: &Balance, r: &Balance) -> R<()> {
         if self.balance_owner(l) != self.balance_owner(r) {
-            return Err(Error::from(ErrorDiscriminant::InconsistentOwners))
+            return Err(Error::from(ErrorDiscriminant::InconsistentOwners));
         }
         self.apply_balance(l)?;
         self.apply_balance(r)?;
@@ -320,8 +325,9 @@ impl StorageApplicationV1 {
             return Ok(());
         }
         self.set_hash_details_l(h, owner, asset);
-        self.increase_interim(owner, asset, h, amt)?;
-        self.decrease_order(owner, asset, h, amt)
+        let ctx = ApplyContext::ApplyBalanceCancel;
+        self.increase_interim(ctx, owner, asset, h, amt)?;
+        self.decrease_order(ctx, owner, asset, h, amt)
     }
 
     pub fn apply_balance(&mut self, b: &Balance) -> R<()> {
@@ -359,10 +365,11 @@ impl StorageApplicationV1 {
         }
         self.apply_order(l)?;
         self.apply_order(r)?;
-        self.decrease_order(l_owner, l_asset, l_hash, l_filled)?;
-        self.decrease_order(r_owner, r_asset, r_hash, r_filled)?;
-        self.increase_interim(l_owner, r_asset, hash, l_filled)?;
-        self.increase_interim(r_owner, l_asset, hash, r_filled)?;
+        let ctx = ApplyContext::ApplyCommit;
+        self.decrease_order(ctx, l_owner, l_asset, l_hash, l_filled)?;
+        self.decrease_order(ctx, r_owner, r_asset, r_hash, r_filled)?;
+        self.increase_interim(ctx, l_owner, r_asset, hash, l_filled)?;
+        self.increase_interim(ctx, r_owner, l_asset, hash, r_filled)?;
         self.set_hash_details_l(hash, l_owner, l_asset);
         self.set_hash_details_r(hash, r_owner, r_asset);
         Ok(())
@@ -382,10 +389,24 @@ impl StorageApplicationV1 {
         let bal_amt = self.order_underlying_amt(owner, from_asset, o)?;
         let desired_asset = self.order_desired_asset(o);
         let h = self.order_hash(o);
+        let ctx = ApplyContext::ApplyOrder;
         match o {
-            Order::Inline(_, b, _) => self.apply_balance(b)?,
+            Order::Inline(_, b, _) => {
+                let b_hash = match **b {
+                    Balance::Inline(_, h)
+                    | Balance::Onchain(h)
+                    | Balance::CommitLeftFilledToBal(_, h)
+                    | Balance::CommitRightFilledToBal(_, h)
+                    | Balance::Cancel(_, h)
+                    | Balance::Join(_, _, h) => h,
+                };
+                self.apply_balance(b)?;
+                self.decrease_interim(ctx, owner, from_asset, &b_hash, amt)?;
+                self.increase_order(ctx, owner, from_asset, h, amt)?;
+            }
             Order::Onchain(_) => (),
             Order::CommitLeftExcessToOrder(c, _) | Order::CommitRightExcessToOrder(c, _) => {
+                // The commit step already applies an order for us!
                 self.apply_commit(c)?
             }
         };
@@ -395,8 +416,6 @@ impl StorageApplicationV1 {
         if bal_amt < amt {
             return Err(err_bad_balance_from_order());
         }
-        self.increase_order(owner, from_asset, h, amt)?;
-        self.decrease_interim(owner, from_asset, h, amt)?;
         self.set_hash_details_l(h, owner, from_asset);
         self.set_hash_details_desired_asset(h, desired_asset);
         Ok(())
@@ -409,8 +428,9 @@ impl StorageApplicationV1 {
         let hash = self.withdraw_hash(w);
         let Withdraw::Inline(b, _) = w;
         self.apply_balance(b)?;
-        self.decrease_interim(owner, asset, hash, amt)?;
-        self.increase_withdrawal(owner, asset, amt)?;
+        let ctx = ApplyContext::ApplyWithdraw;
+        self.decrease_interim(ctx, owner, asset, hash, amt)?;
+        self.increase_withdrawal(ctx, owner, asset, amt)?;
         call_eip20_extras::transfer(self, asset, owner, u128_to_u256(amt))
     }
 

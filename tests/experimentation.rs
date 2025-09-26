@@ -48,7 +48,8 @@ pub enum TestBalance {
 pub enum Entry {
     Balance(TestBalance),
     Withdraw(TestBalance),
-    Order(TestBalance),
+    MakeOrder(TestBalance),
+    Order(TestOrder),
     Cancel(TestOrder),
     Commit(TestCommit),
     CommitLeftFilledToBalance(TestCommit),
@@ -132,7 +133,8 @@ impl Arbitrary for Entry {
         prop_oneof![
             bal_strat.clone().prop_map(Entry::Balance),
             bal_strat.clone().prop_map(Entry::Withdraw),
-            bal_strat.clone().prop_map(Entry::Order),
+            bal_strat.clone().prop_map(Entry::MakeOrder),
+            ord_strat.clone().prop_map(Entry::Order),
             ord_strat.clone().prop_map(Entry::Cancel),
             commit_strat.clone().prop_map(Entry::Commit),
             commit_strat
@@ -240,13 +242,14 @@ pub fn convert<T: UserApplicative, S: SolverApplicative>(
             let solver_sig = solver_app.withdraw(converted_balance.clone())?;
             user_app.withdraw(solver_sig, converted_balance, None)
         }
-        Entry::Order(test_balance) => user_app.order(
+        Entry::MakeOrder(test_balance) => user_app.order(
             0,
             Address::default(),
             0,
             0,
             convert_test_balance(user_app, solver_app, test_balance)?,
         ),
+        Entry::Order(test_order) => convert_test_order(user_app, solver_app, test_order),
         Entry::Cancel(test_order) => {
             let converted_order = convert_test_order(user_app, solver_app, test_order)?;
             let solver_sig = solver_app.cancel(converted_order.clone())?;
@@ -299,8 +302,8 @@ fn starting_amts_commit(v: &mut Vec<(Address, u128)>, TestCommit::Commit(c): &Te
 
 fn _starting_amts(v: &mut Vec<(Address, u128)>, e: &Entry) {
     match e {
-        Entry::Balance(b) | Entry::Withdraw(b) | Entry::Order(b) => starting_amts_balance(v, b),
-        Entry::Cancel(o) => starting_amts_order(v, o),
+        Entry::Balance(b) | Entry::Withdraw(b) | Entry::MakeOrder(b) => starting_amts_balance(v, b),
+        Entry::Order(o) | Entry::Cancel(o) => starting_amts_order(v, o),
         Entry::Commit(c)
         | Entry::CommitLeftFilledToBalance(c)
         | Entry::CommitRightFilledToBalance(c)

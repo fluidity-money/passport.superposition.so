@@ -1,7 +1,7 @@
 use stylus_sdk::{alloy_primitives::*, prelude::*, storage::*};
 
 use crate::error::{
-    Error, ErrorDiscriminant, ErrorInterimAccessContext, ErrorTestInterimDetails, MathContext,
+    ApplyContext, Error, ErrorDiscriminant, ErrorInterimAccessContext, ErrorTestInterimDetails,
 };
 
 use alloc::{vec, vec::Vec};
@@ -112,7 +112,7 @@ impl Default for Storage {
     }
 }
 
-fn err_checked_add(c: MathContext, x: U128, y: u128) -> Error {
+fn err_checked_add(c: ApplyContext, x: U128, y: u128) -> Error {
     Error::from(ErrorDiscriminant::CheckedAdd(
         c,
         u128::from_le_bytes(x.to_le_bytes()),
@@ -120,7 +120,7 @@ fn err_checked_add(c: MathContext, x: U128, y: u128) -> Error {
     ))
 }
 
-fn err_checked_sub(c: MathContext, x: U128, y: u128) -> Error {
+fn err_checked_sub(c: ApplyContext, x: U128, y: u128) -> Error {
     Error::from(ErrorDiscriminant::CheckedSub(
         c,
         u128::from_le_bytes(x.to_le_bytes()),
@@ -231,6 +231,7 @@ impl StorageApplicationV1 {
 
     pub fn increase_interim(
         &mut self,
+        ctx: ApplyContext,
         owner: Address,
         asset: Address,
         hx: &[u8; 64],
@@ -238,12 +239,7 @@ impl StorageApplicationV1 {
     ) -> Result<(), Error> {
         let h = FixedBytes::from_slice(&hx[..32]);
         let x = self.interim.getter(owner).getter(asset).get(h);
-        let e = self.test_tag_hashes(
-            hx,
-            owner,
-            asset,
-            err_checked_add(MathContext::IncreaseInterim, x, y),
-        );
+        let e = self.test_tag_hashes(hx, owner, asset, err_checked_add(ctx, x, y));
         self.interim.setter(owner).setter(asset).setter(h).set(
             x.checked_add(U128::from_le_bytes(y.to_le_bytes()))
                 .ok_or(e)?,
@@ -253,6 +249,7 @@ impl StorageApplicationV1 {
 
     pub fn decrease_interim(
         &mut self,
+        ctx: ApplyContext,
         owner: Address,
         asset: Address,
         hx: &[u8; 64],
@@ -260,12 +257,7 @@ impl StorageApplicationV1 {
     ) -> Result<(), Error> {
         let h = FixedBytes::from_slice(&hx[..32]);
         let x = self.interim.getter(owner).getter(asset).get(h);
-        let e = self.test_tag_hashes(
-            hx,
-            owner,
-            asset,
-            err_checked_sub(MathContext::DecreaseInterim, x, y),
-        );
+        let e = self.test_tag_hashes(hx, owner, asset, err_checked_sub(ctx, x, y));
         self.interim.setter(owner).setter(asset).setter(h).set(
             x.checked_sub(U128::from_le_bytes(y.to_le_bytes()))
                 .ok_or(e)?,
@@ -275,6 +267,7 @@ impl StorageApplicationV1 {
 
     pub fn increase_withdrawal(
         &mut self,
+        ctx: ApplyContext,
         owner: Address,
         asset: Address,
         y: u128,
@@ -282,13 +275,14 @@ impl StorageApplicationV1 {
         let x = self.withdrawable.getter(owner).getter(asset).get();
         self.withdrawable.setter(owner).setter(asset).set(
             x.checked_add(U128::from_le_bytes(y.to_le_bytes()))
-                .ok_or(err_checked_add(MathContext::IncreaseWithdrawal, x, y))?,
+                .ok_or(err_checked_add(ctx, x, y))?,
         );
         Ok(())
     }
 
     pub fn decrease_withdrawal(
         &mut self,
+        ctx: ApplyContext,
         owner: Address,
         asset: Address,
         y: u128,
@@ -296,7 +290,7 @@ impl StorageApplicationV1 {
         let x = self.withdrawable.getter(owner).getter(asset).get();
         self.withdrawable.setter(owner).setter(asset).set(
             x.checked_sub(U128::from_le_bytes(y.to_le_bytes()))
-                .ok_or(err_checked_sub(MathContext::DecreaseWithdrawal, x, y))?,
+                .ok_or(err_checked_sub(ctx, x, y))?,
         );
         Ok(())
     }
@@ -308,6 +302,7 @@ impl StorageApplicationV1 {
 
     pub fn increase_order(
         &mut self,
+        ctx: ApplyContext,
         owner: Address,
         asset: Address,
         h: &[u8; 64],
@@ -317,13 +312,14 @@ impl StorageApplicationV1 {
         let x = self.orders.getter(owner).getter(asset).get(h);
         self.orders.setter(owner).setter(asset).setter(h).set(
             x.checked_add(U128::from_le_bytes(y.to_le_bytes()))
-                .ok_or(err_checked_add(MathContext::IncreaseOrder, x, y))?,
+                .ok_or(err_checked_add(ctx, x, y))?,
         );
         Ok(())
     }
 
     pub fn decrease_order(
         &mut self,
+        ctx: ApplyContext,
         owner: Address,
         asset: Address,
         h: &[u8; 64],
@@ -333,7 +329,7 @@ impl StorageApplicationV1 {
         let x = self.orders.getter(owner).getter(asset).get(h);
         self.orders.setter(owner).setter(asset).setter(h).set(
             x.checked_sub(U128::from_le_bytes(y.to_le_bytes()))
-                .ok_or(err_checked_sub(MathContext::DecreaseOrder, x, y))?,
+                .ok_or(err_checked_sub(ctx, x, y))?,
         );
         Ok(())
     }

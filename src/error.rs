@@ -6,19 +6,20 @@ pub use crate::{applicative::ApplicativeLabel, result::Res};
 
 use stylus_sdk::alloy_primitives::{Address, U256, FixedBytes};
 
-#[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq, Debug)]
-pub enum MathContext {
+#[derive(BorshSerialize, BorshDeserialize, Clone, Copy, PartialEq, Debug)]
+pub enum ApplyContext {
+    JoinLBalAmt,
+    JoinRBalAmt,
+    ApplyBalanceInline,
+    ApplyBalanceCancel,
+    ApplyCommit,
     ApplyCommitLeftAmtFilled,
     ApplyCommitRightAmtFilled,
-    IncreaseInterim,
-    DecreaseInterim,
-    IncreaseWithdrawal,
-    DecreaseWithdrawal,
-    IncreaseOrder,
-    DecreaseOrder,
     ApplyCommitBalanceAmount,
     ApplyCommitLeftAmtUnfilled,
     ApplyCommitRightAmtUnfilled,
+    ApplyOrder,
+    ApplyWithdraw,
     AddLiq,
     Onboard,
 }
@@ -94,10 +95,10 @@ pub enum ErrorDiscriminant {
     NoLeftExcess,
 
     /// Checked sub overflow in the math!
-    CheckedSub(MathContext, u128, u128),
+    CheckedSub(ApplyContext, u128, u128),
 
     /// Checked add overflow in the math!
-    CheckedAdd(MathContext, u128, u128),
+    CheckedAdd(ApplyContext, u128, u128),
 
     /// Zero amount in the balance object.
     ZeroBalanceAmount,

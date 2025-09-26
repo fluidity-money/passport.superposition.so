@@ -1,6 +1,6 @@
 use crate::{
     done_u64,
-    error::{Error, ErrorDiscriminant, MathContext},
+    error::{Error, ErrorDiscriminant, ApplyContext},
     Storage, R,
 };
 
@@ -43,7 +43,7 @@ impl Storage {
             .ed25519_count
             .update_check_add(U64::from(1))
             .ok_or(Error::from(ErrorDiscriminant::CheckedAdd(
-                MathContext::Onboard,
+                ApplyContext::Onboard,
                 u128::from_le_bytes(self.app.ed25519_count.get().to_le_bytes()),
                 1,
             )))?;
