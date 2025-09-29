@@ -206,8 +206,8 @@ impl StorageApplicationV1 {
         match b {
             Balance::Inline(BalanceArgs { asset, .. }, _) => *asset,
             Balance::Onchain(h) => self.get_hash_asset_l(h),
-            Balance::CommitLeftFilledToBal(c, _) => self.commit_left_asset(c),
-            Balance::CommitRightFilledToBal(c, _) => self.commit_right_asset(c),
+            Balance::CommitLeftFilledToBal(c, _) => self.commit_right_asset(c),
+            Balance::CommitRightFilledToBal(c, _) => self.commit_left_asset(c),
             Balance::Join(l, _, _) => self.balance_asset(l),
             Balance::Cancel(o, _) => self.order_asset(o),
         }
@@ -294,10 +294,6 @@ impl StorageApplicationV1 {
             unreachable!();
         };
         let ctx = ApplyContext::ApplyBalanceInline;
-        eprintln!(
-            "Increased interim for hash {} amount {amt}, asset {asset}, owner {owner}",
-            const_hex::encode(&h)
-        );
         self.increase_interim(ctx, owner, asset, h, amt)?;
         self.set_hash_details_l(h, owner, asset);
         self.decrease_withdrawal(ctx, owner, asset, amt)?;

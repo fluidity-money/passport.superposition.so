@@ -164,8 +164,8 @@ fn label(x: &Applicative) -> ApplicativeLabel {
     ApplicativeLabel::from(x)
 }
 
-fn err_bad_ap_transition(_from: ApplicativeLabel, _to: &Applicative) -> Error {
-    Error::from(ErrorDiscriminant::BadApplicativeTransition)
+fn err_bad_ap_transition(from: ApplicativeLabel, to: &Applicative) -> Error {
+    Error::from(ErrorDiscriminant::BadApplicativeTransition(label(to), from))
 }
 
 fn chain_digests(x: &[u8], y: &[u8]) -> [u8; 64] {
@@ -310,6 +310,9 @@ impl StorageApplicationV1 {
             }
             Applicative::CommitRightFilledToBalance(ap) => {
                 self.validate_commit_right_filled_to_bal(n, accounts, ap)
+            }
+            Applicative::Cancel(solver_sig, user_sig, ap) => {
+                self.validate_cancel(n, accounts, solver_sig, user_sig, ap)
             }
             _ => Err(err_bad_ap_transition(from, ap)),
         }
@@ -476,7 +479,7 @@ impl StorageApplicationV1 {
     ) -> Result<state_machine::Withdraw, Error> {
         // Since the argument to the right isn't known in the type here, we
         // validate the signature, and we feed the computed digest into a
-        // concatenation here. Very stack expensive.
+        // concatenation here.
         let bal = self.validate_wrapped_balance(n, label(ap), accounts, ap)?;
         let bal_hash = get_bal_hash(&bal);
         let owner_id = accounts[*owner_i as usize];

@@ -17,20 +17,20 @@ impl SolverContext {
 }
 
 impl SolverApplicative for SolverContext {
-    fn withdraw(&self, ap: Applicative) -> Result<[u8; 64], Error> {
-        sign_withdraw(&self.signer, &ap)
+    fn withdraw(&self, ap: &Applicative) -> Result<[u8; 64], Error> {
+        sign_withdraw(&self.signer, ap)
     }
 
-    fn cancel(&self, ap: Applicative) -> Result<[u8; 64], Error> {
-        sign_cancel(&self.signer, &ap)
+    fn cancel(&self, ap: &Applicative) -> Result<[u8; 64], Error> {
+        sign_cancel(&self.signer, ap)
     }
 
     fn commit(
         &self,
         ms_timestamp: u128,
-        left: Applicative,
-        right: Applicative,
+        left: &Applicative,
+        right: &Applicative,
     ) -> Result<[u8; 64], Error> {
-        sign_commit(&self.signer, &ArgsCommit { ms_timestamp }, &left, &right)
+        sign_commit(&self.signer, &ArgsCommit { ms_timestamp }, left, right)
     }
 }

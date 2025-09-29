@@ -42,7 +42,7 @@ pub enum ErrorDiscriminant {
     GoalNotMet,
 
     /// Incorrect Applicative transition. To and from.
-    BadApplicativeTransition,
+    BadApplicativeTransition(ApplicativeLabel, ApplicativeLabel),
 
     /// The nonce was inconsistent with our local storage of it!
     BadNonce,

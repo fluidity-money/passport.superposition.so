@@ -42,6 +42,7 @@ pub enum TestBalance {
     Balance(TestBalanceInside),
     CommitLeftFilledToBalance(Box<TestCommit>),
     CommitRightFilledToBalance(Box<TestCommit>),
+    Cancel(Box<TestOrder>),
 }
 
 #[derive(Debug, PartialEq)]
@@ -58,20 +59,50 @@ pub enum Entry {
     CommitRightExcessToOrder(TestCommit),
 }
 
+fn any_balance_no_zero() -> impl Strategy<Value = ArgsBalance> {
+    (
+        any::<[u8; 20]>(),
+        any::<u128>(),
+        1..u128::MAX,
+        any::<u128>(),
+    )
+        .prop_map(|(asset, chain, amount, ms_timestamp)| ArgsBalance {
+            asset,
+            chain,
+            amount,
+            ms_timestamp,
+        })
+}
+
+fn order_from_bal(ArgsBalance { amount, .. }: ArgsBalance) -> impl Strategy<Value = ArgsOrder> {
+    (0..amount, any::<[u8; 20]>(), any::<u128>(), 1..u128::MAX).prop_map(
+        |(from_amt, desired_asset, desired_chain, desired_amt)| ArgsOrder {
+            from_amt,
+            desired_asset,
+            desired_chain,
+            desired_amt,
+        },
+    )
+}
+
 impl Arbitrary for Entry {
     type Parameters = ();
     type Strategy = BoxedStrategy<Self>;
 
     fn arbitrary_with(_: Self::Parameters) -> Self::Strategy {
-        let bal_leaf = any::<ArgsBalance>()
+        let bal_leaf = any_balance_no_zero()
             .prop_map(|args| TestBalance::Balance(TestBalanceInside { args }))
             .boxed();
-        let ord_leaf = (any::<ArgsBalance>(), any::<ArgsOrder>())
-            .prop_map(|(bal_args, ord_args)| {
-                TestOrder::Order(Box::new(TestOrderInside {
-                    from: Box::new(TestBalance::Balance(TestBalanceInside { args: bal_args })),
-                    args: ord_args,
-                }))
+        let ord_leaf = any_balance_no_zero()
+            .prop_flat_map(move |bal_args| {
+                order_from_bal(bal_args.clone()).prop_map(move |ord_args| {
+                    TestOrder::Order(Box::new(TestOrderInside {
+                        from: Box::new(TestBalance::Balance(TestBalanceInside {
+                            args: bal_args.clone(),
+                        })),
+                        args: ord_args,
+                    }))
+                })
             })
             .boxed();
         let commit_leaf = (any::<ArgsCommit>(), ord_leaf.clone(), ord_leaf.clone())
@@ -118,6 +149,7 @@ impl Arbitrary for Entry {
             .boxed()
         });
         let c_bal = commit_strat.clone();
+        let ord_for_cancel = ord_strat.clone();
         let bal_strat = bal_leaf.prop_recursive(4, 64, 4, move |inner| {
             prop_oneof![
                 c_bal
@@ -126,6 +158,9 @@ impl Arbitrary for Entry {
                 c_bal
                     .clone()
                     .prop_map(|c| TestBalance::CommitRightFilledToBalance(Box::new(c))),
+                ord_for_cancel
+                    .clone()
+                    .prop_map(|o| TestBalance::Cancel(Box::new(o))),
                 inner,
             ]
             .boxed()
@@ -175,6 +210,10 @@ pub fn convert_test_balance<T: UserApplicative, S: SolverApplicative>(
             let converted_commit = convert_test_commit(user_app, solver_app, test_commit)?;
             user_app.commit_right_filled_to_balance(converted_commit)
         }
+        TestBalance::Cancel(test_order) => {
+            let converted_order = convert_test_order(user_app, solver_app, test_order)?;
+            user_app.cancel(solver_app.cancel(&converted_order)?, converted_order)
+        }
     }
 }
 
@@ -217,8 +256,8 @@ fn convert_test_commit<T: UserApplicative, S: SolverApplicative>(
             let right_converted = convert_test_order(user_app, solver_app, &commit_inside.right)?;
             let solver_sig = solver_app.commit(
                 commit_inside.args.ms_timestamp,
-                left_converted.clone(),
-                right_converted.clone(),
+                &left_converted,
+                &right_converted,
             )?;
             user_app.commit(
                 solver_sig,
@@ -239,7 +278,7 @@ pub fn convert<T: UserApplicative, S: SolverApplicative>(
         Entry::Balance(test_balance) => convert_test_balance(user_app, solver_app, test_balance),
         Entry::Withdraw(test_balance) => {
             let converted_balance = convert_test_balance(user_app, solver_app, test_balance)?;
-            let solver_sig = solver_app.withdraw(converted_balance.clone())?;
+            let solver_sig = solver_app.withdraw(&converted_balance)?;
             user_app.withdraw(solver_sig, converted_balance, None)
         }
         Entry::MakeOrder(test_balance) => user_app.order(
@@ -252,7 +291,7 @@ pub fn convert<T: UserApplicative, S: SolverApplicative>(
         Entry::Order(test_order) => convert_test_order(user_app, solver_app, test_order),
         Entry::Cancel(test_order) => {
             let converted_order = convert_test_order(user_app, solver_app, test_order)?;
-            let solver_sig = solver_app.cancel(converted_order.clone())?;
+            let solver_sig = solver_app.cancel(&converted_order)?;
             user_app.cancel(solver_sig, converted_order)
         }
         Entry::Commit(test_commit) => convert_test_commit(user_app, solver_app, test_commit),
@@ -283,6 +322,7 @@ fn starting_amts_balance(v: &mut Vec<(Address, u128)>, b: &TestBalance) {
         TestBalance::CommitLeftFilledToBalance(c) | TestBalance::CommitRightFilledToBalance(c) => {
             starting_amts_commit(v, &*c)
         }
+        TestBalance::Cancel(o) => starting_amts_order(v, &*o),
     }
 }
 

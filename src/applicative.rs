@@ -219,14 +219,14 @@ pub trait UserApplicative {
 }
 
 pub trait SolverApplicative {
-    fn withdraw(&self, ap: Applicative) -> Result<SolverSig, Error>;
+    fn withdraw(&self, ap: &Applicative) -> Result<SolverSig, Error>;
 
-    fn cancel(&self, ap: Applicative) -> Result<SolverSig, Error>;
+    fn cancel(&self, ap: &Applicative) -> Result<SolverSig, Error>;
 
     fn commit(
         &self,
         ms_timestamp: u128,
-        left: Applicative,
-        right: Applicative,
+        left: &Applicative,
+        right: &Applicative,
     ) -> Result<SolverSig, Error>;
 }

@@ -1,5 +1,4 @@
 #![cfg_attr(target_arch = "wasm32", no_std)]
-// We don't instantiate the VM context so this is needed.
 
 extern crate alloc;
 
