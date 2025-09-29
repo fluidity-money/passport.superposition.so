@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc d9796c47e864527948f8f79e355c1f1635ebf2fec558bb3afff23a9098f83f2b # shrinks to signer_priv_key = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], e = Withdraw(Cancel(Order(TestOrderInside { from: Balance(TestBalanceInside { args: ArgsBalance { asset: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], chain: 0, amount: 1, ms_timestamp: 0 } }), args: ArgsOrder { from_amt: 0, desired_asset: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], desired_chain: 4724790812414554983868200513867706, desired_amt: 6063611932021249086633312465648983923 } })))

@@ -1,10 +1,13 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 
-use stylus_sdk::prelude::calls::errors::Error as StylusErr;
-
 pub use crate::{applicative::ApplicativeLabel, result::Res};
 
-use stylus_sdk::alloy_primitives::{Address, U256, FixedBytes};
+use stylus_sdk::{
+    alloy_primitives::{Address, FixedBytes, U256},
+    prelude::calls::errors::Error as StylusErr,
+};
+
+use alloc::vec::Vec;
 
 #[derive(BorshSerialize, BorshDeserialize, Clone, Copy, PartialEq, Debug)]
 pub enum ApplyContext {
@@ -41,8 +44,11 @@ pub enum ErrorDiscriminant {
     /// Goal not met for checking goal amounts.
     GoalNotMet,
 
-    /// Incorrect Applicative transition. To and from.
-    BadApplicativeTransition(ApplicativeLabel, ApplicativeLabel),
+    /// Incorrect Applicative transition during digesting. To and from.
+    BadApplicativeTransitionDigest(ApplicativeLabel, ApplicativeLabel),
+
+    /// Incorrect Applicative transition during validation. To and from.
+    BadApplicativeTransitionValidate(ApplicativeLabel, ApplicativeLabel),
 
     /// The nonce was inconsistent with our local storage of it!
     BadNonce,
@@ -169,7 +175,7 @@ pub struct ErrorTestInterimDetails {
 #[derive(Debug, Clone, PartialEq)]
 pub struct ErrorInterimAccessContext {
     pub accessed_hash: FixedBytes<32>,
-    pub interim_hashes: Vec<ErrorTestInterimDetails>
+    pub interim_hashes: Vec<ErrorTestInterimDetails>,
 }
 
 pub struct Error {
@@ -197,7 +203,7 @@ impl Default for Error {
         Error {
             typ: ErrorDiscriminant::Unknown,
             test_context: None,
-            test_interim: None
+            test_interim: None,
         }
     }
 }

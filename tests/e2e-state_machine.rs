@@ -13,8 +13,12 @@ fn strat_fillable_sides() -> impl Strategy<Value = (u128, u128, u128, u128)> {
 proptest! {
     #[test]
     fn test_filling_okay(
-        left_hash in any::<[u8; 64]>(),
-        right_hash in any::<[u8; 64]>(),
+        left_filled_hash in any::<[u8; 64]>(),
+        right_filled_hash in any::<[u8; 64]>(),
+        left_excess_hash in any::<[u8; 64]>(),
+        right_excess_hash in any::<[u8; 64]>(),
+        left_cancel_hash in any::<[u8; 64]>(),
+        right_cancel_hash in any::<[u8; 64]>(),
         commit_hash in any::<[u8; 64]>(),
         left_balance_hash in any::<[u8; 64]>(),
         right_balance_hash in any::<[u8; 64]>(),
@@ -79,8 +83,8 @@ proptest! {
             Box::new(r_order),
             commit_hash,
         );
-        let left_filled_to_bal = Balance::CommitLeftFilledToBal(Box::new(c.clone()), left_hash);
-        let right_filled_to_bal = Balance::CommitRightFilledToBal(Box::new(c), right_hash);
+        let left_filled_to_bal = Balance::CommitLeftFilledToBal(Box::new(c.clone()), left_filled_hash);
+        let right_filled_to_bal = Balance::CommitRightFilledToBal(Box::new(c.clone()), right_filled_hash);
         assert_eq!(owner_left, s.app.balance_owner(&left_filled_to_bal));
         assert_eq!(asset_right, s.app.balance_asset(&left_filled_to_bal));
         assert_eq!(
@@ -91,5 +95,31 @@ proptest! {
             r_ask,
             s.app.balance_amount(owner_left, asset_right, &left_filled_to_bal).unwrap()
         );
+        let left_excess_to_order = Order::CommitLeftExcessToOrder(Box::new(c.clone()), left_excess_hash);
+        let right_excess_to_order = Order::CommitRightExcessToOrder(Box::new(c.clone()), right_excess_hash);
+        assert_eq!(owner_left, s.app.order_owner(&left_excess_to_order));
+        assert_eq!(asset_left, s.app.order_asset(&left_excess_to_order));
+        assert_eq!(owner_right, s.app.order_owner(&right_excess_to_order));
+        assert_eq!(asset_right, s.app.order_asset(&right_excess_to_order));
+        assert_eq!(
+            l_amt - r_ask,
+            s.app.order_from(owner_left, asset_left, &left_excess_to_order).unwrap()
+        );
+        assert_eq!(
+            r_amt - l_ask,
+            s.app.order_from(owner_right, asset_right, &right_excess_to_order).unwrap()
+        );
+        let left_excess_to_order_cancel = Balance::Cancel(
+            Box::new(left_excess_to_order),
+            left_cancel_hash
+        );
+        let right_excess_to_order_cancel = Balance::Cancel(
+            Box::new(right_excess_to_order),
+            right_cancel_hash
+        );
+        assert_eq!(owner_left, s.app.balance_owner(&left_excess_to_order_cancel));
+        assert_eq!(asset_left, s.app.balance_asset(&left_excess_to_order_cancel));
+        assert_eq!(owner_right, s.app.balance_owner(&right_excess_to_order_cancel));
+        assert_eq!(asset_right, s.app.balance_asset(&right_excess_to_order_cancel));
     }
 }

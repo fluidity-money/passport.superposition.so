@@ -164,8 +164,18 @@ fn label(x: &Applicative) -> ApplicativeLabel {
     ApplicativeLabel::from(x)
 }
 
-fn err_bad_ap_transition(from: ApplicativeLabel, to: &Applicative) -> Error {
-    Error::from(ErrorDiscriminant::BadApplicativeTransition(label(to), from))
+fn err_bad_ap_transition_digest(from: ApplicativeLabel, to: &Applicative) -> Error {
+    Error::from(ErrorDiscriminant::BadApplicativeTransitionDigest(
+        from,
+        label(to),
+    ))
+}
+
+fn err_bad_ap_transition_validate(from: ApplicativeLabel, to: &Applicative) -> Error {
+    Error::from(ErrorDiscriminant::BadApplicativeTransitionValidate(
+        from,
+        label(to),
+    ))
 }
 
 fn chain_digests(x: &[u8], y: &[u8]) -> [u8; 64] {
@@ -314,7 +324,7 @@ impl StorageApplicationV1 {
             Applicative::Cancel(solver_sig, user_sig, ap) => {
                 self.validate_cancel(n, accounts, solver_sig, user_sig, ap)
             }
-            _ => Err(err_bad_ap_transition(from, ap)),
+            _ => Err(err_bad_ap_transition_validate(from, ap)),
         }
     }
 
@@ -407,7 +417,7 @@ impl StorageApplicationV1 {
             Applicative::CommitRightExcessToOrder(ap) => {
                 self.validate_commit_right_excess_to_order(n, accounts, ap)
             }
-            _ => Err(err_bad_ap_transition(from, ap)),
+            _ => Err(err_bad_ap_transition_validate(from, ap)),
         }
     }
 
@@ -461,7 +471,7 @@ impl StorageApplicationV1 {
             Applicative::Commit(sig, args, left, right) => {
                 self.validate_commit(n, accounts, sig, args, left, right)
             }
-            _ => Err(err_bad_ap_transition(from, ap)),
+            _ => Err(err_bad_ap_transition_validate(from, ap)),
         }
     }
 
@@ -629,7 +639,11 @@ pub fn digest_wrapped_balance(from: ApplicativeLabel, ap: &Applicative) -> Resul
                 &commit_hash,
             ))
         }
-        ap => Err(err_bad_ap_transition(from, ap)),
+        Applicative::Cancel(_, _, ap) => {
+            let order_hash = digest_wrapped_order(ApplicativeLabel::Cancel, ap)?;
+            Ok(chain_digests(&[Nonce::Withdraw.into()], &order_hash))
+        }
+        ap => Err(err_bad_ap_transition_digest(from, ap)),
     }
 }
 
@@ -658,7 +672,7 @@ fn digest_wrapped_order(from: ApplicativeLabel, ap: &Applicative) -> Result<[u8;
                 &commit_hash,
             ))
         }
-        ap => Err(err_bad_ap_transition(from, ap)),
+        ap => Err(err_bad_ap_transition_digest(from, ap)),
     }
 }
 
@@ -672,7 +686,7 @@ fn digest_wrapped_commit(from: ApplicativeLabel, ap: &Applicative) -> Result<[u8
             ),
         ))
     } else {
-        Err(err_bad_ap_transition(from, ap))
+        Err(err_bad_ap_transition_digest(from, ap))
     }
 }
 
@@ -680,26 +694,7 @@ pub fn sign_withdraw(key: &SigningKey, ap: &Applicative) -> Result<[u8; 64], Err
     make_sig(
         key,
         &[Nonce::Withdraw.into()],
-        &match ap {
-            Applicative::Balance(_, _) => digest_wrapped_balance(ApplicativeLabel::Balance, ap),
-            Applicative::CommitLeftFilledToBalance(ap) => {
-                let commit_hash =
-                    digest_wrapped_commit(ApplicativeLabel::CommitLeftFilledToBalance, ap)?;
-                Ok(chain_digests(
-                    &[Nonce::CommitLeftFilledToBalance.into()],
-                    &commit_hash,
-                ))
-            }
-            Applicative::CommitRightFilledToBalance(ap) => {
-                let commit_hash =
-                    digest_wrapped_commit(ApplicativeLabel::CommitRightFilledToBalance, ap)?;
-                Ok(chain_digests(
-                    &[Nonce::CommitRightFilledToBalance.into()],
-                    &commit_hash,
-                ))
-            }
-            ap => Err(err_bad_ap_transition(ApplicativeLabel::Withdraw, ap)),
-        }?,
+        &digest_wrapped_balance(ApplicativeLabel::Withdraw, ap)?,
     )
 }
 

@@ -1,3 +1,3 @@
 #!/bin/sh
 
-cargo test -- test_filling_okay
+cargo test -- test_encode_decode
