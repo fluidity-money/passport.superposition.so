@@ -1,7 +1,11 @@
-#[cfg(target_arch = "x86_64")]
+mod unsolved;
+mod convert;
+mod accounts;
 
 mod host {
     use clap::Parser;
+
+    use super::{unsolved::RecipeUnsolved, accounts::Accounts};
 
     use stylus_sdk::alloy_primitives::{Address, FixedBytes};
 
@@ -22,12 +26,22 @@ mod host {
     #[command(version, about)]
     enum Args {
         SolverDummy,
-        SolveFromArgs {
+        SolveUnsolvedRecipeArgs {
+            #[arg(value_parser = Accounts::from_str)]
+            accounts: Accounts,
+            recipe: RecipeUnsolved,
+        },
+        SolveUnsolvedRecipeFile {
+            file: Option<String>,
+        },
+        CalldataFromSolvedRecipeArgs {
             accounts: Vec<u64>,
             #[arg(value_parser = Applicative::from_str)]
             applicative: Applicative,
         },
-        SolveFromFile,
+        CalldataFromSolvedRecipeFile {
+            file: Option<String>,
+        },
         Lint,
         ExampleApplicative,
         SetterDummy,
@@ -55,9 +69,13 @@ mod host {
 
     fn match_facet(a: &Args) -> Facet {
         match a {
-            Args::SolverDummy | Args::Solve { .. } | Args::Lint | Args::ExampleApplicative => {
-                Facet::UserSolver
-            }
+            Args::SolverDummy
+            | Args::SolveUnsolvedRecipeArgs { .. }
+            | Args::SolveUnsolvedRecipeFile { .. }
+            | Args::CalldataFromSolvedRecipeArgs { .. }
+            | Args::CalldataFromSolvedRecipeFile { .. }
+            | Args::Lint
+            | Args::ExampleApplicative => Facet::UserSolver,
             Args::SetterDummy | Args::SetterOnboard { .. } | Args::SetterAddLiquidity { .. } => {
                 Facet::UserSetter
             }

@@ -1,0 +1,9 @@
+#!/usr/bin/env -S passport-cli lint
+
+(Balance
+ (signer Alex)
+ (args
+  ((asset aeff361bab3708fa59f2972fd4a3900ba33ce821)
+   (chain 0)
+   (amount 123)
+   (ms_timestamp 1759221563622))))
