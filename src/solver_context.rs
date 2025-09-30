@@ -1,7 +1,7 @@
 use ed25519_dalek::SigningKey;
 
 use crate::{
-    applicative::{Applicative, ArgsCommit, SolverApplicative},
+    applicative::{Applicative, U128, EdSig, ArgsCommit, SolverApplicative},
     conversion::{sign_cancel, sign_commit, sign_withdraw},
     error::Error,
 };
@@ -17,12 +17,12 @@ impl SolverContext {
 }
 
 impl SolverApplicative for SolverContext {
-    fn withdraw(&self, ap: &Applicative) -> Result<[u8; 64], Error> {
-        sign_withdraw(&self.signer, ap)
+    fn withdraw(&self, ap: &Applicative) -> Result<EdSig, Error> {
+        Ok(sign_withdraw(&self.signer, ap)?.into())
     }
 
-    fn cancel(&self, ap: &Applicative) -> Result<[u8; 64], Error> {
-        sign_cancel(&self.signer, ap)
+    fn cancel(&self, ap: &Applicative) -> Result<EdSig, Error> {
+        Ok(sign_cancel(&self.signer, ap)?.into())
     }
 
     fn commit(
@@ -30,7 +30,12 @@ impl SolverApplicative for SolverContext {
         ms_timestamp: u128,
         left: &Applicative,
         right: &Applicative,
-    ) -> Result<[u8; 64], Error> {
-        sign_commit(&self.signer, &ArgsCommit { ms_timestamp }, left, right)
+    ) -> Result<EdSig, Error> {
+        Ok(sign_commit(
+            &self.signer,
+            &ArgsCommit { ms_timestamp: U128(ms_timestamp) },
+            left,
+            right,
+        )?.into())
     }
 }

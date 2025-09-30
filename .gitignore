@@ -1,6 +1,6 @@
 *.wasm
 target
-generator.out
+passport-cli
 out
 cache
 _build

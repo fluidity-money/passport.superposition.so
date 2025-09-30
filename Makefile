@@ -3,19 +3,15 @@ comma=,
 CARGO_EXTRA_FEATURES := \
 	$(if ${SPN_HARNESS_BACKEND},${comma}harness-stylus-interpreter)
 CARGO_EXTRA_FEATURES := \
-	$(if ${SPN_ADJUST_TIME},${comma}e2e-adjust-time)${CARGO_EXTRA_FEATURES}
-CARGO_EXTRA_FEATURES := \
 	$(if ${SPN_DRYRUN},${comma}dryrun)${CARGO_EXTRA_FEATURES}
 
 CARGO_BIN_WASM32 := \
 	cargo build \
 		--release \
+		--features ${CARGO_EXTRA_FEATURES} \
 		--target wasm32-unknown-unknown
 
-CARGO_BIN_WASI := \
-	cargo build \
-		--release \
-		--target wasm-wasi-wasi
+CARGO_BUILD_NATIVE := cargo build --release
 
 RELEASE_PASSPORT_WASM := \
 	wasm-opt \
@@ -37,7 +33,8 @@ build: \
 	solver.passport-superposition-so.wasm \
 	setter.passport-superposition-so.wasm \
 	admin.passport-superposition-so.wasm \
-	vault.passport-superposition-so.wasm
+	vault.passport-superposition-so.wasm \
+	passport-cli
 
 solver.passport-superposition-so.wasm: $(shell find src -type f -name '*.rs')
 	@rm -f solver.passport-superposition-so.wasm
@@ -67,14 +64,17 @@ vault.passport-superposition-so.wasm: $(shell find src -type f -name '*.rs')
 		${RELEASE_WASM}/contract-vault.wasm \
 		-o vault.passport-superposition-so.wasm
 
-generator.out: $(shell find src -type f -name '*.rs')
+passport-cli: $(shell find src -type f -name '*.rs')
 	@rm -f generator.out
-	@${CARGO_BIN_WASI}
-	@cp target/debug/generator generator.out
+	@${CARGO_BUILD_NATIVE}
+	@cp target/release/generator passport-cli
 
 clean:
 	@rm -rf \
 		solver.passport-superposition-so.wasm \
+		setter.passport-superposition-so.wasm \
+		admin.passport-superposition-so.wasm \
+		vault.passport-superposition-so.wasm \
 		liblib9lives.rlib \
 		ninelives.wasm \
 		target

@@ -3,7 +3,7 @@
 // outcome.
 
 use libpassport::{
-    applicative::{ArgsBalance, ArgsCommit, ArgsOrder},
+    applicative::{Asset ,U128, ArgsBalance, ArgsCommit, ArgsOrder},
     immutables::solver_key_offline,
     network::Network,
     solver_context::*,
@@ -50,47 +50,47 @@ proptest! {
 #[test]
 fn test_apply_2() {
     let signer_priv_key = [0u8; 32];
-    let asset_a = [
+    let asset_a = Asset([
         138, 193, 199, 165, 65, 110, 126, 3, 66, 181, 50, 169, 220, 157, 116, 201, 152, 224, 231,
         144,
-    ];
-    let asset_b = [
+    ]);
+    let asset_b = Asset([
         179, 104, 133, 120, 164, 207, 97, 51, 43, 152, 157, 145, 200, 37, 248, 25, 3, 77, 19, 49,
-    ];
+    ]);
     let e = Entry::Balance(TestBalance::Cancel(Box::new(
         TestOrder::CommitLeftExcessToOrder(Box::new(TestCommit::Commit(Box::new(
             TestCommitInside {
-                args: ArgsCommit { ms_timestamp: 0 },
+                args: ArgsCommit { ms_timestamp: U128(0) },
                 left: Box::new(TestOrder::Order(Box::new(TestOrderInside {
                     from: Box::new(TestBalance::Balance(TestBalanceInside {
                         args: ArgsBalance {
-                            asset: asset_a,
-                            chain: 225476647479317694062150620526444369903,
-                            amount: 126508738668270503307039462831516350703,
-                            ms_timestamp: 88720005195802133222596758088858595407,
+                            asset: asset_a.clone(),
+                            chain: U128(225476647479317694062150620526444369903),
+                            amount: U128(126508738668270503307039462831516350703),
+                            ms_timestamp: U128(88720005195802133222596758088858595407),
                         },
                     })),
                     args: ArgsOrder {
-                        from_amt: 0,
-                        desired_asset: asset_b,
-                        desired_chain: 0,
-                        desired_amt: 707651766525132719317267334528916,
+                        from_amt: U128(0),
+                        desired_asset: asset_b.clone(),
+                        desired_chain: U128(0),
+                        desired_amt: U128(707651766525132719317267334528916),
                     },
                 }))),
                 right: Box::new(TestOrder::Order(Box::new(TestOrderInside {
                     from: Box::new(TestBalance::Balance(TestBalanceInside {
                         args: ArgsBalance {
                             asset: asset_b,
-                            chain: 24713657718869044757078304407331877748,
-                            amount: 56961730660561917068169863894177734718,
-                            ms_timestamp: 11835655638720700881890814969174336643,
+                            chain: U128(24713657718869044757078304407331877748),
+                            amount: U128(56961730660561917068169863894177734718),
+                            ms_timestamp: U128(11835655638720700881890814969174336643),
                         },
                     })),
                     args: ArgsOrder {
-                        from_amt: 6192372688119060292595079300484488726,
+                        from_amt: U128(6192372688119060292595079300484488726),
                         desired_asset: asset_a,
-                        desired_chain: 307727618134271405861877130616748334084,
-                        desired_amt: 19942947448678186698998836289408085284,
+                        desired_chain: U128(307727618134271405861877130616748334084),
+                        desired_amt: U128(19942947448678186698998836289408085284),
                     },
                 }))),
             },

@@ -3,6 +3,9 @@
 
 use stylus_sdk::alloy_primitives::Address;
 
+#[cfg(not(target_arch = "wasm32"))]
+use serde::{Deserialize as SerdeDeserialize, Serialize as SerdeSerialize};
+
 use borsh::{BorshDeserialize, BorshSerialize};
 
 use alloc::boxed::Box;
@@ -11,13 +14,165 @@ use crate::error::Error;
 
 // Concatenated form of the ed25519 r and s values for use with
 // ed25519_dalek.
-pub type EdSig = [u8; 64];
+#[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq, Debug)]
+#[cfg_attr(
+    not(target_arch = "wasm32"),
+    derive(arbitrary::Arbitrary, proptest_derive::Arbitrary,)
+)]
+pub struct EdSig([u8; 64]);
+
+#[derive(Clone, Debug, Copy)]
+pub enum ErrFromStrApplicative {
+    Unknown,
+    BadSigDecode,
+    BadSigLength,
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl std::fmt::Display for ErrFromStrApplicative {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl serde::ser::StdError for ErrFromStrApplicative {}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl core::str::FromStr for Applicative {
+    type Err = ErrFromStrApplicative;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        serde_sexpr::from_str(s).map_err(|_| ErrFromStrApplicative::Unknown)
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl<'de> serde::de::Deserialize<'de> for EdSig {
+    fn deserialize<D>(d: D) -> Result<Self, D::Error>
+    where
+        D: serde::de::Deserializer<'de>,
+    {
+        Ok(
+            const_hex::decode_to_array(&<std::string::String as serde::Deserialize>::deserialize(
+                d,
+            )?)
+            .map_err(serde::de::Error::custom)?
+            .into(),
+        )
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl serde::Serialize for EdSig {
+    fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        s.serialize_str(&const_hex::encode(&self.0))
+    }
+}
+
+impl Into<[u8; 64]> for EdSig {
+    fn into(self) -> [u8; 64] {
+        self.0
+    }
+}
+
+impl From<[u8; 64]> for EdSig {
+    fn from(x: [u8; 64]) -> Self {
+        EdSig(x)
+    }
+}
+
+impl<'a> From<&'a EdSig> for &'a [u8] {
+    fn from(x: &'a EdSig) -> Self {
+        &x.0
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl core::str::FromStr for EdSig {
+    type Err = ErrFromStrApplicative;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let x: [u8; 64] = const_hex::decode(s)
+            .map_err(|_| ErrFromStrApplicative::BadSigDecode)?
+            .try_into()
+            .map_err(|_| ErrFromStrApplicative::BadSigLength)?;
+        Ok(x.into())
+    }
+}
 
 /// User provided signature. Needs a lookup in the accounts table.
 pub type UserSig = (u8, EdSig);
 
+// User implemented u128 type for Serde sexp encoding reasons (the
+// upstream crate lacks this).
+#[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq, Debug)]
+#[cfg_attr(
+    not(target_arch = "wasm32"),
+    derive(arbitrary::Arbitrary, proptest_derive::Arbitrary,)
+)]
+pub struct U128(pub u128);
+
+#[cfg(not(target_arch = "wasm32"))]
+impl<'de> serde::de::Deserialize<'de> for U128 {
+    fn deserialize<D>(d: D) -> Result<Self, D::Error>
+    where
+        D: serde::de::Deserializer<'de>,
+    {
+        use std::str::FromStr;
+        // This is necessary since serde sexpr doesn't support u128.
+        let s = &<std::string::String as serde::Deserialize>::deserialize(d)?;
+        Ok(U128(u128::from_str(s).map_err(serde::de::Error::custom)?))
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl serde::Serialize for U128 {
+    fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        s.serialize_str(&self.0.to_string())
+    }
+}
+
 /// Solver provided signature.
 pub type SolverSig = EdSig;
+
+#[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq, Debug)]
+#[cfg_attr(
+    not(target_arch = "wasm32"),
+    derive(arbitrary::Arbitrary, proptest_derive::Arbitrary,)
+)]
+pub struct Asset(pub [u8; 20]);
+
+#[cfg(not(target_arch = "wasm32"))]
+impl<'de> serde::de::Deserialize<'de> for Asset {
+    fn deserialize<D>(d: D) -> Result<Self, D::Error>
+    where
+        D: serde::de::Deserializer<'de>,
+    {
+        Ok(Asset(
+            const_hex::decode_to_array(&<std::string::String as serde::Deserialize>::deserialize(
+                d,
+            )?)
+            .map_err(serde::de::Error::custom)?,
+        ))
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl serde::Serialize for Asset {
+    fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        s.serialize_str(&const_hex::encode(&self.0))
+    }
+}
 
 /// Vault provided signature. The location of the provider is the type
 /// of vault that was used here. The signature is screened to check if the
@@ -54,13 +209,18 @@ impl From<Nonce> for u8 {
 #[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq, Debug)]
 #[cfg_attr(
     not(target_arch = "wasm32"),
-    derive(arbitrary::Arbitrary, proptest_derive::Arbitrary)
+    derive(
+        arbitrary::Arbitrary,
+        proptest_derive::Arbitrary,
+        SerdeDeserialize,
+        SerdeSerialize
+    )
 )]
 pub struct ArgsBalance {
-    pub asset: [u8; 20],
-    pub chain: u128,
-    pub amount: u128,
-    pub ms_timestamp: u128,
+    pub asset: Asset,
+    pub chain: U128,
+    pub amount: U128,
+    pub ms_timestamp: U128,
 }
 
 /// In the Applicative form, the arguments for the Order are slightly
@@ -71,25 +231,35 @@ pub struct ArgsBalance {
 #[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq, Debug)]
 #[cfg_attr(
     not(target_arch = "wasm32"),
-    derive(arbitrary::Arbitrary, proptest_derive::Arbitrary)
+    derive(
+        arbitrary::Arbitrary,
+        proptest_derive::Arbitrary,
+        SerdeDeserialize,
+        SerdeSerialize
+    )
 )]
 pub struct ArgsOrder {
     /// From amount that the user is willing to consume from the
     /// previous balance on this operation.
-    pub from_amt: u128,
-    pub desired_asset: [u8; 20],
-    pub desired_chain: u128,
+    pub from_amt: U128,
+    pub desired_asset: Asset,
+    pub desired_chain: U128,
     /// Desired amount of the other asset to fill for.
-    pub desired_amt: u128,
+    pub desired_amt: U128,
 }
 
 #[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq, Debug)]
 #[cfg_attr(
     not(target_arch = "wasm32"),
-    derive(arbitrary::Arbitrary, proptest_derive::Arbitrary)
+    derive(
+        arbitrary::Arbitrary,
+        proptest_derive::Arbitrary,
+        SerdeDeserialize,
+        SerdeSerialize
+    )
 )]
 pub struct ArgsCommit {
-    pub ms_timestamp: u128,
+    pub ms_timestamp: U128,
 }
 
 /// Simple label for debugging purposes when a contextual error takes
@@ -117,6 +287,7 @@ pub enum ApplicativeLabel {
 /// balance operation. The Applicative user must rejoin balances when it
 /// suits them, but it's not important for them to split balances.
 #[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq, Debug)]
+#[cfg_attr(not(target_arch = "wasm32"), derive(SerdeDeserialize, SerdeSerialize))]
 pub enum Applicative {
     /// Starting point of the conversion to the other types.
     Balance(UserSig, ArgsBalance),
@@ -183,9 +354,9 @@ pub trait UserApplicative {
 
     fn withdraw(
         &self,
-        solver_sig: [u8; 64],
+        solver_sig: EdSig,
         ap: Applicative,
-        vault_sig: Option<[u8; 64]>,
+        vault_sig: Option<EdSig>,
     ) -> Result<Applicative, Error>;
 
     fn order(
@@ -197,11 +368,11 @@ pub trait UserApplicative {
         ap: Applicative,
     ) -> Result<Applicative, Error>;
 
-    fn cancel(&self, solver_sig: [u8; 64], ap: Applicative) -> Result<Applicative, Error>;
+    fn cancel(&self, solver_sig: EdSig, ap: Applicative) -> Result<Applicative, Error>;
 
     fn commit(
         &self,
-        solver_sig: [u8; 64],
+        solver_sig: EdSig,
         ms_timestamp: u128,
         left: Applicative,
         right: Applicative,

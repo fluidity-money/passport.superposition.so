@@ -41,7 +41,7 @@ pub type ValidateCarry = Result<Sha512, Error>;
 fn check_sig(
     from: ApplicativeLabel,
     verifying_key: &VerifyingKey,
-    sig: &[u8; 64],
+    sig: &EdSig,
     msg: &[u8],
     prev_digest: &[u8],
 ) -> ValidateCarry {
@@ -51,7 +51,7 @@ fn check_sig(
     verifying_key
         .verify_digest(
             d.clone(),
-            &Signature::from_slice(sig).map_err(|_| err_sig(from))?,
+            &Signature::from_slice(sig.into()).map_err(|_| err_sig(from))?,
         )
         .map_err(|_| {
             // When it comes to returning the error here, we can do so since the
@@ -65,9 +65,9 @@ fn check_sig(
 fn check_sig_two(
     from: ApplicativeLabel,
     verifying_key1: &VerifyingKey,
-    sig1: &[u8; 64],
+    sig1: &EdSig,
     verifying_key2: &VerifyingKey,
-    sig2: &[u8; 64],
+    sig2: &EdSig,
     msg: &[u8],
     prev_digest: &[u8],
 ) -> ValidateCarry {
@@ -78,27 +78,28 @@ fn check_sig_two(
         .verify_prehashed_strict(
             d.clone(),
             None,
-            &Signature::from_slice(sig2).map_err(|_| err_sig(from))?,
+            &Signature::from_slice(sig2.into()).map_err(|_| err_sig(from))?,
         )
         .map_err(|_| err_verify_two(from, 2))?;
     verifying_key1
         .verify_prehashed_strict(
             d.clone(),
             None,
-            &Signature::from_slice(sig1).map_err(|_| err_sig(from))?,
+            &Signature::from_slice(sig1.into()).map_err(|_| err_sig(from))?,
         )
         .map_err(|_| err_verify_two(from, 1))?;
     Ok(d)
 }
 
-pub fn make_sig(key: &SigningKey, sig: &[u8], prev_digest: &[u8]) -> Result<[u8; 64], Error> {
-    Ok(key
+pub fn make_sig(key: &SigningKey, sig: &[u8], prev_digest: &[u8]) -> Result<EdSig, Error> {
+    let s: [u8; 64] = key
         .sign_digest(
             Sha512::default()
                 .chain_update(sig)
                 .chain_update(&prev_digest),
         )
-        .into())
+        .into();
+    Ok(s.into())
 }
 
 struct Scratch<const CAP: usize> {
@@ -250,15 +251,15 @@ impl StorageApplicationV1 {
         )?;
         let h = d.finalize().into();
         self.ensure_hash_unseen(&h)?;
-        if args.amount == 0 {
+        if args.amount.0 == 0 {
             return Err(Error::from(ErrorDiscriminant::ZeroBalanceAmount));
         }
         Ok(state_machine::Balance::Inline(
             state_machine::BalanceArgs {
-                ms_ts: args.ms_timestamp,
+                ms_ts: args.ms_timestamp.0,
                 owner: self.find_ed25519_addr(owner_id)?,
-                asset: Address::new(args.asset),
-                amt: args.amount,
+                asset: Address::new(args.asset.0),
+                amt: args.amount.0,
             },
             h,
         ))
@@ -349,9 +350,9 @@ impl StorageApplicationV1 {
         )?;
         Ok(state_machine::Order::Inline(
             state_machine::OrderArgs {
-                desired_asset: Address::new(args.desired_asset),
-                from_amt: args.from_amt,
-                desired_amt: args.desired_amt,
+                desired_asset: Address::new(args.desired_asset.0),
+                from_amt: args.from_amt.0,
+                desired_amt: args.desired_amt.0,
                 max_pol_fee: 0,              // TODO
                 ord_partial_fill_okay: true, // TODO
             },
@@ -428,7 +429,7 @@ impl StorageApplicationV1 {
         &self,
         n: Network,
         accounts: &Vec<u64>,
-        solver_sig: &[u8; 64],
+        solver_sig: &EdSig,
         args: &ArgsCommit,
         left: &Applicative,
         right: &Applicative,
@@ -447,7 +448,7 @@ impl StorageApplicationV1 {
         )?;
         Ok(state_machine::Commit::Inline(
             state_machine::CommitArgs {
-                ms_ts: args.ms_timestamp,
+                ms_ts: args.ms_timestamp.0,
             },
             Box::new(left_order),
             Box::new(right_order),
@@ -483,7 +484,7 @@ impl StorageApplicationV1 {
         &self,
         n: Network,
         accounts: &Vec<u64>,
-        solver_sig: &[u8; 64],
+        solver_sig: &EdSig,
         (owner_i, owner_sig): &UserSig,
         ap: &Applicative,
     ) -> Result<state_machine::Withdraw, Error> {
@@ -513,7 +514,7 @@ impl StorageApplicationV1 {
         &self,
         n: Network,
         accounts: &Vec<u64>,
-        solver_sig: &[u8; 64],
+        solver_sig: &EdSig,
         (owner_i, owner_sig): &UserSig,
         ap: &Applicative,
     ) -> Result<state_machine::Balance, Error> {
@@ -609,13 +610,14 @@ impl StorageApplicationV1 {
     }
 }
 
-pub fn sign_balance(k: &SigningKey, args: &ArgsBalance) -> [u8; 64] {
+pub fn sign_balance(k: &SigningKey, args: &ArgsBalance) -> EdSig {
     make_sig(
         k,
         &serialise_inplace::<_, { size_of::<ArgsBalance>() }>(args),
         &[],
     )
     .unwrap()
+    .into()
 }
 
 pub fn digest_wrapped_balance(from: ApplicativeLabel, ap: &Applicative) -> Result<[u8; 64], Error> {
@@ -690,7 +692,7 @@ fn digest_wrapped_commit(from: ApplicativeLabel, ap: &Applicative) -> Result<[u8
     }
 }
 
-pub fn sign_withdraw(key: &SigningKey, ap: &Applicative) -> Result<[u8; 64], Error> {
+pub fn sign_withdraw(key: &SigningKey, ap: &Applicative) -> Result<EdSig, Error> {
     make_sig(
         key,
         &[Nonce::Withdraw.into()],
@@ -698,16 +700,15 @@ pub fn sign_withdraw(key: &SigningKey, ap: &Applicative) -> Result<[u8; 64], Err
     )
 }
 
-pub fn sign_order(key: &SigningKey, args: &ArgsOrder, ap: &Applicative) -> Result<[u8; 64], Error> {
-    let s = make_sig(
+pub fn sign_order(key: &SigningKey, args: &ArgsOrder, ap: &Applicative) -> Result<EdSig, Error> {
+    make_sig(
         key,
         &digest_inplace::<_, { size_of::<ArgsOrder>() }>(args),
         &digest_wrapped_balance(ApplicativeLabel::Order, ap)?,
-    )?;
-    Ok(s)
+    )
 }
 
-pub fn sign_cancel(k: &SigningKey, ap: &Applicative) -> Result<[u8; 64], Error> {
+pub fn sign_cancel(k: &SigningKey, ap: &Applicative) -> Result<EdSig, Error> {
     make_sig(
         k,
         &[Nonce::Cancel.into()],
@@ -720,7 +721,7 @@ pub fn sign_commit(
     args: &ArgsCommit,
     left: &Applicative,
     right: &Applicative,
-) -> Result<[u8; 64], Error> {
+) -> Result<EdSig, Error> {
     let l = ApplicativeLabel::Commit;
     make_sig(
         k,
@@ -736,7 +737,7 @@ pub fn sign_join(
     k: &SigningKey,
     left: &Applicative,
     right: &Applicative,
-) -> Result<[u8; 64], Error> {
+) -> Result<EdSig, Error> {
     let l = ApplicativeLabel::Join;
     make_sig(
         k,
@@ -776,13 +777,13 @@ proptest! {
 #[test]
 fn test_signing_assumptions() {
     let args = ArgsBalance {
-        asset: [
+        asset: Asset([
             139, 154, 122, 66, 30, 11, 80, 120, 198, 114, 248, 170, 10, 100, 108, 141, 208, 224,
             170, 129,
-        ],
-        chain: 129970619555590522921543446309823384767,
-        amount: 226069396470166194839733876294202945097,
-        ms_timestamp: 285894907003591006624805008666230249480,
+        ]),
+        chain: U128(129970619555590522921543446309823384767),
+        amount: U128(226069396470166194839733876294202945097),
+        ms_timestamp: U128(285894907003591006624805008666230249480),
     };
     let signer_priv = SigningKey::from_bytes(&[1u8; 32]);
     let sig = sign_balance(&signer_priv, &args);

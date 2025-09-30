@@ -1,8 +1,11 @@
 use stylus_sdk::{alloy_primitives::*, prelude::*, storage::*};
 
 use crate::error::{
-    ApplyContext, Error, ErrorDiscriminant, ErrorInterimAccessContext, ErrorTestInterimDetails,
+    ApplyContext, Error, ErrorDiscriminant,
 };
+
+#[cfg(not(target_arch = "wasm32"))]
+use crate::error::{ErrorInterimAccessContext, ErrorTestInterimDetails};
 
 use alloc::{vec, vec::Vec};
 
@@ -204,13 +207,13 @@ impl StorageApplicationV1 {
         )
     }
 
-    pub fn test_tag_hashes(&self, x: &[u8; 64], owner: Address, asset: Address, e: Error) -> Error {
+    pub fn test_tag_hashes(&self, _x: &[u8; 64], _owner: Address, _asset: Address, e: Error) -> Error {
         #[cfg(not(target_arch = "wasm32"))]
         let e = SEEN_HASHES.with(|h| {
             let mut h = h.borrow_mut();
-            h.insert((*x, owner, asset), true);
+            h.insert((*_x, _owner, _asset), true);
             e.test_interim(ErrorInterimAccessContext {
-                accessed_hash: FixedBytes::from_slice(&x[..32]),
+                accessed_hash: FixedBytes::from_slice(&_x[..32]),
                 interim_hashes: h
                     .keys()
                     .map(|(k, owner, asset)| ErrorTestInterimDetails {

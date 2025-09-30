@@ -1,0 +1,32 @@
+#!/usr/bin/env -S rc -e
+
+fn usage {
+	echo '<SPN_SUPERPOSITION_URL> <SPN_SUPERPOSITION_KEY> unset'
+}
+
+fn err_exit {
+	usage
+	exit 1
+}
+
+if(~ $SPN_SUPERPOSITION_URL $SPN_SUPERPOSITION_KEY '') err_exit
+
+if(~ $SPN_PASSPORT_SOLVER '') {
+	SPN_PASSPORT_SOLVER=`{./deploy.rc solver.passport-superposition-so.wasm}
+}
+
+echo 'SPN_PASSPORT_SOLVER='$SPN_PASSPORT_SOLVER
+
+if(~ $SPN_PASSPORT_SETTER '') {
+	SPN_PASSPORT_SETTER=`{./deploy.rc setter.passport-superposition-so.wasm}
+}
+
+echo 'SPN_PASSPORT_SETTER='$SPN_PASSPORT_SETTER
+
+if(~ $SPN_PASSPORT_ADMIN '') {
+	SPN_PASSPORT_ADMIN=`{./deploy.rc admin.passport-superposition-so.wasm}
+}
+
+echo 'SPN_PASSPORT_ADMIN='$SPN_PASSPORT_ADMIN
+
+./deploy-proxy.rc

@@ -67,20 +67,20 @@ fn any_balance_no_zero() -> impl Strategy<Value = ArgsBalance> {
         any::<u128>(),
     )
         .prop_map(|(asset, chain, amount, ms_timestamp)| ArgsBalance {
-            asset,
-            chain,
-            amount,
-            ms_timestamp,
+            asset: Asset(asset),
+            chain: U128(chain),
+            amount: U128(amount),
+            ms_timestamp: U128(ms_timestamp),
         })
 }
 
 fn order_from_bal(ArgsBalance { amount, .. }: ArgsBalance) -> impl Strategy<Value = ArgsOrder> {
-    (0..amount, any::<[u8; 20]>(), any::<u128>(), 1..u128::MAX).prop_map(
+    (0..amount.0, any::<[u8; 20]>(), any::<u128>(), 1..u128::MAX).prop_map(
         |(from_amt, desired_asset, desired_chain, desired_amt)| ArgsOrder {
-            from_amt,
-            desired_asset,
-            desired_chain,
-            desired_amt,
+            from_amt: U128(from_amt),
+            desired_asset: Asset(desired_asset),
+            desired_chain: U128(desired_chain),
+            desired_amt: U128(desired_amt),
         },
     )
 }
@@ -201,7 +201,7 @@ pub fn convert_test_balance<T: UserApplicative, S: SolverApplicative>(
                     amount,
                     ms_timestamp,
                 },
-        }) => Ok(user_app.balance(Address::from(asset), *chain, *amount, *ms_timestamp)),
+        }) => Ok(user_app.balance(Address::from(asset.0), chain.0, amount.0, ms_timestamp.0)),
         TestBalance::CommitLeftFilledToBalance(test_commit) => {
             let converted_commit = convert_test_commit(user_app, solver_app, test_commit)?;
             user_app.commit_left_filled_to_balance(converted_commit)
@@ -227,10 +227,10 @@ pub fn convert_test_order<T: UserApplicative, S: SolverApplicative>(
             let converted_from = convert_test_balance(user_app, solver_app, &order_inside.from)?;
             let args = &order_inside.args;
             user_app.order(
-                args.from_amt,
-                Address::from(args.desired_asset),
-                args.desired_chain,
-                args.desired_amt,
+                args.from_amt.0,
+                Address::from(args.desired_asset.0),
+                args.desired_chain.0,
+                args.desired_amt.0,
                 converted_from,
             )
         }
@@ -255,13 +255,13 @@ fn convert_test_commit<T: UserApplicative, S: SolverApplicative>(
             let left_converted = convert_test_order(user_app, solver_app, &commit_inside.left)?;
             let right_converted = convert_test_order(user_app, solver_app, &commit_inside.right)?;
             let solver_sig = solver_app.commit(
-                commit_inside.args.ms_timestamp,
+                commit_inside.args.ms_timestamp.0,
                 &left_converted,
                 &right_converted,
             )?;
             user_app.commit(
                 solver_sig,
-                commit_inside.args.ms_timestamp,
+                commit_inside.args.ms_timestamp.0,
                 left_converted,
                 right_converted,
             )
@@ -318,7 +318,7 @@ fn starting_amts_balance(v: &mut Vec<(Address, u128)>, b: &TestBalance) {
     match b {
         TestBalance::Balance(TestBalanceInside {
             args: ArgsBalance { asset, amount, .. },
-        }) => v.push((Address::from(asset), *amount)),
+        }) => v.push((Address::from(asset.0), amount.0)),
         TestBalance::CommitLeftFilledToBalance(c) | TestBalance::CommitRightFilledToBalance(c) => {
             starting_amts_commit(v, &*c)
         }

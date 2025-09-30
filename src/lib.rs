@@ -41,7 +41,7 @@ pub type OurLzss = lzss::Lzss<12, 11, 0, { 1 << 12 }, { 2 << 12 }>;
 use stylus_sdk::{alloy_sol_types::SolError, prelude::HostAccess};
 
 #[cfg(target_arch = "wasm32")]
-use stylus_sdk::prelude::{CalldataAccess};
+use stylus_sdk::prelude::CalldataAccess;
 
 use crate::facet::Facet;
 
@@ -55,9 +55,13 @@ pub use crate::{
 #[allow(unused)]
 extern "C" {
     fn pay_for_memory_grow(pages: u16);
+}
+
+#[cfg(all(target_arch = "wasm32", not(feature = "dryrun")))]
+#[link(wasm_import_module = "vm_hooks")]
+extern "C" {
     fn transient_load_bytes32(key: *const u8, dest: *const u8);
     fn transient_store_bytes32(key: *const u8, value: *const u8);
-    fn exit_early(status: u32);
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -67,16 +71,25 @@ pub unsafe fn mark_used() {
     panic!();
 }
 
+#[cfg(all(target_arch = "wasm32", feature = "harness-stylus-interpreter"))]
+#[link(wasm_import_module = "stylus_interpreter")]
+extern "C" {
+    fn die(ptr: i32, len: i32, code: i32);
+}
+
 #[cfg(all(not(feature = "std"), target_arch = "wasm32"))]
 #[mutants::skip]
 #[panic_handler]
-fn panic(_: &core::panic::PanicInfo) -> ! {
-    // I don't know if there's a difference between exiting like this and
-    // using the unreachable operation, but this is also fine. It feels more
-    // appropriate.
-    unsafe {
-        exit_early(1);
+fn panic(_msg: &core::panic::PanicInfo) -> ! {
+    #[cfg(feature = "harness-stylus-interpreter")]
+    {
+        let msg = alloc::format!("{_msg}");
+        unsafe {
+            die(msg.as_ptr() as i32, msg.len() as i32, 1)
+        }
     }
+    core::arch::wasm32::unreachable();
+    #[allow(unreachable_code)]
     loop {}
 }
 
@@ -89,7 +102,7 @@ pub const REENTRANCY_CANARY: [u8; 32] = match const_hex::const_decode_to_array(
     _ => panic!(),
 };
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(all(target_arch = "wasm32", not(feature = "dryrun")))]
 fn is_reentrancy() -> bool {
     let mut b = [0u8; 32];
     unsafe {
@@ -98,10 +111,21 @@ fn is_reentrancy() -> bool {
     b[31] == 1
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(any(not(target_arch = "wasm32"), feature = "dryrun"))]
 fn is_reentrancy() -> bool {
     false
 }
+
+#[cfg(all(target_arch = "wasm32", not(feature = "dryrun")))]
+fn set_reentrancy_flag() {
+    let b = [1u8; 32];
+    unsafe {
+        transient_store_bytes32(REENTRANCY_CANARY.as_ptr(), b.as_ptr());
+    }
+}
+
+#[cfg(any(not(target_arch = "wasm32"), feature = "dryrun"))]
+fn set_reentrancy_flag() {}
 
 fn is_reentrant_facet(x: &Facet) -> bool {
     match x {
@@ -132,6 +156,7 @@ pub fn entry(len: usize, simulate: impl FnOnce(&mut Storage, &mut &[u8]) -> R) -
         // Roll back the state, we shouldn't be here!
         return 1;
     }
+    set_reentrancy_flag();
     let mut args = if is_reentrant_facet(&f) {
         // The reentrant calldata should be a single byte for the complex type
         // here, so we can avoid lots of overhead. The reentrant code should load

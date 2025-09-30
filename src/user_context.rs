@@ -3,7 +3,9 @@ use ed25519_dalek::SigningKey;
 use stylus_sdk::alloy_primitives::Address;
 
 use crate::{
-    applicative::{Applicative, ArgsBalance, ArgsCommit, ArgsOrder, UserApplicative},
+    applicative::{
+        Applicative, ArgsBalance, ArgsCommit, ArgsOrder, Asset, EdSig, UserApplicative, U128,
+    },
     conversion::*,
     error::Error,
 };
@@ -42,19 +44,19 @@ impl UserApplicative for UserContext {
         ms_timestamp: u128,
     ) -> Applicative {
         let args = ArgsBalance {
-            asset: *asset.0,
-            chain,
-            amount,
-            ms_timestamp,
+            asset: Asset(*asset.0),
+            chain: U128(chain),
+            amount: U128(amount),
+            ms_timestamp: U128(ms_timestamp),
         };
         Applicative::Balance((self.place, sign_balance(&self.signer, &args)), args)
     }
 
     fn withdraw(
         &self,
-        solver_sig: [u8; 64],
+        solver_sig: EdSig,
         ap: Applicative,
-        vault_sig: Option<[u8; 64]>,
+        vault_sig: Option<EdSig>,
     ) -> Result<Applicative, Error> {
         Ok(Applicative::Withdraw(
             solver_sig,
@@ -73,10 +75,10 @@ impl UserApplicative for UserContext {
         ap: Applicative,
     ) -> Result<Applicative, Error> {
         let args = ArgsOrder {
-            from_amt,
-            desired_asset: *desired_asset.0,
-            desired_chain,
-            desired_amt,
+            from_amt: U128(from_amt),
+            desired_asset: Asset(*desired_asset.0),
+            desired_chain: U128(desired_chain),
+            desired_amt: U128(desired_amt),
         };
         Ok(Applicative::Order(
             (self.place, sign_order(&self.signer, &args, &ap)?),
@@ -85,7 +87,7 @@ impl UserApplicative for UserContext {
         ))
     }
 
-    fn cancel(&self, solver_sig: [u8; 64], ap: Applicative) -> Result<Applicative, Error> {
+    fn cancel(&self, solver_sig: EdSig, ap: Applicative) -> Result<Applicative, Error> {
         Ok(Applicative::Cancel(
             solver_sig,
             (self.place, sign_cancel(&self.signer, &ap)?),
@@ -95,12 +97,14 @@ impl UserApplicative for UserContext {
 
     fn commit(
         &self,
-        solver_sig: [u8; 64],
+        solver_sig: EdSig,
         ms_timestamp: u128,
         left: Applicative,
         right: Applicative,
     ) -> Result<Applicative, Error> {
-        let args = ArgsCommit { ms_timestamp };
+        let args = ArgsCommit {
+            ms_timestamp: U128(ms_timestamp),
+        };
         Ok(Applicative::Commit(
             solver_sig,
             args,

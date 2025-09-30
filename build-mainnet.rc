@@ -1,0 +1,5 @@
+#!/usr/bin/env -S rc -e
+
+SPN_PASSPORT_NETWORK=mainnet
+
+make
