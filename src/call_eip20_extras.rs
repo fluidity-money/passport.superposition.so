@@ -15,7 +15,7 @@ sol! {
     function permit(address owner, address spender, uint value, uint deadline, uint8 v, bytes32 r, bytes32 s) external;
 }
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(all(target_arch = "wasm32", not(feature = "dryrun")))]
 #[allow(unused)]
 mod implem {
     use super::*;
@@ -113,6 +113,50 @@ mod implem {
         Ok(())
     }
 }
+
+#[cfg(all(target_arch = "wasm32", feature = "dryrun"))]
+#[allow(unused)]
+mod implem {
+    use super::*;
+
+    use stylus_sdk::{
+        alloy_sol_types::SolCall, call::call, prelude::TopLevelStorage, stylus_core::Call,
+    };
+
+    pub fn transfer(
+        _env: &mut (impl TopLevelStorage + HostAccess),
+        _addr: Address,
+        _recipient: Address,
+        _amt: U256,
+    ) -> Result<(), Error> {
+        Ok(())
+    }
+
+    pub fn transfer_from(
+        _env: &mut (impl TopLevelStorage + HostAccess),
+        _addr: Address,
+        _from: Address,
+        _to: Address,
+        _amt: U256,
+    ) -> Result<(), Error> {
+        Ok(())
+    }
+
+    pub fn permit(
+        _env: &mut (impl TopLevelStorage + HostAccess),
+        _addr: Address,
+        _owner: Address,
+        _spender: Address,
+        _value: U256,
+        _deadline: U256,
+        _v: u8,
+        _r: FixedBytes<32>,
+        _s: FixedBytes<32>,
+    ) -> Result<(), Error> {
+        Ok(())
+    }
+}
+
 
 #[cfg(not(target_arch = "wasm32"))]
 #[allow(unused)]

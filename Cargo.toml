@@ -95,6 +95,7 @@ features = ["mini-alloc", "stylus-test"]
 
 [features]
 std = []
+dryrun = []
 harness-stylus-interpreter = []
 e2e-adjust-time = []
 contract-client-gen = []
