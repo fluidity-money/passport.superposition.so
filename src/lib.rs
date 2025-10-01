@@ -77,6 +77,31 @@ extern "C" {
     fn die(ptr: i32, len: i32, code: i32);
 }
 
+#[cfg(all(target_arch = "wasm32", feature = "harness-stylus-interpreter"))]
+#[link(wasm_import_module = "console")]
+extern "C" {
+    #[allow(dead_code)]
+    pub fn log_txt(ptr: *const u8, len: usize);
+}
+
+#[macro_export]
+macro_rules! harness_dbg {
+    ($val:expr) => {
+    #[cfg(all(target_arch = "wasm32", feature = "harness-stylus-interpreter"))]
+    {
+        let tmp = $val;
+        let msg = alloc::format!("[{}:{}] {} = {:#?}\n", file!(), line!(), stringify!($val), &tmp);
+        unsafe { $crate::log_txt(msg.as_ptr(), msg.len()) };
+        tmp
+    }};
+    ($($vals:expr),+ $(,)?) => {{
+        let tup = ($($vals),+);
+        let msg = alloc::format!("[{}:{}] {} = {:#?}\n", file!(), line!(), stringify!(($($vals),+)), &tup);
+        unsafe { $crate::log_txt(msg.as_ptr(), msg.len()) };
+        tup
+    }};
+}
+
 #[cfg(all(not(feature = "std"), target_arch = "wasm32"))]
 #[mutants::skip]
 #[panic_handler]
@@ -84,9 +109,7 @@ fn panic(_msg: &core::panic::PanicInfo) -> ! {
     #[cfg(feature = "harness-stylus-interpreter")]
     {
         let msg = alloc::format!("{_msg}");
-        unsafe {
-            die(msg.as_ptr() as i32, msg.len() as i32, 1)
-        }
+        unsafe { die(msg.as_ptr() as i32, msg.len() as i32, 1) }
     }
     core::arch::wasm32::unreachable();
     #[allow(unreachable_code)]

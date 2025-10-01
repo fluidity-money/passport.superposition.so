@@ -41,8 +41,10 @@ impl std::fmt::Display for OpSolver {
 #[derive(Debug, Clone, Copy)]
 pub struct SolverFromSexp;
 
+#[cfg(not(target_arch = "wasm32"))]
 impl serde::ser::StdError for SolverFromSexp {}
 
+#[cfg(not(target_arch = "wasm32"))]
 impl std::fmt::Display for SolverFromSexp {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}", self)

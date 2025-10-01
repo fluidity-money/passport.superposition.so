@@ -1,12 +1,14 @@
 #![cfg_attr(target_arch = "wasm32", no_main, no_std)]
 
 use libpassport::{
-    entry,
+    entry, harness_dbg,
+    immutables::pick_solver_key,
+    network::Network,
     ops::OpSolver,
     {DONE_UNIT, NOOP},
-    network::Network,
-    immutables::pick_solver_key
 };
+
+extern crate alloc;
 
 use borsh::BorshDeserialize;
 
