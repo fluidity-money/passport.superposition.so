@@ -7,6 +7,7 @@ use libpassport::{
     applicative::{Applicative, ArgsBalance, ArgsOrder, SolverApplicative, UserApplicative},
     solver_context::SolverContext,
     user_context::UserContext,
+    ops::OpSolver
 };
 
 use stylus_sdk::alloy_primitives::Address;
@@ -64,7 +65,7 @@ fn _unsolved_to_app(
             let s_sig = solver.cancel(&from).unwrap();
             ctx(accounts, n).cancel(s_sig, from).unwrap()
         }
-        RecipeUnsolved::Commit( args, left, right) => {
+        RecipeUnsolved::Commit(args, left, right) => {
             let left = _unsolved_to_app(accounts, solver, *left);
             let right = _unsolved_to_app(accounts, solver, *right);
             let s_sig = solver.commit(args.ms_timestamp.0, &left, &right).unwrap();
@@ -90,12 +91,13 @@ fn _unsolved_to_app(
     }
 }
 
-pub fn unsolved_to_applicative(
+pub fn unsolved_to_solver(
     accounts: Accounts,
     solver: SigningKey,
     r: RecipeUnsolved,
-) -> Applicative {
-    _unsolved_to_app(
+) -> OpSolver {
+    let offsets = accounts.0.iter().map(|Account { offset, .. }| *offset).collect::<Vec<_>>();
+    let ap = _unsolved_to_app(
         &accounts
             .0
             .into_iter()
@@ -106,5 +108,6 @@ pub fn unsolved_to_applicative(
             .collect::<HashMap<_, _>>(),
         &SolverContext::new(solver),
         r,
-    )
+    );
+    OpSolver::Solve(offsets, ap)
 }

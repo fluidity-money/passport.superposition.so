@@ -22,12 +22,10 @@ the signing key.
 
 This form contains the signature, and the hash. This form can be converted to calldata.
 
+	(Solve (0)	# These are the account offsets.
 	(Balance
-	 (0
-	  110fde122d8b0b25d9e6fa5c15763c96990d0dd33fdf79f73043904bb1541528c80dfea2541c396fa606156743750f249089f364f875879ef2c50b914a16c801)
-	 ((asset 8ac1c7a5416e7e0342b532a9dc9d74c998e0e790)
-	  (chain 225476647479317694062150620526444369903)
-	  (amount 126508738668270503307039462831516350703)
-	  (ms_timestamp 88720005195802133222596758088858595407)))
-
-This form is a bit more involved than the other form.
+	 (0 128f8c7a2b03606b605484b430d9dc9c7dfbacdb713978b0f80667b5921e0dda4c967509e0b33ec84f28d9613cf128a240da8398fd74fd06ba8df8fe95b0dc00)
+	 ((asset aeff361bab3708fa59f2972fd4a3900ba33ce821)
+	  (chain 0)
+	  (amount 123)
+	  (ms_timestamp 1759221563622))))

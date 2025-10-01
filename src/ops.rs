@@ -9,7 +9,17 @@ use alloc::vec::Vec;
 
 use borsh::{BorshDeserialize, BorshSerialize};
 
+#[cfg(not(target_arch = "wasm32"))]
+use serde::{Deserialize as SerdeDeserialize, Serialize as SerdeSerialize};
+
 #[derive(BorshDeserialize, BorshSerialize, Clone, PartialEq, Debug)]
+#[cfg_attr(
+    not(target_arch = "wasm32"),
+    derive(
+        SerdeDeserialize,
+        SerdeSerialize
+    )
+)]
 pub enum OpSolver {
     /// Dummy operation.
     Dummy,
@@ -19,6 +29,33 @@ pub enum OpSolver {
     // on-chain state. The first argument to the Solve function is the location
     // of the VerifyingKey in the mapping of the keys on-chain.
     Solve(Vec<u64>, Applicative),
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl std::fmt::Display for OpSolver {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", serde_sexpr::to_string(self).unwrap())
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct SolverFromSexp;
+
+impl serde::ser::StdError for SolverFromSexp {}
+
+impl std::fmt::Display for SolverFromSexp {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl std::str::FromStr for OpSolver {
+    type Err = SolverFromSexp;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        serde_sexpr::from_str(s).map_err(|_| SolverFromSexp)
+    }
 }
 
 #[derive(BorshDeserialize, BorshSerialize, Clone, PartialEq, Debug)]

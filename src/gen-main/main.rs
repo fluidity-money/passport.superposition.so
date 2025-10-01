@@ -10,7 +10,7 @@ mod host {
 
     use super::{
         accounts::{Accounts, Key},
-        convert::unsolved_to_applicative,
+        convert::unsolved_to_solver,
         reader::RecipeReader,
         unsolved::RecipeUnsolved,
     };
@@ -18,7 +18,7 @@ mod host {
     use stylus_sdk::alloy_primitives::{Address, FixedBytes};
 
     use libpassport::{
-        applicative::{Applicative, EdSig},
+        applicative::EdSig,
         facet::Facet,
         ops::{OpSetter, OpSolver},
         OurLzss,
@@ -51,7 +51,7 @@ mod host {
             file: Option<String>,
         },
         CalldataFromSolvedRecipeArgs {
-            applicative: Applicative,
+            solver: OpSolver,
         },
         CalldataFromSolvedRecipeFile {
             file: Option<String>,
@@ -102,7 +102,7 @@ mod host {
         match op {
             Args::SolverDummy => OpSolver::Dummy.serialize(&mut b).unwrap(),
             Args::SetterDummy => OpSetter::Dummy.serialize(&mut b).unwrap(),
-            _ => (),
+            _ => unimplemented!(),
         };
         println!(
             "{}{}",
@@ -115,13 +115,11 @@ mod host {
     }
 
     fn solve_unsolved_recipe(accounts: Accounts, signer: SigningKey, recipe: RecipeUnsolved) {
-        println!("{}", unsolved_to_applicative(accounts, signer, recipe));
+        println!("{}", unsolved_to_solver(accounts, signer, recipe));
     }
 
-    pub fn entry() {
-        let op = Args::parse();
+    fn perform_unsolved_solving(op: Args) {
         match op {
-            Args::SolverDummy | Args::SetterDummy => simple_calldata(op),
             Args::SolveUnsolvedRecipeArgs {
                 accounts,
                 accounts_file,
@@ -155,6 +153,41 @@ mod host {
                 .unwrap();
                 solve_unsolved_recipe(accounts, SigningKey::from_bytes(&signer.0), recipe)
             }
+            _ => unimplemented!(),
+        }
+    }
+
+    fn solve_cd(op: OpSolver) {
+        println!(
+            "{}{}",
+            const_hex::encode(&[Facet::UserSolver.into()]),
+            const_hex::encode(borsh::to_vec(&op).unwrap())
+        );
+    }
+
+    fn solved_calldata(op: Args) {
+        match op {
+            Args::CalldataFromSolvedRecipeArgs { solver } => solve_cd(solver),
+            Args::CalldataFromSolvedRecipeFile { file } => solve_cd(
+                match file {
+                    Some(f) => serde_sexpr::from_reader(RecipeReader::new(File::open(f).unwrap())),
+                    None => serde_sexpr::from_reader(RecipeReader::new(stdin())),
+                }
+                .unwrap(),
+            ),
+            _ => unimplemented!(),
+        }
+    }
+
+    pub fn entry() {
+        let op = Args::parse();
+        match op {
+            Args::SolverDummy | Args::SetterDummy => simple_calldata(op),
+            Args::SolveUnsolvedRecipeArgs { .. } | Args::SolveUnsolvedRecipeFile { .. } => {
+                perform_unsolved_solving(op)
+            }
+            Args::CalldataFromSolvedRecipeArgs { .. }
+            | Args::CalldataFromSolvedRecipeFile { .. } => solved_calldata(op),
             _ => unimplemented!(),
         }
     }
