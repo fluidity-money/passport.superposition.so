@@ -5,15 +5,14 @@ use ed25519_dalek::{SigningKey, VerifyingKey};
 use lazy_static::lazy_static;
 
 lazy_static! {
-    pub static ref SOLVER_KEY_OFFLINE: VerifyingKey = VerifyingKey::from_bytes(
-        &match const_hex::decode_to_array(
+    pub static ref SOLVER_KEY_CUSTOM: VerifyingKey =
+        VerifyingKey::from_bytes(&match const_hex::decode_to_array(
             "5cdfa3ae862129a3c95632940ee7104251556e86fec098a246a2a1178d206bc9"
         ) {
             Ok(v) => v,
             _ => panic!(),
-        }
-    )
-    .expect("bad offline verifyingkey");
+        })
+        .expect("bad offline verifyingkey");
     pub static ref SOLVER_KEY_TESTNET: VerifyingKey =
         VerifyingKey::from_bytes(&[0u8; 32]).expect("bad testnet verifyingkey");
     pub static ref SOLVER_KEY_MAINNET: VerifyingKey =
@@ -22,7 +21,7 @@ lazy_static! {
 
 pub fn pick_solver_key(n: Network) -> VerifyingKey {
     match n {
-        Network::OFFLINE => *SOLVER_KEY_OFFLINE,
+        Network::CUSTOM => *SOLVER_KEY_CUSTOM,
         Network::TESTNET => *SOLVER_KEY_TESTNET,
         Network::MAINNET => *SOLVER_KEY_MAINNET,
     }

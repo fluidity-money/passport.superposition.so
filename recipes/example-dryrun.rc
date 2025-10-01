@@ -1,0 +1,108 @@
+#!/usr/bin/env -S rc -e
+
+# An example of a dryrun online using fake assets and balance creation.
+# Uses Eli and Alex, and does a fresh creation and commit.
+
+fn log {
+	echo $* >[1=2]
+}
+
+fn die {
+	log $*
+	exit 1
+}
+
+if(~ $SPN_SUPERPOSITION_URL $SPN_SUPERPOSITION_KEY $SPN_SUPERPOSITION_SENDER '') \
+	die '<SPN_SUPERPOSITION_URL> <SPN_SUPERPOSITION_KEY> <SPN_SUPERPOSITION_SENDER> unset'
+
+if(~ `{basename $0} recipes) die 'run me from the root dir'
+
+if(~ $SPN_PASSPORT_PROXY '') {
+	SPN_NETWORK_CUSTOM=true SPN_DRYRUN=true
+	make -B wasm
+	log just rebuilt
+	SPN_PASSPORT_PROXY=`{./deploy-full.rc}
+}
+
+log 'SPN_PASSPORT_PROXY='$SPN_PASSPORT_PROXY
+
+alex_key=e3cd2fea7d1c3b013c44f307b5b202f15079a3ecc6c239632c87f917766d156d
+eli_key=67ff2023e58b54e4538cde1ba3fb6fed865f8fc6bfc10fbe7b7107d197c51dcf
+
+alex_asset=8ac1c7a5416e7e0342b532a9dc9d74c998e0e790
+eli_asset=b3688578a4cf61332b989d91c825f819034d1331
+
+alex_offset=0
+eli_offset=1
+
+sender=$SPN_SUPERPOSITION_SENDER
+
+chain_id=98985
+
+solver_key=9e879ec92a3949f810e4ac37df4c4488bcf5945df1e18491b9f478b5a5034849
+
+fn random_bytes32 {
+	dd if=/dev/urandom bs=1 count=32 status=none | xxd -p | tr -d '\n'
+}
+
+alex_onboard_cd=`{\
+	passport-cli setter-onboard-with-key \
+		$alex_key \
+		$SPN_SUPERPOSITION_SENDER \
+		$SPN_PASSPORT_PROXY \
+		$alex_offset \
+		$chain_id \
+		$alex_asset \
+		56961730660561917068169863894177734718 \
+		340282366920938463463374607431768211455 \
+		0 \
+		0x`{random_bytes32} \
+		0x`{random_bytes32}
+	}
+
+eli_onboard_cd=`{
+	passport-cli setter-onboard-with-key \
+		$eli_key \
+		$SPN_SUPERPOSITION_SENDER \
+		$SPN_PASSPORT_PROXY \
+		$eli_offset \
+		$chain_id \
+		$eli_asset \
+		56961730660561917068169863894177734718 \
+		340282366920938463463374607431768211455 \
+		0 \
+		0x`{random_bytes32} \
+		0x`{random_bytes32}
+	}
+
+fn send_onchain {
+	log sending $*
+	cast call \
+		--private-key $SPN_SUPERPOSITION_KEY \
+		--rpc-url $SPN_SUPERPOSITION_URL \
+		$SPN_PASSPORT_PROXY \
+		$*
+	cast call \
+		--private-key $SPN_SUPERPOSITION_KEY \
+		--rpc-url $SPN_SUPERPOSITION_URL \
+		$SPN_PASSPORT_PROXY \
+		$* \
+			| passport-cli decode-res
+	cast send \
+		--private-key $SPN_SUPERPOSITION_KEY \
+		--rpc-url $SPN_SUPERPOSITION_URL \
+		$SPN_PASSPORT_PROXY \
+		$*
+}
+
+send_onchain $alex_onboard_cd
+
+send_onchain $eli_onboard_cd
+
+send_onchain `{
+	passport-cli solve-unsolved-recipe-file \
+		$solver_key \
+		-f recipes/002-commit-accounts \
+		recipes/002-commit.upp \
+			| passport-cli calldata-from-solved-recipe-file
+}

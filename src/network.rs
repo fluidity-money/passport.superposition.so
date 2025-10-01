@@ -1,7 +1,14 @@
 
 #[derive(Debug, Clone, Copy)]
 pub enum Network {
-     OFFLINE,
+     CUSTOM,
      TESTNET,
-     MAINNET
+     MAINNET,
 }
+
+#[cfg(any(
+    all(feature = "network-mainnet", feature = "network-testnet"),
+    all(feature = "network-mainnet", feature = "network-custom"),
+    all(feature = "network-testnet", feature = "network-custom")
+))]
+compile_error!("multiple networks enabled");

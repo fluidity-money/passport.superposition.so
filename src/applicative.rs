@@ -265,6 +265,10 @@ pub struct ArgsCommit {
 /// Simple label for debugging purposes when a contextual error takes
 /// place during a form conversion or validation.
 #[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq, Debug, Copy)]
+#[cfg_attr(
+    not(target_arch = "wasm32"),
+    derive(arbitrary::Arbitrary, proptest_derive::Arbitrary)
+)]
 pub enum ApplicativeLabel {
     Balance,
     Withdraw,

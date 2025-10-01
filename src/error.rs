@@ -9,7 +9,14 @@ use stylus_sdk::{
 
 use alloc::vec::Vec;
 
+#[cfg(not(target_arch = "wasm32"))]
+use proptest::strategy::Strategy;
+
 #[derive(BorshSerialize, BorshDeserialize, Clone, Copy, PartialEq, Debug)]
+#[cfg_attr(
+    not(target_arch = "wasm32"),
+    derive(arbitrary::Arbitrary, proptest_derive::Arbitrary)
+)]
 pub enum ApplyContext {
     JoinLBalAmt,
     JoinRBalAmt,
@@ -31,6 +38,10 @@ pub enum ApplyContext {
 /// information. It could have its contents printed while running on the
 /// native host.
 #[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq, Debug)]
+#[cfg_attr(
+    not(target_arch = "wasm32"),
+    derive(arbitrary::Arbitrary, proptest_derive::Arbitrary)
+)]
 pub enum ErrorDiscriminant {
     /// The error wasn't created properly.
     Unknown,
@@ -188,12 +199,40 @@ pub struct ErrorInterimAccessContext {
     pub interim_hashes: Vec<ErrorTestInterimDetails>,
 }
 
+#[derive(PartialEq)]
 pub struct Error {
     pub typ: ErrorDiscriminant,
     // Used to hint information about the app when an error happens if this
     // is tagged on.
     pub test_context: Option<ErrorTestContext>,
     pub test_interim: Option<ErrorInterimAccessContext>,
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl<'a> arbitrary::Arbitrary<'a> for Error {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(Error {
+            typ: ErrorDiscriminant::arbitrary(u)?,
+            test_context: None,
+            test_interim: None,
+        })
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl proptest::prelude::Arbitrary for Error {
+    type Parameters = ();
+    type Strategy = proptest::prelude::BoxedStrategy<Self>;
+
+    fn arbitrary_with(_args: Self::Parameters) -> Self::Strategy {
+        proptest::prelude::any::<ErrorDiscriminant>()
+            .prop_map(|typ| Error {
+                typ,
+                test_context: None,
+                test_interim: None,
+            })
+            .boxed()
+    }
 }
 
 impl Error {
@@ -308,4 +347,16 @@ macro_rules! require {
             err(ErrorDiscriminant::$err)?;
         }
     };
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+mod test {
+    use proptest::prelude::*;
+
+    proptest! {
+        #[test]
+        fn test_encoding_decoding_errs(err in any::<super::Error>()) {
+            assert_eq!(err, borsh::from_slice(&borsh::to_vec(&err).unwrap()).unwrap());
+        }
+    }
 }

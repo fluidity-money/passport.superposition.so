@@ -1,13 +1,15 @@
 
-comma=,
+comma := ,
 CARGO_EXTRA_FEATURES := \
 	$(if ${SPN_HARNESS_BACKEND},harness-stylus-interpreter)
 CARGO_EXTRA_FEATURES := \
-	$(if ${CARGO_EXTRA_FEATURES},${CARGO_EXTRA_FEATURES}${comma})
+	$(if ${SPN_DRYRUN},${CARGO_EXTRA_FEATURES}$(if ${CARGO_EXTRA_FEATURES},${comma})dryrun,${CARGO_EXTRA_FEATURES})
 CARGO_EXTRA_FEATURES := \
-	$(if ${SPN_DRYRUN},${CARGO_EXTRA_FEATURES}dryrun)
+	$(if ${SPN_NETWORK_TESTNET},${CARGO_EXTRA_FEATURES}$(if ${CARGO_EXTRA_FEATURES},${comma})network-testnet,${CARGO_EXTRA_FEATURES})
 CARGO_EXTRA_FEATURES := \
-	$(if ${CARGO_EXTRA_FEATURES},--features )${CARGO_EXTRA_FEATURES}
+	$(if ${SPN_NETWORK_CUSTOM},${CARGO_EXTRA_FEATURES}$(if ${CARGO_EXTRA_FEATURES},${comma})network-custom,${CARGO_EXTRA_FEATURES})
+CARGO_EXTRA_FEATURES := \
+	$(if ${CARGO_EXTRA_FEATURES},--features ${CARGO_EXTRA_FEATURES})
 
 CARGO_BIN_WASM32 := \
 	cargo build \
@@ -45,7 +47,7 @@ build: wasm passport-cli
 
 solver.passport-superposition-so.wasm: $(shell find src -type f -name '*.rs')
 	@rm -f solver.passport-superposition-so.wasm
-	@${CARGO_BIN_WASM32}
+	${CARGO_BIN_WASM32}
 	@${RELEASE_PASSPORT_WASM} \
 		${RELEASE_WASM}/contract-solver.wasm \
 		-o solver.passport-superposition-so.wasm

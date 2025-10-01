@@ -3,8 +3,8 @@
 // outcome.
 
 use libpassport::{
-    applicative::{Asset ,U128, ArgsBalance, ArgsCommit, ArgsOrder},
-    immutables::solver_key_offline,
+    applicative::{ArgsBalance, ArgsCommit, ArgsOrder, Asset, U128},
+    immutables::{pick_solver_key, solver_key_offline},
     network::Network,
     solver_context::*,
     user_context::*,
@@ -40,7 +40,7 @@ proptest! {
         s.app.ed25519_owners.setter(0).set(msg_sender);
         apply_balances(&mut s, starting_amts(&e)).unwrap();
         s.app.apply(
-            s.app.validate(Network::OFFLINE, &user_ctx.accounts, converted)
+            s.app.validate(&pick_solver_key(Network::CUSTOM), &vec![0], converted)
                 .unwrap()
         )
             .unwrap();
@@ -60,7 +60,9 @@ fn test_apply_2() {
     let e = Entry::Balance(TestBalance::Cancel(Box::new(
         TestOrder::CommitLeftExcessToOrder(Box::new(TestCommit::Commit(Box::new(
             TestCommitInside {
-                args: ArgsCommit { ms_timestamp: U128(0) },
+                args: ArgsCommit {
+                    ms_timestamp: U128(0),
+                },
                 left: Box::new(TestOrder::Order(Box::new(TestOrderInside {
                     from: Box::new(TestBalance::Balance(TestBalanceInside {
                         args: ArgsBalance {
@@ -71,7 +73,7 @@ fn test_apply_2() {
                         },
                     })),
                     args: ArgsOrder {
-                        from_amt: U128(0),
+                        from_amt: U128(19942947448678186698998836289408085284),
                         desired_asset: asset_b.clone(),
                         desired_chain: U128(0),
                         desired_amt: U128(707651766525132719317267334528916),
@@ -111,8 +113,7 @@ fn test_apply_2() {
     apply_balances(&mut s, starting_amts(&e)).unwrap();
     s.app
         .apply(
-            s.app
-                .validate(Network::OFFLINE, &user_ctx.accounts, converted)
+            s.app.validate(&pick_solver_key(Network::CUSTOM), &vec![0], converted)
                 .unwrap(),
         )
         .unwrap();

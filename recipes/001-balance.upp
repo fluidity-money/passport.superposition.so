@@ -1,0 +1,7 @@
+#!/usr/bin/env -S passport-cli solve-unsolved-recipe-file 9e879ec92a3949f810e4ac37df4c4488bcf5945df1e18491b9f478b5a5034849 -a Alex:e3cd2fea7d1c3b013c44f307b5b202f15079a3ecc6c239632c87f917766d156d:0
+
+(Balance Alex
+ ((asset 8ac1c7a5416e7e0342b532a9dc9d74c998e0e790)
+  (chain 98985)
+  (amount 340282366920938463463374607431768211455)
+  (ms_timestamp 1759221563622)))

@@ -1,7 +1,7 @@
 #!/usr/bin/env -S rc -e
 
 if(~ $SPN_SUPERPOSITION_URL $SPN_SUPERPOSITION_KEY '') {
-	echo '<SPN_SUPERPOSITION_URL> <SPN_SUPERPOSITION_KEY> unset'
+	echo '<SPN_SUPERPOSITION_URL> <SPN_SUPERPOSITION_KEY> unset' >[1=2]
 	exit 1
 }
 

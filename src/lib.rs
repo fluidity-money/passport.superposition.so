@@ -34,13 +34,9 @@ pub mod onboard;
 
 pub mod call_eip20_extras;
 
-use stylus_sdk::alloy_sol_types::sol;
-
-sol!("src/IErrors.sol");
-
 pub type OurLzss = lzss::Lzss<12, 11, 0, { 1 << 12 }, { 2 << 12 }>;
 
-use stylus_sdk::{alloy_sol_types::SolError, prelude::HostAccess};
+use stylus_sdk::prelude::HostAccess;
 
 #[cfg(target_arch = "wasm32")]
 use stylus_sdk::prelude::CalldataAccess;
@@ -209,7 +205,7 @@ pub fn entry(len: usize, simulate: impl FnOnce(&mut Storage, &mut &[u8]) -> R) -
             harness_dbg!(_result);
             #[allow(unreachable_code)]
             0
-        },
+        }
         Err(ref _reason) => {
             #[cfg(feature = "harness-stylus-interpreter")]
             panic!("reverted: {_reason:?}");
@@ -219,7 +215,7 @@ pub fn entry(len: usize, simulate: impl FnOnce(&mut Storage, &mut &[u8]) -> R) -
     };
     s.vm().write_result(&match r {
         Ok(v) => borsh::to_vec(&v).unwrap(),
-        Err(v) => PassportError(borsh::to_vec(&v).unwrap().into()).abi_encode(),
+        Err(v) => borsh::to_vec(&v).unwrap().into(),
     });
     s.vm().flush_cache(true);
     rd

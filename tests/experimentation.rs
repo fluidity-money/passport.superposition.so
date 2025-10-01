@@ -259,12 +259,14 @@ fn convert_test_commit<T: UserApplicative, S: SolverApplicative>(
                 &left_converted,
                 &right_converted,
             )?;
-            user_app.commit(
+            Ok(Applicative::Commit(
                 solver_sig,
-                commit_inside.args.ms_timestamp.0,
-                left_converted,
-                right_converted,
-            )
+                ArgsCommit {
+                    ms_timestamp: commit_inside.args.ms_timestamp.clone(),
+                },
+                Box::new(left_converted),
+                Box::new(right_converted),
+            ))
         }
     }
 }
