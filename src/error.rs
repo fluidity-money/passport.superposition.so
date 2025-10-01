@@ -35,6 +35,12 @@ pub enum ErrorDiscriminant {
     /// The error wasn't created properly.
     Unknown,
 
+    /// The chain id during onboarding is different from ours.
+    OnboardDifferentChainId,
+
+    /// Different contract in use for onboarding.
+    OnboardDifferentContract,
+
     /// Generic call error that we translated directly.
     BadCall,
 
@@ -105,6 +111,10 @@ pub enum ErrorDiscriminant {
 
     /// Checked add overflow in the math!
     CheckedAdd(ApplyContext, u128, u128),
+
+    /// Checked add overflow for a 64 bit somewhere. Not including 64 bit here saves us the
+    /// encoding codesize.
+    CheckedAdd64(ApplyContext),
 
     /// Zero amount in the balance object.
     ZeroBalanceAmount,
@@ -205,6 +215,12 @@ impl Default for Error {
             test_context: None,
             test_interim: None,
         }
+    }
+}
+
+impl core::fmt::Display for Error {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{self:?}")
     }
 }
 

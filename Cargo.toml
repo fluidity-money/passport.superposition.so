@@ -29,8 +29,8 @@ path = "src/webapp-main/main.rs"
 required-features = ["std"]
 
 [[bin]]
-name = "generator"
-path = "src/gen-main/main.rs"
+name = "passport-cli"
+path = "src/passport-cli/main.rs"
 
 [profile.release]
 codegen-units = 1

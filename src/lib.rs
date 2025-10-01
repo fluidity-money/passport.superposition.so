@@ -15,6 +15,8 @@ pub mod conversion;
 pub mod solver_context;
 pub mod user_context;
 
+pub mod sigs;
+
 pub mod immutables;
 
 pub mod reentrancy;
@@ -202,8 +204,18 @@ pub fn entry(len: usize, simulate: impl FnOnce(&mut Storage, &mut &[u8]) -> R) -
     };
     let r = simulate(&mut s, &mut args);
     let rd = match r {
-        Ok(_) => 0,
-        Err(_) => 1,
+        Ok(ref _result) => {
+            #[cfg(feature = "harness-stylus-interpreter")]
+            harness_dbg!(_result);
+            #[allow(unreachable_code)]
+            0
+        },
+        Err(ref _reason) => {
+            #[cfg(feature = "harness-stylus-interpreter")]
+            panic!("reverted: {_reason:?}");
+            #[allow(unreachable_code)]
+            1
+        }
     };
     s.vm().write_result(&match r {
         Ok(v) => borsh::to_vec(&v).unwrap(),

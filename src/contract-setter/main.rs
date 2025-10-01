@@ -11,7 +11,9 @@ pub unsafe extern "C" fn user_entrypoint(len: usize) -> usize {
         OpSetter::Onboard(
             key,
             sig,
+            contract,
             nonce,
+            chain,
             token,
             value,
             deadline,
@@ -19,7 +21,7 @@ pub unsafe extern "C" fn user_entrypoint(len: usize) -> usize {
             permit_r,
             permit_s,
         ) => s.onboard(
-            key, sig, nonce, token, value, deadline, permit_v, permit_r, permit_s,
+            key, sig, contract, nonce, chain, token, value, deadline, permit_v, permit_r, permit_s,
         ),
         OpSetter::AddLiquidity(token, recipient, value, deadline, v, r, s_) => {
             s.app.add_liq(token, recipient, value, deadline, v, r, s_)

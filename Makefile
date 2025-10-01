@@ -1,13 +1,13 @@
 
 comma=,
 CARGO_EXTRA_FEATURES := \
-	$(if ${SPN_HARNESS_BACKEND}, harness-stylus-interpreter)
+	$(if ${SPN_HARNESS_BACKEND},harness-stylus-interpreter)
 CARGO_EXTRA_FEATURES := \
 	$(if ${CARGO_EXTRA_FEATURES},${CARGO_EXTRA_FEATURES}${comma})
 CARGO_EXTRA_FEATURES := \
 	$(if ${SPN_DRYRUN},${CARGO_EXTRA_FEATURES}dryrun)
 CARGO_EXTRA_FEATURES := \
-	$(if ${CARGO_EXTRA_FEATURES},--features)${CARGO_EXTRA_FEATURES}
+	$(if ${CARGO_EXTRA_FEATURES},--features )${CARGO_EXTRA_FEATURES}
 
 CARGO_BIN_WASM32 := \
 	cargo build \
@@ -74,7 +74,7 @@ vault.passport-superposition-so.wasm: $(shell find src -type f -name '*.rs')
 passport-cli: $(shell find src -type f -name '*.rs')
 	@rm -f generator.out
 	@${CARGO_BUILD_NATIVE}
-	@cp target/release/generator passport-cli
+	@cp target/release/passport-cli passport-cli
 
 clean:
 	@rm -rf \

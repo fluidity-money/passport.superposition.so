@@ -1,7 +1,7 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 
 /// End result return results of the user-facing kind.
-#[derive(BorshSerialize, BorshDeserialize)]
+#[derive(BorshSerialize, BorshDeserialize, Debug, Clone)]
 pub enum Res {
     /// This operation triggered a dummy interaction.
     Noop,
@@ -14,4 +14,10 @@ pub enum Res {
 
     /// A number was returned alongside correct execution.
     DoneU128(u128)
+}
+
+impl core::fmt::Display for Res {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{self:?}")
+    }
 }

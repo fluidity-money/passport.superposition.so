@@ -1,6 +1,8 @@
 use crate::{
     done_u64,
-    error::{Error, ErrorDiscriminant, ApplyContext},
+    error::{ApplyContext, Error, ErrorDiscriminant},
+    harness_dbg,
+    sigs::make_onboarding_sig,
     Storage, R,
 };
 
@@ -12,11 +14,17 @@ use stylus_sdk::{
 };
 
 impl Storage {
+    fn chain_id(&self) -> u128 {
+        self.vm().chain_id() as u128
+    }
+
     pub fn onboard(
         &mut self,
         key: [u8; 32],
         sig: [u8; 64],
+        contract: [u8; 20],
         nonce: u16,
+        chain: u128,
         token: [u8; 20],
         value: u128,
         deadline: [u8; 32],
@@ -30,22 +38,26 @@ impl Storage {
         // that, we need to add their liquidity using the permit blob that we
         // were given, and an external-facing function to the address they gave
         // us.
+        #[cfg(not(feature = "dryrun"))]
+        if self.chain_id() != chain {
+            return Err(Error::from(ErrorDiscriminant::OnboardDifferentChainId));
+        }
+        if self.vm().contract_address().0 != contract {
+            return Err(Error::from(ErrorDiscriminant::OnboardDifferentContract));
+        }
         let owner = self.vm().msg_sender();
-        let mut addr_and_nonce = [0u8; 20 + 2];
-        addr_and_nonce[..20].copy_from_slice(owner.as_slice());
-        addr_and_nonce[20..].copy_from_slice(&nonce.to_be_bytes());
+        let addr_nonce_chain = make_onboarding_sig(&owner.into_array(), &contract, nonce, chain);
         VerifyingKey::from_bytes(&key)
             .map_err(|_| Error::from(ErrorDiscriminant::BadVerifyingKey))?
-            .verify_strict(&addr_and_nonce, &Signature::from_bytes(&sig))
+            .verify_strict(&addr_nonce_chain, &Signature::from_bytes(&sig))
             .map_err(|_| Error::from(ErrorDiscriminant::BadOnboardingSig))?;
+        harness_dbg!("About to do key count");
         let key_count = u64::from_le_bytes(self.app.ed25519_count.get().to_le_bytes());
         self.app
             .ed25519_count
             .update_check_add(U64::from(1))
-            .ok_or(Error::from(ErrorDiscriminant::CheckedAdd(
+            .ok_or(Error::from(ErrorDiscriminant::CheckedAdd64(
                 ApplyContext::Onboard,
-                u128::from_le_bytes(self.app.ed25519_count.get().to_le_bytes()),
-                1,
             )))?;
         let key = FixedBytes(key);
         self.app.ed25519_keys.setter(key_count).set(key);

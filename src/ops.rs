@@ -13,13 +13,7 @@ use borsh::{BorshDeserialize, BorshSerialize};
 use serde::{Deserialize as SerdeDeserialize, Serialize as SerdeSerialize};
 
 #[derive(BorshDeserialize, BorshSerialize, Clone, PartialEq, Debug)]
-#[cfg_attr(
-    not(target_arch = "wasm32"),
-    derive(
-        SerdeDeserialize,
-        SerdeSerialize
-    )
-)]
+#[cfg_attr(not(target_arch = "wasm32"), derive(SerdeDeserialize, SerdeSerialize))]
 pub enum OpSolver {
     /// Dummy operation.
     Dummy,
@@ -73,7 +67,9 @@ pub enum OpSetter {
     Onboard(
         [u8; 32], // Verifying key
         [u8; 64], // Verifying signature
+        [u8; 20], // Contract
         u16,      // Nonce
+        u128,     // Chain
         [u8; 20], // Token
         u128,     // Value
         [u8; 32], // Deadline
