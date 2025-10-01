@@ -346,6 +346,13 @@ impl From<&Applicative> for ApplicativeLabel {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
+impl std::fmt::Display for Applicative {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", serde_sexpr::to_string(self).unwrap())
+    }
+}
+
 /// User friendly trait for construction of Applicative with types
 /// included in a side effectful way.
 pub trait UserApplicative {
@@ -369,14 +376,6 @@ pub trait UserApplicative {
     ) -> Result<Applicative, Error>;
 
     fn cancel(&self, solver_sig: EdSig, ap: Applicative) -> Result<Applicative, Error>;
-
-    fn commit(
-        &self,
-        solver_sig: EdSig,
-        ms_timestamp: u128,
-        left: Applicative,
-        right: Applicative,
-    ) -> Result<Applicative, Error>;
 
     fn commit_left_filled_to_balance(&self, ap: Applicative) -> Result<Applicative, Error>;
 

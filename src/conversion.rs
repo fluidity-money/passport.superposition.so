@@ -1,8 +1,6 @@
 use crate::{
     applicative::*,
     error::*,
-    immutables::pick_solver_key,
-    network::Network,
     state_machine::{self, StateMachine},
     storage::StorageApplicationV1,
 };
@@ -267,12 +265,12 @@ impl StorageApplicationV1 {
 
     fn validate_commit_left_filled_to_bal(
         &self,
-        n: Network,
+        solver_key: &VerifyingKey,
         accounts: &Vec<u64>,
         ap: &Applicative,
     ) -> Result<state_machine::Balance, Error> {
         let commit = self.validate_wrapped_commit(
-            n,
+            solver_key,
             ApplicativeLabel::CommitLeftFilledToBalance,
             accounts,
             ap,
@@ -288,12 +286,12 @@ impl StorageApplicationV1 {
 
     fn validate_commit_right_filled_to_bal(
         &self,
-        n: Network,
+        solver_key: &VerifyingKey,
         accounts: &Vec<u64>,
         ap: &Applicative,
     ) -> Result<state_machine::Balance, Error> {
         let commit = self.validate_wrapped_commit(
-            n,
+            solver_key,
             ApplicativeLabel::CommitRightFilledToBalance,
             accounts,
             ap,
@@ -309,7 +307,7 @@ impl StorageApplicationV1 {
 
     fn validate_wrapped_balance(
         &self,
-        n: Network,
+        solver_key: &VerifyingKey,
         from: ApplicativeLabel,
         accounts: &Vec<u64>,
         ap: &Applicative,
@@ -317,13 +315,13 @@ impl StorageApplicationV1 {
         match ap {
             Applicative::Balance(sig, args) => self.validate_balance(accounts, sig, args),
             Applicative::CommitLeftFilledToBalance(ap) => {
-                self.validate_commit_left_filled_to_bal(n, accounts, ap)
+                self.validate_commit_left_filled_to_bal(solver_key, accounts, ap)
             }
             Applicative::CommitRightFilledToBalance(ap) => {
-                self.validate_commit_right_filled_to_bal(n, accounts, ap)
+                self.validate_commit_right_filled_to_bal(solver_key, accounts, ap)
             }
             Applicative::Cancel(solver_sig, user_sig, ap) => {
-                self.validate_cancel(n, accounts, solver_sig, user_sig, ap)
+                self.validate_cancel(solver_key, accounts, solver_sig, user_sig, ap)
             }
             _ => Err(err_bad_ap_transition_validate(from, ap)),
         }
@@ -331,13 +329,13 @@ impl StorageApplicationV1 {
 
     fn validate_order(
         &self,
-        n: Network,
+        solver_key: &VerifyingKey,
         accounts: &Vec<u64>,
         (owner_i, owner_sig): &UserSig,
         args: &ArgsOrder,
         ap: &Applicative,
     ) -> Result<state_machine::Order, Error> {
-        let bal = self.validate_wrapped_balance(n, label(ap), accounts, ap)?;
+        let bal = self.validate_wrapped_balance(solver_key, label(ap), accounts, ap)?;
         let bal_hash = get_bal_hash(&bal);
         let owner_id = accounts[*owner_i as usize];
         let o = self.find_ed25519_key(owner_id)?;
@@ -363,12 +361,12 @@ impl StorageApplicationV1 {
 
     fn validate_commit_left_excess_to_order(
         &self,
-        n: Network,
+        solver_key: &VerifyingKey,
         accounts: &Vec<u64>,
         ap: &Applicative,
     ) -> Result<state_machine::Order, Error> {
         let commit = self.validate_wrapped_commit(
-            n,
+            solver_key,
             ApplicativeLabel::CommitLeftExcessToOrder,
             accounts,
             ap,
@@ -384,12 +382,12 @@ impl StorageApplicationV1 {
 
     fn validate_commit_right_excess_to_order(
         &self,
-        n: Network,
+        solver_key: &VerifyingKey,
         accounts: &Vec<u64>,
         ap: &Applicative,
     ) -> Result<state_machine::Order, Error> {
         let commit = self.validate_wrapped_commit(
-            n,
+            solver_key,
             ApplicativeLabel::CommitRightExcessToOrder,
             accounts,
             ap,
@@ -405,18 +403,18 @@ impl StorageApplicationV1 {
 
     fn validate_wrapped_order(
         &self,
-        n: Network,
+        solver_key: &VerifyingKey,
         from: ApplicativeLabel,
         accounts: &Vec<u64>,
         ap: &Applicative,
     ) -> Result<state_machine::Order, Error> {
         match ap {
-            Applicative::Order(sig, args, ap) => self.validate_order(n, accounts, sig, args, ap),
+            Applicative::Order(sig, args, ap) => self.validate_order(solver_key, accounts, sig, args, ap),
             Applicative::CommitLeftExcessToOrder(ap) => {
-                self.validate_commit_left_excess_to_order(n, accounts, ap)
+                self.validate_commit_left_excess_to_order(solver_key, accounts, ap)
             }
             Applicative::CommitRightExcessToOrder(ap) => {
-                self.validate_commit_right_excess_to_order(n, accounts, ap)
+                self.validate_commit_right_excess_to_order(solver_key, accounts, ap)
             }
             _ => Err(err_bad_ap_transition_validate(from, ap)),
         }
@@ -427,7 +425,7 @@ impl StorageApplicationV1 {
     /// machine to do the checking of the amounts and constraints.
     fn validate_commit(
         &self,
-        n: Network,
+        solver_key: &VerifyingKey,
         accounts: &Vec<u64>,
         solver_sig: &EdSig,
         args: &ArgsCommit,
@@ -435,13 +433,13 @@ impl StorageApplicationV1 {
         right: &Applicative,
     ) -> Result<state_machine::Commit, Error> {
         let l = ApplicativeLabel::Commit;
-        let left_order = self.validate_wrapped_order(n, l, accounts, left)?;
-        let right_order = self.validate_wrapped_order(n, l, accounts, right)?;
+        let left_order = self.validate_wrapped_order(solver_key, l, accounts, left)?;
+        let right_order = self.validate_wrapped_order(solver_key, l, accounts, right)?;
         let left_hash = get_order_hash(&left_order);
         let right_hash = get_order_hash(&right_order);
         let d = check_sig(
             ApplicativeLabel::Commit,
-            &pick_solver_key(n),
+            solver_key,
             solver_sig,
             &digest_inplace::<_, { size_of::<ArgsCommit>() }>(args),
             &chain_digests(&left_hash, &right_hash),
@@ -463,14 +461,14 @@ impl StorageApplicationV1 {
     /// Does not do any validation except validate the contained value.
     fn validate_wrapped_commit(
         &self,
-        n: Network,
+        solver_key: &VerifyingKey,
         from: ApplicativeLabel,
         accounts: &Vec<u64>,
         ap: &Applicative,
     ) -> Result<state_machine::Commit, Error> {
         match ap {
             Applicative::Commit(sig, args, left, right) => {
-                self.validate_commit(n, accounts, sig, args, left, right)
+                self.validate_commit(solver_key, accounts, sig, args, left, right)
             }
             _ => Err(err_bad_ap_transition_validate(from, ap)),
         }
@@ -482,7 +480,7 @@ impl StorageApplicationV1 {
     /// an amount that should be redeemed to the user by the contract.
     fn validate_withdraw(
         &self,
-        n: Network,
+        solver_key: &VerifyingKey,
         accounts: &Vec<u64>,
         solver_sig: &EdSig,
         (owner_i, owner_sig): &UserSig,
@@ -491,13 +489,13 @@ impl StorageApplicationV1 {
         // Since the argument to the right isn't known in the type here, we
         // validate the signature, and we feed the computed digest into a
         // concatenation here.
-        let bal = self.validate_wrapped_balance(n, label(ap), accounts, ap)?;
+        let bal = self.validate_wrapped_balance(solver_key, label(ap), accounts, ap)?;
         let bal_hash = get_bal_hash(&bal);
         let owner_id = accounts[*owner_i as usize];
         let o = self.find_ed25519_key(owner_id)?;
         let d = check_sig_two(
             ApplicativeLabel::Withdraw,
-            &pick_solver_key(n),
+            solver_key,
             solver_sig,
             &o,
             owner_sig,
@@ -512,19 +510,19 @@ impl StorageApplicationV1 {
 
     fn validate_cancel(
         &self,
-        n: Network,
+        solver_key: &VerifyingKey,
         accounts: &Vec<u64>,
         solver_sig: &EdSig,
         (owner_i, owner_sig): &UserSig,
         ap: &Applicative,
     ) -> Result<state_machine::Balance, Error> {
-        let order = self.validate_wrapped_order(n, ApplicativeLabel::Cancel, accounts, ap)?;
+        let order = self.validate_wrapped_order(solver_key, ApplicativeLabel::Cancel, accounts, ap)?;
         let order_hash = get_order_hash(&order);
         let owner_id = accounts[*owner_i as usize];
         let o = self.find_ed25519_key(owner_id)?;
         let d = check_sig_two(
             ApplicativeLabel::Cancel,
-            &pick_solver_key(n),
+            solver_key,
             solver_sig,
             &o,
             owner_sig,
@@ -539,15 +537,15 @@ impl StorageApplicationV1 {
 
     fn validate_join(
         &self,
-        n: Network,
+        solver_key: &VerifyingKey,
         accounts: &Vec<u64>,
         (owner_i, owner_sig): &UserSig,
         left: &Applicative,
         right: &Applicative,
     ) -> Result<state_machine::Balance, Error> {
         let l = ApplicativeLabel::Join;
-        let left_bal = self.validate_wrapped_balance(n, l, accounts, left)?;
-        let right_bal = self.validate_wrapped_balance(n, l, accounts, right)?;
+        let left_bal = self.validate_wrapped_balance(solver_key, l, accounts, left)?;
+        let right_bal = self.validate_wrapped_balance(solver_key, l, accounts, right)?;
         let left_hash = get_bal_hash(&left_bal);
         let right_hash = get_bal_hash(&right_bal);
         let owner_id = accounts[*owner_i as usize];
@@ -571,7 +569,7 @@ impl StorageApplicationV1 {
     /// validation stage.
     pub fn validate(
         &self,
-        n: Network,
+        solver_key: &VerifyingKey,
         accounts: &Vec<u64>,
         ap: Applicative,
     ) -> Result<StateMachine, Error> {
@@ -580,31 +578,31 @@ impl StorageApplicationV1 {
                 self.validate_balance(accounts, &sig, &args)?,
             )),
             Applicative::Withdraw(solver_sig, user_sig, _, ap) => Ok(StateMachine::Withdraw(
-                self.validate_withdraw(n, accounts, &solver_sig, &user_sig, &ap)?,
+                self.validate_withdraw(solver_key, accounts, &solver_sig, &user_sig, &ap)?,
             )),
             Applicative::Order(user_sig, args, ap) => Ok(StateMachine::Order(
-                self.validate_order(n, accounts, &user_sig, &args, &ap)?,
+                self.validate_order(solver_key, accounts, &user_sig, &args, &ap)?,
             )),
             Applicative::Cancel(solver_sig, user_sig, ap) => Ok(StateMachine::Balance(
-                self.validate_cancel(n, accounts, &solver_sig, &user_sig, &ap)?,
+                self.validate_cancel(solver_key, accounts, &solver_sig, &user_sig, &ap)?,
             )),
             Applicative::Commit(solver_sig, args, ap1, ap2) => Ok(StateMachine::Commit(
-                self.validate_commit(n, accounts, &solver_sig, &args, &ap1, &ap2)?,
+                self.validate_commit(solver_key, accounts, &solver_sig, &args, &ap1, &ap2)?,
             )),
             Applicative::CommitLeftFilledToBalance(ap) => Ok(StateMachine::Balance(
-                self.validate_commit_left_filled_to_bal(n, accounts, &ap)?,
+                self.validate_commit_left_filled_to_bal(solver_key, accounts, &ap)?,
             )),
             Applicative::CommitRightFilledToBalance(ap) => Ok(StateMachine::Balance(
-                self.validate_commit_right_filled_to_bal(n, accounts, &ap)?,
+                self.validate_commit_right_filled_to_bal(solver_key, accounts, &ap)?,
             )),
             Applicative::CommitLeftExcessToOrder(ap) => Ok(StateMachine::Order(
-                self.validate_commit_left_excess_to_order(n, accounts, &ap)?,
+                self.validate_commit_left_excess_to_order(solver_key, accounts, &ap)?,
             )),
             Applicative::CommitRightExcessToOrder(ap) => Ok(StateMachine::Order(
-                self.validate_commit_right_excess_to_order(n, accounts, &ap)?,
+                self.validate_commit_right_excess_to_order(solver_key, accounts, &ap)?,
             )),
             Applicative::Join(user_sig, left, right) => Ok(StateMachine::Balance(
-                self.validate_join(n, accounts, &user_sig, &left, &right)?,
+                self.validate_join(solver_key, accounts, &user_sig, &left, &right)?,
             )),
         }
     }

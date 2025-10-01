@@ -15,7 +15,8 @@ This form lacks the hash, and the signature. This form is used alongside the sol
 function to create the solved recipe form, that can be converted to calldata. Examples
 live in this directory. The signer's string identifier is included in each step, and is
 used by the offline tool to use the signer to drop in the signatures where appropriate. If
-a solver is not found, then the program will fail.
+a signer is not found, the program will fail. When the conversion happens, it should use
+the signing key.
 
 ## Solved recipes (.spp)
 

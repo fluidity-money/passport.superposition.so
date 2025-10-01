@@ -4,7 +4,8 @@ use libpassport::{
     entry,
     ops::OpSolver,
     {DONE_UNIT, NOOP},
-    network::Network
+    network::Network,
+    immutables::pick_solver_key
 };
 
 use borsh::BorshDeserialize;
@@ -15,7 +16,7 @@ pub unsafe extern "C" fn user_entrypoint(len: usize) -> usize {
         OpSolver::Dummy => NOOP,
         OpSolver::Solve(accounts, args) => s
             .app
-            .validate(Network::MAINNET, &accounts, args)
+            .validate(&pick_solver_key(Network::MAINNET), &accounts, args)
             .and_then(|x| s.app.apply(x))
             .and_then(|_| DONE_UNIT),
     })

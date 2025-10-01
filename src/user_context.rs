@@ -4,13 +4,13 @@ use stylus_sdk::alloy_primitives::Address;
 
 use crate::{
     applicative::{
-        Applicative, ArgsBalance, ArgsCommit, ArgsOrder, Asset, EdSig, UserApplicative, U128,
+        Applicative, ArgsBalance, ArgsOrder, Asset, EdSig, UserApplicative, U128,
     },
     conversion::*,
     error::Error,
 };
 
-use alloc::{boxed::Box, vec, vec::Vec};
+use alloc::boxed::Box;
 
 /// This code implements crypto's UserApplicative trait, to provide a
 /// user-friendly vehicle to construct the Applicative type including
@@ -18,20 +18,18 @@ use alloc::{boxed::Box, vec, vec::Vec};
 /// table, which it provides during the conversion of this type to
 /// the state machine type.
 pub struct UserContext {
-    pub place: u8,
-    pub accounts: Vec<u64>,
     pub signer: SigningKey,
+    pub place: u8,
 }
 
 impl UserContext {
+    pub fn new_from_key(signer: SigningKey, place: u8) -> Self {
+        UserContext { signer, place }
+    }
+
     /// Create a new Accounts and register the Signer given.
-    pub fn new_from_bytes(signer_b: &[u8; 32], place: u64) -> Self {
-        let key = SigningKey::from_bytes(signer_b);
-        UserContext {
-            signer: key,
-            accounts: vec![place],
-            place: 0,
-        }
+    pub fn new_from_bytes(signer_b: &[u8; 32], place: u8) -> Self {
+        UserContext::new_from_key(SigningKey::from_bytes(signer_b), place)
     }
 }
 
@@ -92,24 +90,6 @@ impl UserApplicative for UserContext {
             solver_sig,
             (self.place, sign_cancel(&self.signer, &ap)?),
             Box::new(ap),
-        ))
-    }
-
-    fn commit(
-        &self,
-        solver_sig: EdSig,
-        ms_timestamp: u128,
-        left: Applicative,
-        right: Applicative,
-    ) -> Result<Applicative, Error> {
-        let args = ArgsCommit {
-            ms_timestamp: U128(ms_timestamp),
-        };
-        Ok(Applicative::Commit(
-            solver_sig,
-            args,
-            Box::new(left),
-            Box::new(right),
         ))
     }
 
