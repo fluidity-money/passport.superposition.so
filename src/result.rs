@@ -1,5 +1,7 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 
+use alloc::vec::Vec;
+
 /// End result return results of the user-facing kind.
 #[derive(BorshSerialize, BorshDeserialize, Debug, Clone)]
 pub enum Res {
@@ -14,6 +16,12 @@ pub enum Res {
 
     /// A number was returned alongside correct execution.
     DoneU128(u128)
+}
+
+impl From<Res> for Vec<u8> {
+    fn from(r: Res) -> Self {
+        borsh::to_vec(&r).unwrap()
+    }
 }
 
 impl core::fmt::Display for Res {

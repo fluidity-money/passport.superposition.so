@@ -273,6 +273,12 @@ impl borsh::de::BorshDeserialize for Error {
     }
 }
 
+impl From<Error> for Vec<u8> {
+    fn from(x: Error) -> Self {
+        borsh::to_vec(&x).unwrap()
+    }
+}
+
 impl core::fmt::Debug for Error {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
         let mut d = f.debug_struct("Error");

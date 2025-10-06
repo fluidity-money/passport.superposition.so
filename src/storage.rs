@@ -1,8 +1,6 @@
 use stylus_sdk::{alloy_primitives::*, prelude::*, storage::*};
 
-use crate::error::{
-    ApplyContext, Error, ErrorDiscriminant,
-};
+use crate::error::{ApplyContext, Error, ErrorDiscriminant};
 
 #[cfg(feature = "std")]
 use crate::error::{ErrorInterimAccessContext, ErrorTestInterimDetails};
@@ -22,11 +20,6 @@ pub struct StorageBucket {
     /// The amount of the spendable asset in this bucket.
     pub amt: U128,
 }
-
-/// Storage for amounts available for spending at a timestamp. Is owner
-/// => asset => timestamp => amount.
-pub type StorageTickets =
-    StorageMap<Address, StorageMap<Address, StorageMap<FixedBytes<32>, StorageU128>>>;
 
 // Testing storage that's used for offline testing context.
 #[storage]
@@ -48,12 +41,21 @@ thread_local! {
 #[cfg(target_arch = "wasm32")]
 pub struct StorageTest;
 
+#[repr(u8)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum TransitiveType {
+    INTERIM,
+    ORDER,
+}
+
+impl Into<u8> for TransitiveType {
+    fn into(self) -> u8 {
+        self as u8
+    }
+}
+
 #[storage]
 pub struct StorageApplicationV1 {
-    // It's very important that this contains nothing during a on-chain
-    // deployment.
-    pub test_eip20: StorageTest,
-
     // Count of the number of seen addresses, that we use our shortened
     // accounts list form to look up. We use this instead of a map so we can
     // use a u64 instead of the native wasm word (u32).
@@ -65,14 +67,16 @@ pub struct StorageApplicationV1 {
     // Owners of the offset of these addresses, using the ed25519 signatures.
     pub ed25519_owners: StorageMap<u64, StorageAddress>,
 
-    /// Outstanding orders that could be used in another part of the operation.
-    pub orders: StorageTickets,
+    /// Transitive state that could be a part of an operation. If the field used is true,
+    /// Storage for amounts available for spending at a timestamp. Is owner =>
+    /// TRANSITIVE_TYPE => asset => timestamp => amount.
+    pub transitive: StorageMap<
+        Address,
+        StorageMap<Address, StorageMap<u8, StorageMap<FixedBytes<32>, StorageU128>>>,
+    >,
 
     /// Amounts that could be withdrawn from the system. Owner => asset => amount.
     pub withdrawable: StorageMap<Address, StorageMap<Address, StorageU128>>,
-
-    /// Interim balances that make up Balances.
-    pub interim: StorageTickets,
 
     /// The owner of the left side of the hash given. It should not be zero.
     pub details_hash_owner_l: StorageMap<FixedBytes<32>, StorageAddress>,
@@ -88,12 +92,20 @@ pub struct StorageApplicationV1 {
 
     /// The desired asset by the order at this hash on its own.
     pub details_hash_order_desired_amt: StorageMap<FixedBytes<32>, StorageU128>,
+
+    // It's very important that this contains nothing during a on-chain
+    // deployment.
+    pub test_eip20: StorageTest,
 }
 
 #[storage]
+#[cfg(feature = "storage-gen-admin")]
 pub struct StorageAdminV1 {
     pub owner: StorageAddress,
 }
+
+#[storage]
+pub struct StorageAdminV1;
 
 /// Toplevel storage for the entire application. TODO: figure out how to
 /// set offsets for each storage accessor here, then comment out the bits
@@ -199,15 +211,22 @@ impl StorageApplicationV1 {
 
     pub fn get_interim(&self, owner: Address, asset: Address, h: &[u8; 64]) -> u128 {
         u128::from_be_bytes(
-            self.interim
+            self.transitive
                 .getter(owner)
                 .getter(asset)
+                .get(TransitiveType::INTERIM.into())
                 .get(FixedBytes::from_slice(&h[..32]))
                 .to_be_bytes(),
         )
     }
 
-    pub fn test_tag_hashes(&self, _x: &[u8; 64], _owner: Address, _asset: Address, e: Error) -> Error {
+    pub fn test_tag_hashes(
+        &self,
+        _x: &[u8; 64],
+        _owner: Address,
+        _asset: Address,
+        e: Error,
+    ) -> Error {
         #[cfg(feature = "std")]
         let e = SEEN_HASHES.with(|h| {
             let mut h = h.borrow_mut();
@@ -241,12 +260,22 @@ impl StorageApplicationV1 {
         y: u128,
     ) -> Result<(), Error> {
         let h = FixedBytes::from_slice(&hx[..32]);
-        let x = self.interim.getter(owner).getter(asset).get(h);
+        let x = self
+            .transitive
+            .getter(owner)
+            .getter(asset)
+            .getter(TransitiveType::INTERIM.into())
+            .get(h);
         let e = self.test_tag_hashes(hx, owner, asset, err_checked_add(ctx, x, y));
-        self.interim.setter(owner).setter(asset).setter(h).set(
-            x.checked_add(U128::from_le_bytes(y.to_le_bytes()))
-                .ok_or(e)?,
-        );
+        self.transitive
+            .setter(owner)
+            .setter(asset)
+            .setter(TransitiveType::INTERIM.into())
+            .setter(h)
+            .set(
+                x.checked_add(U128::from_le_bytes(y.to_le_bytes()))
+                    .ok_or(e)?,
+            );
         Ok(())
     }
 
@@ -259,12 +288,22 @@ impl StorageApplicationV1 {
         y: u128,
     ) -> Result<(), Error> {
         let h = FixedBytes::from_slice(&hx[..32]);
-        let x = self.interim.getter(owner).getter(asset).get(h);
+        let x = self
+            .transitive
+            .getter(owner)
+            .getter(asset)
+            .getter(TransitiveType::INTERIM.into())
+            .get(h);
         let e = self.test_tag_hashes(hx, owner, asset, err_checked_sub(ctx, x, y));
-        self.interim.setter(owner).setter(asset).setter(h).set(
-            x.checked_sub(U128::from_le_bytes(y.to_le_bytes()))
-                .ok_or(e)?,
-        );
+        self.transitive
+            .setter(owner)
+            .setter(asset)
+            .setter(TransitiveType::INTERIM.into())
+            .setter(h)
+            .set(
+                x.checked_sub(U128::from_le_bytes(y.to_le_bytes()))
+                    .ok_or(e)?,
+            );
         Ok(())
     }
 
@@ -300,7 +339,14 @@ impl StorageApplicationV1 {
 
     pub fn get_order(&self, owner: Address, asset: Address, h: &[u8; 64]) -> u128 {
         let h = FixedBytes::from_slice(&h[..32]);
-        u128::from_be_bytes(self.orders.getter(owner).getter(asset).get(h).to_be_bytes())
+        u128::from_be_bytes(
+            self.transitive
+                .getter(owner)
+                .getter(asset)
+                .getter(TransitiveType::ORDER.into())
+                .get(h)
+                .to_be_bytes(),
+        )
     }
 
     pub fn increase_order(
@@ -312,11 +358,21 @@ impl StorageApplicationV1 {
         y: u128,
     ) -> Result<(), Error> {
         let h = FixedBytes::from_slice(&h[..32]);
-        let x = self.orders.getter(owner).getter(asset).get(h);
-        self.orders.setter(owner).setter(asset).setter(h).set(
-            x.checked_add(U128::from_le_bytes(y.to_le_bytes()))
-                .ok_or(err_checked_add(ctx, x, y))?,
-        );
+        let x = self
+            .transitive
+            .getter(owner)
+            .getter(asset)
+            .getter(TransitiveType::ORDER.into())
+            .get(h);
+        self.transitive
+            .setter(owner)
+            .setter(asset)
+            .setter(TransitiveType::ORDER.into())
+            .setter(h)
+            .set(
+                x.checked_add(U128::from_le_bytes(y.to_le_bytes()))
+                    .ok_or(err_checked_add(ctx, x, y))?,
+            );
         Ok(())
     }
 
@@ -329,11 +385,21 @@ impl StorageApplicationV1 {
         y: u128,
     ) -> Result<(), Error> {
         let h = FixedBytes::from_slice(&h[..32]);
-        let x = self.orders.getter(owner).getter(asset).get(h);
-        self.orders.setter(owner).setter(asset).setter(h).set(
-            x.checked_sub(U128::from_le_bytes(y.to_le_bytes()))
-                .ok_or(err_checked_sub(ctx, x, y))?,
-        );
+        let x = self
+            .transitive
+            .getter(owner)
+            .getter(asset)
+            .getter(TransitiveType::ORDER.into())
+            .get(h);
+        self.transitive
+            .setter(owner)
+            .setter(asset)
+            .setter(TransitiveType::ORDER.into())
+            .setter(h)
+            .set(
+                x.checked_sub(U128::from_le_bytes(y.to_le_bytes()))
+                    .ok_or(err_checked_sub(ctx, x, y))?,
+            );
         Ok(())
     }
 }

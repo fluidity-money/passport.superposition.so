@@ -1,0 +1,8 @@
+#!/usr/bin/env rc
+
+if(test `{du $1 | cut -f1} -gt 70) {
+	echo $1 too large >[2=1]
+	exit 1
+}
+
+exit 0

@@ -1,12 +1,12 @@
 #![cfg_attr(target_arch = "wasm32", no_main, no_std)]
 
-use libpassport::{entry, ops::OpSetter, DONE_UNIT};
+use libpassport::{entry_non_reentrant, ops::OpSetter, DONE_UNIT};
 
 use borsh::BorshDeserialize;
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn user_entrypoint(len: usize) -> usize {
-    entry(len, |s, args| match OpSetter::deserialize(args).unwrap() {
+    entry_non_reentrant(len, |s, args| match OpSetter::deserialize(args).unwrap() {
         OpSetter::Dummy => DONE_UNIT,
         OpSetter::Onboard(
             key,

@@ -280,8 +280,6 @@ pub enum ApplicativeLabel {
     CommitLeftExcessToOrder,
     CommitRightExcessToOrder,
     Join,
-    DppmMint,
-    DppmBurn,
 }
 
 #[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq, Debug)]
@@ -341,10 +339,6 @@ pub enum Applicative {
     /// Join two balances together.
     /// (Balance|Cancel|CommitLeftFilledToBalance|CommitRightFilledToBalance).
     Join(UserSig, Box<Applicative>, Box<Applicative>),
-    /// Mint some shares using the DPPM for a market given.
-    DppmMint(UserSig, DppmNonce, DppmMintArgs, Box<Applicative>),
-    /// Burn some shares.
-    DppmBurn(UserSig, DppmNonce, DppmBurnArgs, Box<Applicative>),
 }
 
 impl From<&Applicative> for ApplicativeLabel {
@@ -364,8 +358,6 @@ impl From<&Applicative> for ApplicativeLabel {
             Applicative::CommitLeftExcessToOrder(_) => ApplicativeLabel::CommitLeftExcessToOrder,
             Applicative::CommitRightExcessToOrder(_) => ApplicativeLabel::CommitRightExcessToOrder,
             Applicative::Join(_, _, _) => ApplicativeLabel::Join,
-            Applicative::DppmMint(_,  _, _, __) => ApplicativeLabel::DppmMint,
-            Applicative::DppmBurn(_, _, _, _) => ApplicativeLabel::DppmBurn,
         }
     }
 }

@@ -43,8 +43,6 @@ pub use stylus_panic;
 #[cfg(target_arch = "wasm32")]
 use stylus_sdk::prelude::CalldataAccess;
 
-use crate::facet::Facet;
-
 pub use crate::{
     error::{done_u64, DONE_UNIT, NOOP, R},
     storage::Storage,
@@ -57,7 +55,7 @@ use alloc::boxed::Box;
 #[link(wasm_import_module = "vm_hooks")]
 #[allow(unused)]
 extern "C" {
-    fn pay_for_memory_grow(pages: u16);
+    pub(crate) fn pay_for_memory_grow(pages: u16);
 }
 
 #[cfg(all(target_arch = "wasm32", not(feature = "dryrun")))]
@@ -84,7 +82,7 @@ pub const REENTRANCY_CANARY: [u8; 32] = match const_hex::const_decode_to_array(
 };
 
 #[cfg(all(target_arch = "wasm32", not(feature = "dryrun")))]
-fn is_reentrancy() -> bool {
+pub fn is_reentrancy() -> bool {
     let mut b = [0u8; 32];
     unsafe {
         transient_load_bytes32(REENTRANCY_CANARY.as_ptr(), b.as_mut_ptr());
@@ -93,7 +91,7 @@ fn is_reentrancy() -> bool {
 }
 
 #[cfg(any(not(target_arch = "wasm32"), feature = "dryrun"))]
-fn is_reentrancy() -> bool {
+pub fn is_reentrancy() -> bool {
     false
 }
 
@@ -108,14 +106,10 @@ fn set_reentrancy_flag() {
 #[cfg(any(not(target_arch = "wasm32"), feature = "dryrun"))]
 fn set_reentrancy_flag() {}
 
-fn is_reentrant_facet(x: &Facet) -> bool {
-    match x {
-        Facet::UserSolver | Facet::UserSetter | Facet::UserAdmin => false,
-        Facet::ReentrantVault => true,
-    }
-}
-
-pub fn entry(len: usize, simulate: impl FnOnce(&mut Storage, &mut &[u8]) -> R) -> usize {
+pub fn entry_non_reentrant(
+    len: usize,
+    simulate: impl FnOnce(&mut Storage, &mut &[u8]) -> R,
+) -> usize {
     #[cfg(target_arch = "wasm32")]
     let vm = stylus_sdk::host::VM(stylus_sdk::host::WasmVM {});
     #[cfg(not(target_arch = "wasm32"))]
@@ -126,30 +120,13 @@ pub fn entry(len: usize, simulate: impl FnOnce(&mut Storage, &mut &[u8]) -> R) -
     let args = vm.read_args(len);
     #[cfg(not(target_arch = "wasm32"))]
     let args = vm.host.read_args(len);
-    // Make sure we skip the first byte, which we assume is the magic byte
-    // that was used to do the contract indirection using the proxy contract.
-    // Note that everything after the admin facet is considered a reentrant facet.
-    let f = Facet::try_from(args[0]).unwrap();
-    let are_we_reentrant = is_reentrancy();
-    // Check the reentrancy canary to see if we're inside a facet that can be
-    // used this way.
-    if are_we_reentrant && !is_reentrant_facet(&f) {
+    // Blow up if we're reentrant! If someone is using this, they should
+    // not tolerate reentrancy.
+    if is_reentrancy() {
         // Roll back the state, we shouldn't be here!
         return 1;
     }
     set_reentrancy_flag();
-    let mut args = if is_reentrant_facet(&f) {
-        // The reentrant calldata should be a single byte for the complex type
-        // here, so we can avoid lots of overhead. The reentrant code should load
-        // its parameters using transient storage.
-        &args[1..]
-    } else {
-        &OurLzss::decompress_stack(
-            lzss::SliceReader::new(&args[1..]),
-            lzss::VecWriter::with_capacity(1024 * 10),
-        )
-        .unwrap()
-    };
     #[allow(unused_mut)]
     let mut s = unsafe {
         <Storage as stylus_sdk::storage::StorageType>::new(
@@ -158,9 +135,18 @@ pub fn entry(len: usize, simulate: impl FnOnce(&mut Storage, &mut &[u8]) -> R) -
             vm,
         )
     };
-    let r = simulate(&mut s, &mut args);
+    let r = simulate(
+        &mut s,
+        &mut OurLzss::decompress_stack(
+            lzss::SliceReader::new(&args[1..]),
+            lzss::VecWriter::with_capacity(1024 * 10),
+        )
+        .unwrap()
+        .as_slice()
+    );
     let rd = match r {
-        Ok(ref _result) => {
+        Ok(ref _result) =>
+        {
             #[allow(unreachable_code)]
             0
         }

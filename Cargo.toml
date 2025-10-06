@@ -18,10 +18,15 @@ path = "src/contract-setter/main.rs"
 [[bin]]
 name = "contract-admin"
 path = "src/contract-admin/main.rs"
+required-features = ["storage-gen-admin"]
 
 [[bin]]
 name = "contract-vault"
 path = "src/contract-vault/main.rs"
+
+[[bin]]
+name = "contract-apply"
+path = "src/contract-apply/main.rs"
 
 [[bin]]
 name = "webapp"
@@ -67,7 +72,6 @@ mutants = "0.0.3"
 sha2 = { version = "0.10.9", default-features = false }
 subtle = { version = "2.6.1", default-features = false }
 ed25519-dalek = { version = "2.1.1", default-features = false, features = ["digest"] }
-lazy_static = { version = "1.5.0", features = ["spin_no_std"] }
 serde_sexpr = "0.1.0"
 cfg-if = "1.0.3"
 stylus-panic = "0.3.0"
@@ -106,3 +110,4 @@ contract-client-gen = []
 network-mainnet = []
 network-testnet = []
 network-custom = []
+storage-gen-admin = []

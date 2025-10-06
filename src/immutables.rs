@@ -2,28 +2,16 @@ use crate::network::Network;
 
 use ed25519_dalek::{SigningKey, VerifyingKey};
 
-use lazy_static::lazy_static;
-
-lazy_static! {
-    pub static ref SOLVER_KEY_CUSTOM: VerifyingKey =
-        VerifyingKey::from_bytes(&match const_hex::decode_to_array(
-            "5cdfa3ae862129a3c95632940ee7104251556e86fec098a246a2a1178d206bc9"
-        ) {
-            Ok(v) => v,
-            _ => panic!(),
-        })
-        .expect("bad offline verifyingkey");
-    pub static ref SOLVER_KEY_TESTNET: VerifyingKey =
-        VerifyingKey::from_bytes(&[0u8; 32]).expect("bad testnet verifyingkey");
-    pub static ref SOLVER_KEY_MAINNET: VerifyingKey =
-        VerifyingKey::from_bytes(&[1u8; 32]).expect("bad mainnet verifyingkey");
-}
-
 pub fn pick_solver_key(n: Network) -> VerifyingKey {
     match n {
-        Network::CUSTOM => *SOLVER_KEY_CUSTOM,
-        Network::TESTNET => *SOLVER_KEY_TESTNET,
-        Network::MAINNET => *SOLVER_KEY_MAINNET,
+        Network::CUSTOM => VerifyingKey::from_bytes(&[
+            0x5c, 0xdf, 0xa3, 0xae, 0x86, 0x21, 0x29, 0xa3, 0xc9, 0x56, 0x32, 0x94, 0x0e, 0xe7,
+            0x10, 0x42, 0x51, 0x55, 0x6e, 0x86, 0xfe, 0xc0, 0x98, 0xa2, 0x46, 0xa2, 0xa1, 0x17,
+            0x8d, 0x20, 0x6b, 0xc9,
+        ])
+        .unwrap(),
+        Network::TESTNET => VerifyingKey::from_bytes(&[0u8; 32]).unwrap(),
+        Network::MAINNET => VerifyingKey::from_bytes(&[1u8; 32]).unwrap(),
     }
 }
 

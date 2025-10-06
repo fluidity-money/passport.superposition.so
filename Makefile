@@ -19,7 +19,7 @@ CARGO_BIN_WASM32 := \
 
 CARGO_BUILD_NATIVE := cargo build --release
 
-RELEASE_PASSPORT_WASM := \
+WASMOPT_PASSPORT := \
 	wasm-opt \
 		--dce \
 		--rse \
@@ -27,6 +27,7 @@ RELEASE_PASSPORT_WASM := \
 		--strip-debug \
 		--enable-bulk-memory \
 		--strip-producers \
+		--strip \
 		-Oz
 
 RELEASE_WASM := target/wasm32-unknown-unknown/release
@@ -34,8 +35,6 @@ RELEASE_WASM := target/wasm32-unknown-unknown/release
 all: build
 
 .PHONY: build wasm all
-
-OUT_SHARE := out/Share.sol/Share.json
 
 wasm: \
 	solver.passport-superposition-so.wasm \
@@ -48,30 +47,34 @@ build: wasm passport-cli
 solver.passport-superposition-so.wasm: $(shell find src -type f -name '*.rs')
 	@rm -f solver.passport-superposition-so.wasm
 	@${CARGO_BIN_WASM32}
-	@${RELEASE_PASSPORT_WASM} \
+	@${WASMOPT_PASSPORT} \
 		${RELEASE_WASM}/contract-solver.wasm \
 		-o solver.passport-superposition-so.wasm
+	@./check-codesize.rc solver.passport-superposition-so.wasm
 
 setter.passport-superposition-so.wasm: $(shell find src -type f -name '*.rs')
 	@rm -f setter.passport-superposition-so.wasm
 	@${CARGO_BIN_WASM32}
-	@${RELEASE_PASSPORT_WASM} \
+	@${WASMOPT_PASSPORT} \
 		${RELEASE_WASM}/contract-setter.wasm \
 		-o setter.passport-superposition-so.wasm
+	@./check-codesize.rc setter.passport-superposition-so.wasm
 
 admin.passport-superposition-so.wasm: $(shell find src -type f -name '*.rs')
 	@rm -f admin.passport-superposition-so.wasm
 	@${CARGO_BIN_WASM32}
-	@${RELEASE_PASSPORT_WASM} \
+	@${WASMOPT_PASSPORT} \
 		${RELEASE_WASM}/contract-admin.wasm \
 		-o admin.passport-superposition-so.wasm
+	@./check-codesize.rc admin.passport-superposition-so.wasm
 
 vault.passport-superposition-so.wasm: $(shell find src -type f -name '*.rs')
 	@rm -f vault.passport-superposition-so.wasm
 	@${CARGO_BIN_WASM32}
-	@${RELEASE_PASSPORT_WASM} \
+	@${WASMOPT_PASSPORT} \
 		${RELEASE_WASM}/contract-vault.wasm \
 		-o vault.passport-superposition-so.wasm
+	@./check-codesize.rc vault.passport-superposition-so.wasm
 
 passport-cli: $(shell find src -type f -name '*.rs')
 	@rm -f passport-cli
@@ -84,6 +87,4 @@ clean:
 		setter.passport-superposition-so.wasm \
 		admin.passport-superposition-so.wasm \
 		vault.passport-superposition-so.wasm \
-		liblib9lives.rlib \
-		ninelives.wasm \
 		target

@@ -7,7 +7,7 @@ use crate::{
 
 use alloc::vec::Vec;
 
-use stylus_sdk::alloy_primitives::{Address, FixedBytes};
+use stylus_sdk::alloy_primitives::FixedBytes;
 
 use borsh::BorshSerialize;
 
@@ -255,8 +255,8 @@ impl StorageApplicationV1 {
         Ok(state_machine::Balance::Inline(
             state_machine::BalanceArgs {
                 ms_ts: args.ms_timestamp.0,
-                owner: self.find_ed25519_addr(owner_id)?,
-                asset: Address::new(args.asset.0),
+                owner: *self.find_ed25519_addr(owner_id)?.0,
+                asset: args.asset.0,
                 amt: args.amount.0,
             },
             h,
@@ -348,7 +348,7 @@ impl StorageApplicationV1 {
         )?;
         Ok(state_machine::Order::Inline(
             state_machine::OrderArgs {
-                desired_asset: Address::new(args.desired_asset.0),
+                desired_asset: args.desired_asset.0,
                 from_amt: args.from_amt.0,
                 desired_amt: args.desired_amt.0,
                 max_pol_fee: 0,              // TODO
@@ -607,7 +607,6 @@ impl StorageApplicationV1 {
             Applicative::Join(user_sig, left, right) => Ok(StateMachine::Balance(
                 self.validate_join(solver_key, accounts, &user_sig, &left, &right)?,
             )),
-            Applicative::DppmMint(_, _, _, _) | Applicative::DppmBurn(_, _, _, _) => todo!(),
         }
     }
 }

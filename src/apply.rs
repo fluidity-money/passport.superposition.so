@@ -47,7 +47,7 @@ impl StorageApplicationV1 {
 
     pub fn balance_owner(&self, b: &Balance) -> Address {
         match b {
-            Balance::Inline(BalanceArgs { owner, .. }, _) => owner.clone(),
+            Balance::Inline(BalanceArgs { owner, .. }, _) => Address::from(owner),
             Balance::Onchain(h) => self.get_hash_owner_l(h),
             Balance::CommitLeftFilledToBal(c, _) => self.commit_left_owner(c),
             Balance::CommitRightFilledToBal(c, _) => self.commit_right_owner(c),
@@ -195,7 +195,7 @@ impl StorageApplicationV1 {
 
     pub fn balance_asset(&self, b: &Balance) -> Address {
         match b {
-            Balance::Inline(BalanceArgs { asset, .. }, _) => *asset,
+            Balance::Inline(BalanceArgs { asset, .. }, _) => Address::from(asset),
             Balance::Onchain(h) => self.get_hash_asset_l(h),
             Balance::CommitLeftFilledToBal(c, _) => self.commit_right_asset(c),
             Balance::CommitRightFilledToBal(c, _) => self.commit_left_asset(c),
@@ -243,7 +243,7 @@ impl StorageApplicationV1 {
 
     pub fn order_desired_asset(&self, o: &Order) -> Address {
         match o {
-            Order::Inline(OrderArgs { desired_asset, .. }, _, _) => *desired_asset,
+            Order::Inline(OrderArgs { desired_asset, .. }, _, _) => Address::from(desired_asset),
             Order::Onchain(h) => self.get_hash_asset_r(h),
             Order::CommitLeftExcessToOrder(c, _) => self.commit_left_desired_asset(c),
             Order::CommitRightExcessToOrder(c, _) => self.commit_right_desired_asset(c),

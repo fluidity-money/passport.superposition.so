@@ -15,8 +15,6 @@ use serde::{Deserialize as SerdeDeserialize, Serialize as SerdeSerialize};
 #[derive(BorshDeserialize, BorshSerialize, Clone, PartialEq, Debug)]
 #[cfg_attr(feature = "std", derive(SerdeDeserialize, SerdeSerialize))]
 pub enum OpSolver {
-    /// Dummy operation.
-    Dummy,
     // The recursive datatype entrypoint that represents the rolled up form
     // of every interaction. Each excess value creates a new value that could be
     // spent in the same transaction, or committed to the reusable pool of
