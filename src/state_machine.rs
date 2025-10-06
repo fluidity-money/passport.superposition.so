@@ -1,7 +1,5 @@
 use borsh::{BorshSerialize, BorshDeserialize};
 
-use alloc::boxed::Box;
-
 pub type Hash = [u8; 64];
 
 #[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize)]
@@ -10,27 +8,6 @@ pub struct BalanceArgs {
     pub owner: [u8; 20],
     pub asset: [u8; 20],
     pub amt: u128,
-}
-
-#[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize)]
-pub enum Balance {
-    Inline(BalanceArgs, Hash),
-    Onchain(Hash),
-    CommitLeftFilledToBal(Box<Commit>, Hash),
-    CommitRightFilledToBal(Box<Commit>, Hash),
-    Cancel(Box<Order>, Hash),
-    Join(Box<Balance>, Box<Balance>, Hash),
-}
-
-#[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize)]
-pub struct CommitArgs {
-    pub ms_ts: u128,
-}
-
-#[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize)]
-pub enum Commit {
-    Inline(CommitArgs, Box<Order>, Box<Order>, Hash),
-    Onchain(Hash),
 }
 
 #[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize)]
@@ -43,22 +20,9 @@ pub struct OrderArgs {
 }
 
 #[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize)]
-pub enum Order {
-    Inline(OrderArgs, Box<Balance>, Hash),
-    Onchain(Hash),
-    CommitLeftExcessToOrder(Box<Commit>, Hash),
-    CommitRightExcessToOrder(Box<Commit>, Hash),
-}
-
-#[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize)]
-pub enum Withdraw {
-    Inline(Box<Balance>, Hash),
-}
-
-#[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize)]
 pub enum StateMachine {
-    Balance(Balance),
-    Commit(Commit),
-    Order(Order),
-    Withdraw(Withdraw),
+    WithdrawFromCommitLeftFilled(CommitDetails),
+    WithdrawFromCommitRightFilled(CommitDetails),
+    WithdrawFromCommitLeftUnfilledOrderCancel(CommitDetails),
+    WithdrawFromCommitRightUnfilledOrderCancel(CommitDetails),
 }
