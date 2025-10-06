@@ -1,6 +1,6 @@
 #![cfg_attr(target_arch = "wasm32", no_main, no_std)]
 
-use libpassport::{state_machine::StateMachine, OurLzss, Storage};
+use libpassport::{state_machine::StateMachine, Storage};
 
 use borsh::de::BorshDeserialize;
 
@@ -29,17 +29,7 @@ pub unsafe extern "C" fn user_entrypoint(len: usize) -> usize {
             vm,
         )
     };
-    let r = s.app.apply(
-        StateMachine::deserialize(
-            &mut OurLzss::decompress_stack(
-                lzss::SliceReader::new(&args[1..]),
-                lzss::VecWriter::with_capacity(1024 * 10),
-            )
-            .unwrap()
-            .as_slice(),
-        )
-        .unwrap(),
-    );
+    let r = s.app.apply(StateMachine::deserialize(&mut args.as_slice()).unwrap());
     s.vm().write_result(&match r {
         Ok(v) => borsh::to_vec(&v).unwrap(),
         Err(v) => borsh::to_vec(&v).unwrap().into(),

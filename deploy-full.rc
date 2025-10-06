@@ -19,6 +19,10 @@ if(~ $SPN_PASSPORT_SOLVER '') {
 	SPN_PASSPORT_SOLVER=`{./deploy.rc solver.passport-superposition-so.wasm}
 }
 
+if(~ $SPN_PASSPORT_APPLY '') {
+	SPN_PASSPORT_APPLY=`{./deploy.rc apply.passport-superposition-so.wasm}
+}
+
 log 'SPN_PASSPORT_SOLVER='$SPN_PASSPORT_SOLVER
 
 if(~ $SPN_PASSPORT_SETTER '') {

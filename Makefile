@@ -41,6 +41,7 @@ wasm: \
 	setter.passport-superposition-so.wasm \
 	admin.passport-superposition-so.wasm \
 	vault.passport-superposition-so.wasm \
+	apply.passport-superposition-so.wasm
 
 build: wasm passport-cli
 
@@ -76,6 +77,14 @@ vault.passport-superposition-so.wasm: $(shell find src -type f -name '*.rs')
 		-o vault.passport-superposition-so.wasm
 	@./check-codesize.rc vault.passport-superposition-so.wasm
 
+apply.passport-superposition-so.wasm: $(shell find src -type f -name '*.rs')
+	@rm -f apply.passport-superposition-so.wasm
+	@${CARGO_BIN_WASM32}
+	@${WASMOPT_PASSPORT} \
+		${RELEASE_WASM}/contract-apply.wasm \
+		-o apply.passport-superposition-so.wasm
+	@./check-codesize.rc apply.passport-superposition-so.wasm
+
 passport-cli: $(shell find src -type f -name '*.rs')
 	@rm -f passport-cli
 	@${CARGO_BUILD_NATIVE} --bin passport-cli --features std
@@ -87,4 +96,5 @@ clean:
 		setter.passport-superposition-so.wasm \
 		admin.passport-superposition-so.wasm \
 		vault.passport-superposition-so.wasm \
+		apply.passport-superposition-so.wasm \
 		target
