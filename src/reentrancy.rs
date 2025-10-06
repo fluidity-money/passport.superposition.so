@@ -25,7 +25,7 @@ pub const SLOT_APPLY: [u8; 32] = match const_hex::const_decode_to_array::<32>(
 pub fn begin_apply(
     env: &mut (impl TopLevelStorage + HostAccess),
     s: StateMachine,
-) -> (i32, Vec<u8>) {
+) -> (usize, Vec<u8>) {
     let mut b = [0u8; 32];
     unsafe {
         storage_load_bytes32(SLOT_APPLY.as_ptr(), b.as_mut_ptr());

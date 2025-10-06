@@ -35,11 +35,12 @@ pub enum ApplyContext {
 /// ErrorDiscriminant is not shown to users, even if it contains any
 /// information. It could have its contents printed while running on the
 /// native host.
-#[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug)]
 #[cfg_attr(
     feature = "std",
     derive(arbitrary::Arbitrary, proptest_derive::Arbitrary)
 )]
+#[repr(u8)]
 pub enum ErrorDiscriminant {
     /// The error wasn't created properly.
     Unknown,
@@ -60,10 +61,10 @@ pub enum ErrorDiscriminant {
     GoalNotMet,
 
     /// Incorrect Applicative transition during digesting. To and from.
-    BadApplicativeTransitionDigest(ApplicativeLabel, ApplicativeLabel),
+    BadApplicativeTransitionDigest,
 
     /// Incorrect Applicative transition during validation. To and from.
-    BadApplicativeTransitionValidate(ApplicativeLabel, ApplicativeLabel),
+    BadApplicativeTransitionValidate,
 
     /// The nonce was inconsistent with our local storage of it!
     BadNonce,
@@ -81,10 +82,10 @@ pub enum ErrorDiscriminant {
     BadVerifyingKey,
 
     /// Bad creation of a signature from what's in the applicative structure.
-    BadSignatureCreation(ApplicativeLabel),
+    BadSignatureCreation,
 
     /// Bad verifying of a signature using strict methods.
-    BadStrictVerify(ApplicativeLabel),
+    BadStrictVerify,
 
     /// The signer wasn't found using their id.
     SignerNotFoundId,
@@ -116,14 +117,14 @@ pub enum ErrorDiscriminant {
     NoLeftExcess,
 
     /// Checked sub overflow in the math!
-    CheckedSub(ApplyContext, u128, u128),
+    CheckedSub,
 
     /// Checked add overflow in the math!
-    CheckedAdd(ApplyContext, u128, u128),
+    CheckedAdd,
 
     /// Checked add overflow for a 64 bit somewhere. Not including 64 bit here saves us the
     /// encoding codesize.
-    CheckedAdd64(ApplyContext),
+    CheckedAdd64,
 
     /// Zero amount in the balance object.
     ZeroBalanceAmount,
@@ -153,7 +154,7 @@ pub enum ErrorDiscriminant {
     BalanceTransitionToOrderBad,
 
     /// The hash was already seen onchain!
-    HashAlreadyOnchain([u8; 64]),
+    HashAlreadyOnchain,
 
     /// The token has no code!
     TokenNoCode,
@@ -162,7 +163,7 @@ pub enum ErrorDiscriminant {
     BadOnboardingSig,
 
     /// It wasn't possible to verify a signature during a sig_two validate.
-    BadStrictVerifyTwo(ApplicativeLabel, u8),
+    BadStrictVerifyTwo,
 
     /// During testing, there wasn't enough balance for a transfer!
     TestNotEnoughBalForTransfer,
@@ -204,6 +205,19 @@ pub struct Error {
     // is tagged on.
     pub test_context: Option<ErrorTestContext>,
     pub test_interim: Option<ErrorInterimAccessContext>,
+    pub context: Option<ApplyContext>,
+    pub x: Option<u128>,
+    pub y: Option<u128>,
+    pub app: Option<ApplicativeLabel>,
+    pub side: Option<u8>,
+    pub app_to: Option<ApplicativeLabel>,
+    pub hash: Option<[u8; 64]>,
+}
+
+impl Error {
+    pub fn dis_u8(self) -> u8 {
+        self.typ as u8
+    }
 }
 
 #[cfg(feature = "std")]
@@ -213,6 +227,13 @@ impl<'a> arbitrary::Arbitrary<'a> for Error {
             typ: ErrorDiscriminant::arbitrary(u)?,
             test_context: None,
             test_interim: None,
+            context: None,
+            x: None,
+            y: None,
+            app: None,
+            side: None,
+            app_to: None,
+            hash: None,
         })
     }
 }
@@ -228,6 +249,13 @@ impl proptest::prelude::Arbitrary for Error {
                 typ,
                 test_context: None,
                 test_interim: None,
+                context: None,
+                x: None,
+                y: None,
+                app: None,
+                side: None,
+                app_to: None,
+                hash: None,
             })
             .boxed()
     }
@@ -243,6 +271,41 @@ impl Error {
         self.test_interim = Some(v);
         self
     }
+
+    pub fn ctx(mut self, c: ApplyContext) -> Self {
+        self.context = Some(c);
+        self
+    }
+
+    pub fn x(mut self, x: u128) -> Self {
+        self.x = Some(x);
+        self
+    }
+
+    pub fn y(mut self, y: u128) -> Self {
+        self.y = Some(y);
+        self
+    }
+
+    pub fn app(mut self, from: ApplicativeLabel) -> Self {
+        self.app = Some(from);
+        self
+    }
+
+    pub fn side(mut self, side: u8) -> Self {
+        self.side = Some(side);
+        self
+    }
+
+    pub fn app_to(mut self, to: ApplicativeLabel) -> Self {
+        self.app_to = Some(to);
+        self
+    }
+
+    pub fn hash(mut self, h: [u8; 64]) -> Self {
+        self.hash = Some(h);
+        self
+    }
 }
 
 impl Default for Error {
@@ -251,6 +314,13 @@ impl Default for Error {
             typ: ErrorDiscriminant::Unknown,
             test_context: None,
             test_interim: None,
+            context: None,
+            x: None,
+            y: None,
+            app: None,
+            side: None,
+            app_to: None,
+            hash: None,
         }
     }
 }
@@ -258,24 +328,6 @@ impl Default for Error {
 impl core::fmt::Display for Error {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{self:?}")
-    }
-}
-
-impl borsh::ser::BorshSerialize for Error {
-    fn serialize<W: borsh::io::Write>(&self, writer: &mut W) -> borsh::io::Result<()> {
-        self.typ.serialize(writer)
-    }
-}
-
-impl borsh::de::BorshDeserialize for Error {
-    fn deserialize_reader<R: borsh::io::Read>(r: &mut R) -> borsh::io::Result<Self> {
-        Ok(Error::from(ErrorDiscriminant::deserialize_reader(r)?))
-    }
-}
-
-impl From<Error> for Vec<u8> {
-    fn from(x: Error) -> Self {
-        borsh::to_vec(&x).unwrap()
     }
 }
 

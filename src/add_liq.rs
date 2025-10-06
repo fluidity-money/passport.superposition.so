@@ -1,6 +1,6 @@
 use crate::{
     call_eip20_extras,
-    error::{Error, ErrorDiscriminant, ApplyContext},
+    error::{ApplyContext, Error, ErrorDiscriminant},
     storage::StorageApplicationV1,
     DONE_UNIT, R,
 };
@@ -40,11 +40,14 @@ impl StorageApplicationV1 {
             .setter(recipient)
             .setter(token)
             .update_check_add(value_)
-            .ok_or(Error::from(ErrorDiscriminant::CheckedAdd(
-                ApplyContext::AddLiq,
-                u128::from_le_bytes(self.withdrawable.getter(recipient).get(token).to_le_bytes()),
-                u128::from_le_bytes(value_.to_le_bytes()),
-            )))?;
+            .ok_or(
+                Error::from(ErrorDiscriminant::CheckedAdd)
+                    .ctx(ApplyContext::AddLiq)
+                    .x(u128::from_le_bytes(
+                        self.withdrawable.getter(recipient).get(token).to_le_bytes(),
+                    ))
+                    .y(u128::from_le_bytes(value_.to_le_bytes())),
+            )?;
         DONE_UNIT
     }
 }

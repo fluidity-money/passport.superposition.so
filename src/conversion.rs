@@ -21,15 +21,15 @@ use alloc::boxed::Box;
 use proptest::prelude::*;
 
 fn err_sig(from: ApplicativeLabel) -> Error {
-    Error::from(ErrorDiscriminant::BadSignatureCreation(from))
+    Error::from(ErrorDiscriminant::BadSignatureCreation).app(from)
 }
 
 fn err_verify(from: ApplicativeLabel) -> Error {
-    Error::from(ErrorDiscriminant::BadStrictVerify(from))
+    Error::from(ErrorDiscriminant::BadStrictVerify).app(from)
 }
 
 fn err_verify_two(from: ApplicativeLabel, x: u8) -> Error {
-    Error::from(ErrorDiscriminant::BadStrictVerifyTwo(from, x))
+    Error::from(ErrorDiscriminant::BadStrictVerifyTwo).app(from).side(x)
 }
 
 pub type Hash = [u8; 64];
@@ -164,17 +164,15 @@ fn label(x: &Applicative) -> ApplicativeLabel {
 }
 
 fn err_bad_ap_transition_digest(from: ApplicativeLabel, to: &Applicative) -> Error {
-    Error::from(ErrorDiscriminant::BadApplicativeTransitionDigest(
-        from,
-        label(to),
-    ))
+    Error::from(ErrorDiscriminant::BadApplicativeTransitionDigest)
+        .app(from)
+        .app_to(label(to))
 }
 
 fn err_bad_ap_transition_validate(from: ApplicativeLabel, to: &Applicative) -> Error {
-    Error::from(ErrorDiscriminant::BadApplicativeTransitionValidate(
-        from,
-        label(to),
-    ))
+    Error::from(ErrorDiscriminant::BadApplicativeTransitionValidate)
+        .app(from)
+        .app_to(label(to))
 }
 
 fn chain_digests(x: &[u8], y: &[u8]) -> [u8; 64] {
@@ -215,7 +213,7 @@ fn get_commit_hash(st: &state_machine::Commit) -> Hash {
 }
 
 fn err_hash_already_onchain(h: &[u8; 64]) -> Error {
-    Error::from(ErrorDiscriminant::HashAlreadyOnchain(h.clone()))
+    Error::from(ErrorDiscriminant::HashAlreadyOnchain).hash(h.clone())
 }
 
 impl StorageApplicationV1 {

@@ -45,7 +45,10 @@ wasm: \
 
 build: wasm passport-cli
 
-solver.passport-superposition-so.wasm: $(shell find src -type f -name '*.rs')
+release-wasm: ${RELEASE_WASM}/contract-solver.wasm $(shell find src -type f -name '*.rs')
+	@${CARGO_BIN_WASM32}
+
+solver.passport-superposition-so.wasm: release-wasm
 	@rm -f solver.passport-superposition-so.wasm
 	@${CARGO_BIN_WASM32}
 	@${WASMOPT_PASSPORT} \
@@ -53,7 +56,7 @@ solver.passport-superposition-so.wasm: $(shell find src -type f -name '*.rs')
 		-o solver.passport-superposition-so.wasm
 	@./check-codesize.rc solver.passport-superposition-so.wasm
 
-setter.passport-superposition-so.wasm: $(shell find src -type f -name '*.rs')
+setter.passport-superposition-so.wasm: release-wasm
 	@rm -f setter.passport-superposition-so.wasm
 	@${CARGO_BIN_WASM32}
 	@${WASMOPT_PASSPORT} \
@@ -63,23 +66,21 @@ setter.passport-superposition-so.wasm: $(shell find src -type f -name '*.rs')
 
 admin.passport-superposition-so.wasm: $(shell find src -type f -name '*.rs')
 	@rm -f admin.passport-superposition-so.wasm
-	@${CARGO_BIN_WASM32}
+	@${CARGO_BIN_WASM32} --features storage-gen-admin
 	@${WASMOPT_PASSPORT} \
 		${RELEASE_WASM}/contract-admin.wasm \
 		-o admin.passport-superposition-so.wasm
 	@./check-codesize.rc admin.passport-superposition-so.wasm
 
-vault.passport-superposition-so.wasm: $(shell find src -type f -name '*.rs')
+vault.passport-superposition-so.wasm: release-wasm
 	@rm -f vault.passport-superposition-so.wasm
-	@${CARGO_BIN_WASM32}
 	@${WASMOPT_PASSPORT} \
 		${RELEASE_WASM}/contract-vault.wasm \
 		-o vault.passport-superposition-so.wasm
 	@./check-codesize.rc vault.passport-superposition-so.wasm
 
-apply.passport-superposition-so.wasm: $(shell find src -type f -name '*.rs')
+apply.passport-superposition-so.wasm: release-wasm
 	@rm -f apply.passport-superposition-so.wasm
-	@${CARGO_BIN_WASM32}
 	@${WASMOPT_PASSPORT} \
 		${RELEASE_WASM}/contract-apply.wasm \
 		-o apply.passport-superposition-so.wasm

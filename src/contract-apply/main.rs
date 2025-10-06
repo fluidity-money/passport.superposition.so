@@ -29,11 +29,15 @@ pub unsafe extern "C" fn user_entrypoint(len: usize) -> usize {
             vm,
         )
     };
-    let r = s.app.apply(StateMachine::deserialize(&mut args.as_slice()).unwrap());
-    s.vm().write_result(&match r {
-        Ok(v) => borsh::to_vec(&v).unwrap(),
-        Err(v) => borsh::to_vec(&v).unwrap().into(),
-    });
+    let r = s
+        .app
+        .apply(StateMachine::deserialize(&mut args.as_slice()).unwrap());
+    match r {
+        Ok(v) => s.vm().write_result(&borsh::to_vec(&v).unwrap()),
+        Err(v) => {
+            s.vm().write_result(&[v.dis_u8()])
+        }
+    }
     s.vm().flush_cache(true);
     1
 }

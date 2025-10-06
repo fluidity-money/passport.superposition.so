@@ -54,9 +54,7 @@ impl Storage {
         self.app
             .ed25519_count
             .update_check_add(U64::from(1))
-            .ok_or(Error::from(ErrorDiscriminant::CheckedAdd64(
-                ApplyContext::Onboard,
-            )))?;
+            .ok_or(Error::from(ErrorDiscriminant::CheckedAdd64).ctx(ApplyContext::Onboard))?;
         let key = FixedBytes(key);
         self.app.ed25519_keys.setter(key_count).set(key);
         self.app

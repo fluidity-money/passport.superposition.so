@@ -104,6 +104,7 @@ pub struct StorageAdminV1 {
     pub owner: StorageAddress,
 }
 
+#[cfg(not(feature = "storage-gen-admin"))]
 #[storage]
 pub struct StorageAdminV1;
 
@@ -128,19 +129,17 @@ impl Default for Storage {
 }
 
 fn err_checked_add(c: ApplyContext, x: U128, y: u128) -> Error {
-    Error::from(ErrorDiscriminant::CheckedAdd(
-        c,
-        u128::from_le_bytes(x.to_le_bytes()),
-        y,
-    ))
+    Error::from(ErrorDiscriminant::CheckedAdd)
+        .ctx(c)
+        .x(u128::from_le_bytes(x.to_le_bytes()))
+        .y(y)
 }
 
 fn err_checked_sub(c: ApplyContext, x: U128, y: u128) -> Error {
-    Error::from(ErrorDiscriminant::CheckedSub(
-        c,
-        u128::from_le_bytes(x.to_le_bytes()),
-        y,
-    ))
+    Error::from(ErrorDiscriminant::CheckedSub)
+        .ctx(c)
+        .x(u128::from_le_bytes(x.to_le_bytes()))
+        .y(y)
 }
 
 impl StorageApplicationV1 {

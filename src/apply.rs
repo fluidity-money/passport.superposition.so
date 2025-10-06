@@ -68,13 +68,12 @@ impl StorageApplicationV1 {
             Balance::Join(l, r, _) => {
                 let l_bal_amt = self.balance_amount(owner, asset, l)?;
                 let r_bal_amt = self.balance_amount(owner, asset, r)?;
-                l_bal_amt
-                    .checked_add(r_bal_amt)
-                    .ok_or(Error::from(ErrorDiscriminant::CheckedAdd(
-                        ApplyContext::ApplyCommitBalanceAmount,
-                        l_bal_amt,
-                        r_bal_amt,
-                    )))
+                l_bal_amt.checked_add(r_bal_amt).ok_or(
+                    Error::from(ErrorDiscriminant::CheckedAdd)
+                        .ctx(ApplyContext::ApplyCommitBalanceAmount)
+                        .x(l_bal_amt)
+                        .y(r_bal_amt),
+                )
             }
         }
     }

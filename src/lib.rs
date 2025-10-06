@@ -36,8 +36,6 @@ pub mod call_eip20_extras;
 
 pub type OurLzss = lzss::Lzss<12, 11, 0, { 1 << 12 }, { 2 << 12 }>;
 
-use stylus_sdk::prelude::HostAccess;
-
 pub use stylus_panic;
 
 #[cfg(target_arch = "wasm32")]
@@ -108,7 +106,7 @@ fn set_reentrancy_flag() {}
 
 pub fn entry_non_reentrant(
     len: usize,
-    simulate: impl FnOnce(&mut Storage, &mut &[u8]) -> R,
+    entry: impl FnOnce(&mut Storage, &mut &[u8]) -> usize,
 ) -> usize {
     #[cfg(target_arch = "wasm32")]
     let vm = stylus_sdk::host::VM(stylus_sdk::host::WasmVM {});
@@ -135,7 +133,7 @@ pub fn entry_non_reentrant(
             vm,
         )
     };
-    let r = simulate(
+    entry(
         &mut s,
         &mut OurLzss::decompress_stack(
             lzss::SliceReader::new(&args[1..]),
@@ -143,24 +141,5 @@ pub fn entry_non_reentrant(
         )
         .unwrap()
         .as_slice()
-    );
-    let rd = match r {
-        Ok(ref _result) =>
-        {
-            #[allow(unreachable_code)]
-            0
-        }
-        Err(ref _reason) => {
-            #[cfg(feature = "harness-stylus-interpreter")]
-            panic!("reverted: {_reason:?}");
-            #[allow(unreachable_code)]
-            1
-        }
-    };
-    s.vm().write_result(&match r {
-        Ok(v) => borsh::to_vec(&v).unwrap(),
-        Err(v) => borsh::to_vec(&v).unwrap().into(),
-    });
-    s.vm().flush_cache(true);
-    rd
+    )
 }
