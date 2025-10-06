@@ -9,11 +9,11 @@ use alloc::vec::Vec;
 
 use borsh::{BorshDeserialize, BorshSerialize};
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(feature = "std")]
 use serde::{Deserialize as SerdeDeserialize, Serialize as SerdeSerialize};
 
 #[derive(BorshDeserialize, BorshSerialize, Clone, PartialEq, Debug)]
-#[cfg_attr(not(target_arch = "wasm32"), derive(SerdeDeserialize, SerdeSerialize))]
+#[cfg_attr(feature = "std", derive(SerdeDeserialize, SerdeSerialize))]
 pub enum OpSolver {
     /// Dummy operation.
     Dummy,
@@ -25,7 +25,7 @@ pub enum OpSolver {
     Solve(Vec<u64>, Applicative),
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(feature = "std")]
 impl std::fmt::Display for OpSolver {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", serde_sexpr::to_string(self).unwrap())
@@ -35,17 +35,17 @@ impl std::fmt::Display for OpSolver {
 #[derive(Debug, Clone, Copy)]
 pub struct SolverFromSexp;
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(feature = "std")]
 impl serde::ser::StdError for SolverFromSexp {}
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(feature = "std")]
 impl std::fmt::Display for SolverFromSexp {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}", self)
     }
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(feature = "std")]
 impl std::str::FromStr for OpSolver {
     type Err = SolverFromSexp;
 

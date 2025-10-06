@@ -47,7 +47,7 @@ build: wasm passport-cli
 
 solver.passport-superposition-so.wasm: $(shell find src -type f -name '*.rs')
 	@rm -f solver.passport-superposition-so.wasm
-	${CARGO_BIN_WASM32}
+	@${CARGO_BIN_WASM32}
 	@${RELEASE_PASSPORT_WASM} \
 		${RELEASE_WASM}/contract-solver.wasm \
 		-o solver.passport-superposition-so.wasm
@@ -74,8 +74,8 @@ vault.passport-superposition-so.wasm: $(shell find src -type f -name '*.rs')
 		-o vault.passport-superposition-so.wasm
 
 passport-cli: $(shell find src -type f -name '*.rs')
-	@rm -f generator.out
-	@${CARGO_BUILD_NATIVE}
+	@rm -f passport-cli
+	@${CARGO_BUILD_NATIVE} --bin passport-cli --features std
 	@cp target/release/passport-cli passport-cli
 
 clean:

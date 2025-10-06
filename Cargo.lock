@@ -2527,6 +2527,7 @@ dependencies = [
  "serde_sexpr",
  "sha2",
  "stylus-core",
+ "stylus-panic",
  "stylus-sdk",
  "subtle",
 ]
@@ -3490,6 +3491,12 @@ dependencies = [
  "cfg-if",
  "dyn-clone",
 ]
+
+[[package]]
+name = "stylus-panic"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fa2d3b7ec6efdd51d1305919a478948be43da7e8c12d4767d1611ebc2c21cc1a"
 
 [[package]]
 name = "stylus-proc"

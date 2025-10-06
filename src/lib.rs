@@ -1,4 +1,4 @@
-#![cfg_attr(target_arch = "wasm32", no_std)]
+#![cfg_attr(not(feature = "std"), no_std)]
 
 extern crate alloc;
 
@@ -38,6 +38,8 @@ pub type OurLzss = lzss::Lzss<12, 11, 0, { 1 << 12 }, { 2 << 12 }>;
 
 use stylus_sdk::prelude::HostAccess;
 
+pub use stylus_panic;
+
 #[cfg(target_arch = "wasm32")]
 use stylus_sdk::prelude::CalldataAccess;
 
@@ -47,6 +49,9 @@ pub use crate::{
     error::{done_u64, DONE_UNIT, NOOP, R},
     storage::Storage,
 };
+
+#[allow(unused_imports)]
+use alloc::boxed::Box;
 
 #[cfg(target_arch = "wasm32")]
 #[link(wasm_import_module = "vm_hooks")]
@@ -67,51 +72,6 @@ extern "C" {
 pub unsafe fn mark_used() {
     pay_for_memory_grow(0);
     panic!();
-}
-
-#[cfg(all(target_arch = "wasm32", feature = "harness-stylus-interpreter"))]
-#[link(wasm_import_module = "stylus_interpreter")]
-extern "C" {
-    fn die(ptr: i32, len: i32, code: i32);
-}
-
-#[cfg(all(target_arch = "wasm32", feature = "harness-stylus-interpreter"))]
-#[link(wasm_import_module = "console")]
-extern "C" {
-    #[allow(dead_code)]
-    pub fn log_txt(ptr: *const u8, len: usize);
-}
-
-#[macro_export]
-macro_rules! harness_dbg {
-    ($val:expr) => {
-    #[cfg(all(target_arch = "wasm32", feature = "harness-stylus-interpreter"))]
-    {
-        let tmp = $val;
-        let msg = alloc::format!("[{}:{}] {} = {:#?}\n", file!(), line!(), stringify!($val), &tmp);
-        unsafe { $crate::log_txt(msg.as_ptr(), msg.len()) };
-        tmp
-    }};
-    ($($vals:expr),+ $(,)?) => {{
-        let tup = ($($vals),+);
-        let msg = alloc::format!("[{}:{}] {} = {:#?}\n", file!(), line!(), stringify!(($($vals),+)), &tup);
-        unsafe { $crate::log_txt(msg.as_ptr(), msg.len()) };
-        tup
-    }};
-}
-
-#[cfg(all(not(feature = "std"), target_arch = "wasm32"))]
-#[mutants::skip]
-#[panic_handler]
-fn panic(_msg: &core::panic::PanicInfo) -> ! {
-    #[cfg(feature = "harness-stylus-interpreter")]
-    {
-        let msg = alloc::format!("{_msg}");
-        unsafe { die(msg.as_ptr() as i32, msg.len() as i32, 1) }
-    }
-    core::arch::wasm32::unreachable();
-    #[allow(unreachable_code)]
-    loop {}
 }
 
 //uint256(keccak256(abi.encodePacked("superposition.passport.reentrancy-canary"))) - 1
@@ -201,8 +161,6 @@ pub fn entry(len: usize, simulate: impl FnOnce(&mut Storage, &mut &[u8]) -> R) -
     let r = simulate(&mut s, &mut args);
     let rd = match r {
         Ok(ref _result) => {
-            #[cfg(feature = "harness-stylus-interpreter")]
-            harness_dbg!(_result);
             #[allow(unreachable_code)]
             0
         }

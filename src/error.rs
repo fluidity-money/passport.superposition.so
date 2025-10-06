@@ -9,12 +9,12 @@ use stylus_sdk::{
 
 use alloc::vec::Vec;
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(feature = "std")]
 use proptest::strategy::Strategy;
 
 #[derive(BorshSerialize, BorshDeserialize, Clone, Copy, PartialEq, Debug)]
 #[cfg_attr(
-    not(target_arch = "wasm32"),
+    feature = "std",
     derive(arbitrary::Arbitrary, proptest_derive::Arbitrary)
 )]
 pub enum ApplyContext {
@@ -26,8 +26,6 @@ pub enum ApplyContext {
     ApplyCommitLeftAmtFilled,
     ApplyCommitRightAmtFilled,
     ApplyCommitBalanceAmount,
-    ApplyCommitLeftAmtUnfilled,
-    ApplyCommitRightAmtUnfilled,
     ApplyOrder,
     ApplyWithdraw,
     AddLiq,
@@ -39,7 +37,7 @@ pub enum ApplyContext {
 /// native host.
 #[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq, Debug)]
 #[cfg_attr(
-    not(target_arch = "wasm32"),
+    feature = "std",
     derive(arbitrary::Arbitrary, proptest_derive::Arbitrary)
 )]
 pub enum ErrorDiscriminant {
@@ -208,7 +206,7 @@ pub struct Error {
     pub test_interim: Option<ErrorInterimAccessContext>,
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(feature = "std")]
 impl<'a> arbitrary::Arbitrary<'a> for Error {
     fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
         Ok(Error {
@@ -219,7 +217,7 @@ impl<'a> arbitrary::Arbitrary<'a> for Error {
     }
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(feature = "std")]
 impl proptest::prelude::Arbitrary for Error {
     type Parameters = ();
     type Strategy = proptest::prelude::BoxedStrategy<Self>;
@@ -349,7 +347,7 @@ macro_rules! require {
     };
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(feature = "std")]
 mod test {
     use proptest::prelude::*;
 

@@ -409,7 +409,9 @@ impl StorageApplicationV1 {
         ap: &Applicative,
     ) -> Result<state_machine::Order, Error> {
         match ap {
-            Applicative::Order(sig, args, ap) => self.validate_order(solver_key, accounts, sig, args, ap),
+            Applicative::Order(sig, args, ap) => {
+                self.validate_order(solver_key, accounts, sig, args, ap)
+            }
             Applicative::CommitLeftExcessToOrder(ap) => {
                 self.validate_commit_left_excess_to_order(solver_key, accounts, ap)
             }
@@ -516,7 +518,8 @@ impl StorageApplicationV1 {
         (owner_i, owner_sig): &UserSig,
         ap: &Applicative,
     ) -> Result<state_machine::Balance, Error> {
-        let order = self.validate_wrapped_order(solver_key, ApplicativeLabel::Cancel, accounts, ap)?;
+        let order =
+            self.validate_wrapped_order(solver_key, ApplicativeLabel::Cancel, accounts, ap)?;
         let order_hash = get_order_hash(&order);
         let owner_id = accounts[*owner_i as usize];
         let o = self.find_ed25519_key(owner_id)?;
@@ -571,39 +574,40 @@ impl StorageApplicationV1 {
         &self,
         solver_key: &VerifyingKey,
         accounts: &Vec<u64>,
-        ap: Applicative,
+        ap: &Applicative,
     ) -> Result<StateMachine, Error> {
         match ap {
             Applicative::Balance(sig, args) => Ok(StateMachine::Balance(
-                self.validate_balance(accounts, &sig, &args)?,
+                self.validate_balance(accounts, &sig, args)?,
             )),
             Applicative::Withdraw(solver_sig, user_sig, _, ap) => Ok(StateMachine::Withdraw(
-                self.validate_withdraw(solver_key, accounts, &solver_sig, &user_sig, &ap)?,
+                self.validate_withdraw(solver_key, accounts, &solver_sig, &user_sig, ap)?,
             )),
             Applicative::Order(user_sig, args, ap) => Ok(StateMachine::Order(
-                self.validate_order(solver_key, accounts, &user_sig, &args, &ap)?,
+                self.validate_order(solver_key, accounts, &user_sig, &args, ap)?,
             )),
             Applicative::Cancel(solver_sig, user_sig, ap) => Ok(StateMachine::Balance(
-                self.validate_cancel(solver_key, accounts, &solver_sig, &user_sig, &ap)?,
+                self.validate_cancel(solver_key, accounts, &solver_sig, &user_sig, ap)?,
             )),
             Applicative::Commit(solver_sig, args, ap1, ap2) => Ok(StateMachine::Commit(
-                self.validate_commit(solver_key, accounts, &solver_sig, &args, &ap1, &ap2)?,
+                self.validate_commit(solver_key, accounts, &solver_sig, &args, ap1, ap2)?,
             )),
             Applicative::CommitLeftFilledToBalance(ap) => Ok(StateMachine::Balance(
-                self.validate_commit_left_filled_to_bal(solver_key, accounts, &ap)?,
+                self.validate_commit_left_filled_to_bal(solver_key, accounts, ap)?,
             )),
             Applicative::CommitRightFilledToBalance(ap) => Ok(StateMachine::Balance(
-                self.validate_commit_right_filled_to_bal(solver_key, accounts, &ap)?,
+                self.validate_commit_right_filled_to_bal(solver_key, accounts, ap)?,
             )),
             Applicative::CommitLeftExcessToOrder(ap) => Ok(StateMachine::Order(
-                self.validate_commit_left_excess_to_order(solver_key, accounts, &ap)?,
+                self.validate_commit_left_excess_to_order(solver_key, accounts, ap)?,
             )),
             Applicative::CommitRightExcessToOrder(ap) => Ok(StateMachine::Order(
-                self.validate_commit_right_excess_to_order(solver_key, accounts, &ap)?,
+                self.validate_commit_right_excess_to_order(solver_key, accounts, ap)?,
             )),
             Applicative::Join(user_sig, left, right) => Ok(StateMachine::Balance(
                 self.validate_join(solver_key, accounts, &user_sig, &left, &right)?,
             )),
+            Applicative::DppmMint(_, _, _, _) | Applicative::DppmBurn(_, _, _, _) => todo!(),
         }
     }
 }
@@ -731,11 +735,7 @@ pub fn sign_commit(
     )
 }
 
-pub fn sign_join(
-    k: &SigningKey,
-    left: &Applicative,
-    right: &Applicative,
-) -> Result<EdSig, Error> {
+pub fn sign_join(k: &SigningKey, left: &Applicative, right: &Applicative) -> Result<EdSig, Error> {
     let l = ApplicativeLabel::Join;
     make_sig(
         k,

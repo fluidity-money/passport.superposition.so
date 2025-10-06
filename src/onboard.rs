@@ -1,7 +1,6 @@
 use crate::{
     done_u64,
     error::{ApplyContext, Error, ErrorDiscriminant},
-    harness_dbg,
     sigs::make_onboarding_sig,
     Storage, R,
 };
@@ -51,7 +50,6 @@ impl Storage {
             .map_err(|_| Error::from(ErrorDiscriminant::BadVerifyingKey))?
             .verify_strict(&addr_nonce_chain, &Signature::from_bytes(&sig))
             .map_err(|_| Error::from(ErrorDiscriminant::BadOnboardingSig))?;
-        harness_dbg!("About to do key count");
         let key_count = u64::from_le_bytes(self.app.ed25519_count.get().to_le_bytes());
         self.app
             .ed25519_count

@@ -10,6 +10,8 @@ use libpassport::{
 
 use borsh::BorshDeserialize;
 
+extern crate alloc;
+
 cfg_if::cfg_if! {
     if #[cfg(feature = "network-testnet")] {
         pub const NETWORK: Network = Network::TESTNET;
@@ -24,11 +26,10 @@ cfg_if::cfg_if! {
 pub unsafe extern "C" fn user_entrypoint(len: usize) -> usize {
     entry(len, |s, args| match OpSolver::deserialize(args).unwrap() {
         OpSolver::Dummy => NOOP,
-        OpSolver::Solve(accounts, args) => s
-            .app
-            .validate(&pick_solver_key(NETWORK), &accounts, args)
-            .and_then(|x| s.app.apply(x))
-            .and_then(|_| DONE_UNIT),
+        OpSolver::Solve(accounts, args) => {
+            let m = s.app.validate(&pick_solver_key(NETWORK), &accounts, &args);
+            m.and_then(|x| s.app.apply(x)).and_then(|_| DONE_UNIT)
+        }
     })
 }
 

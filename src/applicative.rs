@@ -3,7 +3,7 @@
 
 use stylus_sdk::alloy_primitives::Address;
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(feature = "std")]
 use serde::{Deserialize as SerdeDeserialize, Serialize as SerdeSerialize};
 
 use borsh::{BorshDeserialize, BorshSerialize};
@@ -16,10 +16,10 @@ use crate::error::Error;
 // ed25519_dalek.
 #[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq, Debug)]
 #[cfg_attr(
-    not(target_arch = "wasm32"),
+    feature = "std",
     derive(arbitrary::Arbitrary, proptest_derive::Arbitrary,)
 )]
-pub struct EdSig([u8; 64]);
+pub struct EdSig(pub [u8; 64]);
 
 #[derive(Clone, Debug, Copy)]
 pub enum ErrFromStrApplicative {
@@ -28,17 +28,17 @@ pub enum ErrFromStrApplicative {
     BadSigLength,
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(feature = "std")]
 impl std::fmt::Display for ErrFromStrApplicative {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}", self)
     }
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(feature = "std")]
 impl serde::ser::StdError for ErrFromStrApplicative {}
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(feature = "std")]
 impl core::str::FromStr for Applicative {
     type Err = ErrFromStrApplicative;
 
@@ -47,7 +47,7 @@ impl core::str::FromStr for Applicative {
     }
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(feature = "std")]
 impl<'de> serde::de::Deserialize<'de> for EdSig {
     fn deserialize<D>(d: D) -> Result<Self, D::Error>
     where
@@ -63,7 +63,7 @@ impl<'de> serde::de::Deserialize<'de> for EdSig {
     }
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(feature = "std")]
 impl serde::Serialize for EdSig {
     fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
     where
@@ -91,7 +91,7 @@ impl<'a> From<&'a EdSig> for &'a [u8] {
     }
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(feature = "std")]
 impl core::str::FromStr for EdSig {
     type Err = ErrFromStrApplicative;
 
@@ -111,12 +111,12 @@ pub type UserSig = (u8, EdSig);
 // upstream crate lacks this).
 #[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq, Debug)]
 #[cfg_attr(
-    not(target_arch = "wasm32"),
+    feature = "std",
     derive(arbitrary::Arbitrary, proptest_derive::Arbitrary,)
 )]
 pub struct U128(pub u128);
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(feature = "std")]
 impl<'de> serde::de::Deserialize<'de> for U128 {
     fn deserialize<D>(d: D) -> Result<Self, D::Error>
     where
@@ -129,7 +129,7 @@ impl<'de> serde::de::Deserialize<'de> for U128 {
     }
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(feature = "std")]
 impl serde::Serialize for U128 {
     fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
     where
@@ -144,12 +144,12 @@ pub type SolverSig = EdSig;
 
 #[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq, Debug)]
 #[cfg_attr(
-    not(target_arch = "wasm32"),
+    feature = "std",
     derive(arbitrary::Arbitrary, proptest_derive::Arbitrary,)
 )]
 pub struct Asset(pub [u8; 20]);
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(feature = "std")]
 impl<'de> serde::de::Deserialize<'de> for Asset {
     fn deserialize<D>(d: D) -> Result<Self, D::Error>
     where
@@ -164,7 +164,7 @@ impl<'de> serde::de::Deserialize<'de> for Asset {
     }
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(feature = "std")]
 impl serde::Serialize for Asset {
     fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
     where
@@ -208,7 +208,7 @@ impl From<Nonce> for u8 {
 /// their entirety.
 #[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq, Debug)]
 #[cfg_attr(
-    not(target_arch = "wasm32"),
+    feature = "std",
     derive(
         arbitrary::Arbitrary,
         proptest_derive::Arbitrary,
@@ -230,7 +230,7 @@ pub struct ArgsBalance {
 /// created.
 #[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq, Debug)]
 #[cfg_attr(
-    not(target_arch = "wasm32"),
+    feature = "std",
     derive(
         arbitrary::Arbitrary,
         proptest_derive::Arbitrary,
@@ -250,7 +250,7 @@ pub struct ArgsOrder {
 
 #[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq, Debug)]
 #[cfg_attr(
-    not(target_arch = "wasm32"),
+    feature = "std",
     derive(
         arbitrary::Arbitrary,
         proptest_derive::Arbitrary,
@@ -266,7 +266,7 @@ pub struct ArgsCommit {
 /// place during a form conversion or validation.
 #[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq, Debug, Copy)]
 #[cfg_attr(
-    not(target_arch = "wasm32"),
+    feature = "std",
     derive(arbitrary::Arbitrary, proptest_derive::Arbitrary)
 )]
 pub enum ApplicativeLabel {
@@ -280,7 +280,21 @@ pub enum ApplicativeLabel {
     CommitLeftExcessToOrder,
     CommitRightExcessToOrder,
     Join,
+    DppmMint,
+    DppmBurn,
 }
+
+#[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq, Debug)]
+#[cfg_attr(feature = "std", derive(SerdeDeserialize, SerdeSerialize))]
+pub struct DppmNonce;
+
+#[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq, Debug)]
+#[cfg_attr(feature = "std", derive(SerdeDeserialize, SerdeSerialize))]
+pub struct DppmMintArgs;
+
+#[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq, Debug)]
+#[cfg_attr(feature = "std", derive(SerdeDeserialize, SerdeSerialize))]
+pub struct DppmBurnArgs;
 
 /// User friendly higher level form of the state_machine internal type
 /// that does conversions to the internal type in a way that's more
@@ -291,7 +305,7 @@ pub enum ApplicativeLabel {
 /// balance operation. The Applicative user must rejoin balances when it
 /// suits them, but it's not important for them to split balances.
 #[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq, Debug)]
-#[cfg_attr(not(target_arch = "wasm32"), derive(SerdeDeserialize, SerdeSerialize))]
+#[cfg_attr(feature = "std", derive(SerdeDeserialize, SerdeSerialize))]
 pub enum Applicative {
     /// Starting point of the conversion to the other types.
     Balance(UserSig, ArgsBalance),
@@ -327,6 +341,10 @@ pub enum Applicative {
     /// Join two balances together.
     /// (Balance|Cancel|CommitLeftFilledToBalance|CommitRightFilledToBalance).
     Join(UserSig, Box<Applicative>, Box<Applicative>),
+    /// Mint some shares using the DPPM for a market given.
+    DppmMint(UserSig, DppmNonce, DppmMintArgs, Box<Applicative>),
+    /// Burn some shares.
+    DppmBurn(UserSig, DppmNonce, DppmBurnArgs, Box<Applicative>),
 }
 
 impl From<&Applicative> for ApplicativeLabel {
@@ -346,11 +364,13 @@ impl From<&Applicative> for ApplicativeLabel {
             Applicative::CommitLeftExcessToOrder(_) => ApplicativeLabel::CommitLeftExcessToOrder,
             Applicative::CommitRightExcessToOrder(_) => ApplicativeLabel::CommitRightExcessToOrder,
             Applicative::Join(_, _, _) => ApplicativeLabel::Join,
+            Applicative::DppmMint(_,  _, _, __) => ApplicativeLabel::DppmMint,
+            Applicative::DppmBurn(_, _, _, _) => ApplicativeLabel::DppmBurn,
         }
     }
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(feature = "std")]
 impl std::fmt::Display for Applicative {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", serde_sexpr::to_string(self).unwrap())

@@ -4,14 +4,14 @@ use crate::error::{
     ApplyContext, Error, ErrorDiscriminant,
 };
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(feature = "std")]
 use crate::error::{ErrorInterimAccessContext, ErrorTestInterimDetails};
 
 use alloc::{vec, vec::Vec};
 
 use ed25519_dalek::VerifyingKey;
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(feature = "std")]
 use std::{cell::RefCell, collections::HashMap};
 
 pub type KeyEdAddr = FixedBytes<32>;
@@ -38,7 +38,7 @@ pub struct StorageTest {
     pub hashes: StorageVec<StorageFixedBytes<32>>,
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(feature = "std")]
 thread_local! {
     pub static SEEN_HASHES: RefCell<HashMap<([u8; 64], Address, Address), bool>> =
         RefCell::new(HashMap::new());
@@ -107,7 +107,7 @@ pub struct Storage {
 unsafe impl TopLevelStorage for Storage {}
 unsafe impl TopLevelStorage for StorageApplicationV1 {}
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(feature = "std")]
 impl Default for Storage {
     fn default() -> Self {
         use stylus_sdk::testing::vm::TestVM;
@@ -208,7 +208,7 @@ impl StorageApplicationV1 {
     }
 
     pub fn test_tag_hashes(&self, _x: &[u8; 64], _owner: Address, _asset: Address, e: Error) -> Error {
-        #[cfg(not(target_arch = "wasm32"))]
+        #[cfg(feature = "std")]
         let e = SEEN_HASHES.with(|h| {
             let mut h = h.borrow_mut();
             h.insert((*_x, _owner, _asset), true);

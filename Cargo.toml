@@ -31,6 +31,7 @@ required-features = ["std"]
 [[bin]]
 name = "passport-cli"
 path = "src/passport-cli/main.rs"
+required-features = ["std"]
 
 [profile.release]
 codegen-units = 1
@@ -69,6 +70,7 @@ ed25519-dalek = { version = "2.1.1", default-features = false, features = ["dige
 lazy_static = { version = "1.5.0", features = ["spin_no_std"] }
 serde_sexpr = "0.1.0"
 cfg-if = "1.0.3"
+stylus-panic = "0.3.0"
 
 [dependencies.stylus-sdk]
 version = "=0.10.0-beta.1"
@@ -96,9 +98,9 @@ default-features = false
 features = ["mini-alloc", "stylus-test"]
 
 [features]
-std = []
+std = ["stylus-panic/std"]
 dryrun = []
-harness-stylus-interpreter = []
+harness-stylus-interpreter = ["stylus-panic/stylus-interpreter"]
 e2e-adjust-time = []
 contract-client-gen = []
 network-mainnet = []

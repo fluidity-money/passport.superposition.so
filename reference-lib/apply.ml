@@ -201,10 +201,10 @@ and commit_right_inline_amt_filled (`Commit_inline (_, l, r)) =
   min (ord_desired_amt l) (ord_amt r)
 
 and commit_left_inline_amt_unfilled (`Commit_inline (_, l, r)) =
-  try ord_amt l - ord_desired_amt r with Checked_sub (_, _, _) -> 0
+  try ord_desired_amt r - ord_amt l with Checked_sub (_, _, _) -> 0
 
 and commit_right_inline_amt_unfilled (`Commit_inline (_, l, r)) =
-  try ord_amt r - ord_desired_amt l with Checked_sub (_, _, _) -> 0
+  try ord_desired_amt l - ord_amt r with Checked_sub (_, _, _) -> 0
 
 and apply_bal_inline (State.{ withdrawable; interim; _ } as s)
     Applicative.(`Bal_inline { bal_owner; bal_asset; bal_amt; _ } as b) =

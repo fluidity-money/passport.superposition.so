@@ -21,11 +21,6 @@ fn err_bad_balance_from_order() -> Error {
     Error::from(ErrorDiscriminant::BalanceTransitionToOrderBad)
 }
 
-fn checked_sub(c: ApplyContext, x: u128, y: u128) -> R<u128> {
-    x.checked_sub(y)
-        .ok_or(Error::from(ErrorDiscriminant::CheckedSub(c, x, y)))
-}
-
 impl StorageApplicationV1 {
     pub fn commit_left_owner(&self, c: &Commit) -> Address {
         match c {
@@ -134,11 +129,9 @@ impl StorageApplicationV1 {
         o: &Commit,
     ) -> R<u128> {
         match o {
-            Commit::Inline(_, l, r, _) => checked_sub(
-                ApplyContext::ApplyCommitLeftAmtUnfilled,
-                self.order_from(owner, asset, l)?,
-                self.order_desired_amount(owner, asset, r)?,
-            ),
+            Commit::Inline(_, l, r, _) => Ok(self
+                .order_desired_amount(owner, asset, r)?
+                .wrapping_sub(self.order_from(owner, asset, l)?)),
             Commit::Onchain(h) => {
                 let owner = self.get_hash_owner_l(h);
                 let asset = self.get_hash_asset_l(h);
@@ -154,11 +147,9 @@ impl StorageApplicationV1 {
         o: &Commit,
     ) -> R<u128> {
         match o {
-            Commit::Inline(_, l, r, _) => checked_sub(
-                ApplyContext::ApplyCommitRightAmtUnfilled,
-                self.order_from(owner, asset, r)?,
-                self.order_desired_amount(owner, asset, l)?,
-            ),
+            Commit::Inline(_, l, r, _) => Ok(self
+                .order_desired_amount(owner, asset, l)?
+                .wrapping_sub(self.order_from(owner, asset, r)?)),
             Commit::Onchain(h) => {
                 let owner = self.get_hash_owner_r(h);
                 let asset = self.get_hash_asset_r(h);
