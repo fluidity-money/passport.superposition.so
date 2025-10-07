@@ -34,11 +34,11 @@ proptest! {
         let converted = convert(&user_ctx, &solver_ctx, &e).unwrap();
         let mut s = Storage::from(&stylus_sdk::testing::vm::TestVM::new());
         let msg_sender = s.vm().msg_sender();
-        s.app.ed25519_keys.setter(0).set(FixedBytes::from_slice(signer_pub.as_bytes()));
-        s.app.ed25519_owners.setter(0).set(msg_sender);
+        s.app.validation.ed25519_keys.setter(0).set(FixedBytes::from_slice(signer_pub.as_bytes()));
+        s.app.validation.ed25519_owners.setter(0).set(msg_sender);
         apply_balances(&mut s, starting_amts(&e)).unwrap();
         s.app.apply(
-            s.app.validate(&pick_solver_key(Network::CUSTOM), &vec![0], &converted)
+            s.app.validation.validate(&pick_solver_key(Network::CUSTOM), &vec![0], &converted)
                 .unwrap()
         )
             .unwrap();

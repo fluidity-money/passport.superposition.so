@@ -8,13 +8,16 @@ CARGO_EXTRA_FEATURES := \
 	$(if ${SPN_NETWORK_TESTNET},${CARGO_EXTRA_FEATURES}$(if ${CARGO_EXTRA_FEATURES},${comma})network-testnet,${CARGO_EXTRA_FEATURES})
 CARGO_EXTRA_FEATURES := \
 	$(if ${SPN_NETWORK_CUSTOM},${CARGO_EXTRA_FEATURES}$(if ${CARGO_EXTRA_FEATURES},${comma})network-custom,${CARGO_EXTRA_FEATURES})
-CARGO_EXTRA_FEATURES := \
-	$(if ${CARGO_EXTRA_FEATURES},--features ${CARGO_EXTRA_FEATURES})
+
+CARGO_OPT_COMMA := \
+	$(if ${CARGO_EXTRA_FEATURES},${comma})
+
+CARGO_OPT_FEATURES_FLAG := \
+	$(if ${CARGO_EXTRA_FEATURES},--features )
 
 CARGO_BIN_WASM32 := \
 	cargo build \
 		--release \
-		${CARGO_EXTRA_FEATURES} \
 		--target wasm32-unknown-unknown
 
 CARGO_BUILD_NATIVE := cargo build --release
@@ -34,7 +37,7 @@ RELEASE_WASM := target/wasm32-unknown-unknown/release
 
 all: build
 
-.PHONY: build wasm all
+.PHONY: build wasm all release-wasm
 
 wasm: \
 	solver.passport-superposition-so.wasm \
@@ -45,12 +48,16 @@ wasm: \
 
 build: wasm passport-cli
 
-release-wasm: ${RELEASE_WASM}/contract-solver.wasm $(shell find src -type f -name '*.rs')
+${RELEASE_WASM}/contract-solver.wasm: $(shell find src -type f -name '*.rs')
 	@${CARGO_BIN_WASM32}
+
+release-wasm: ${RELEASE_WASM}/contract-solver.wasm
 
 solver.passport-superposition-so.wasm: release-wasm
 	@rm -f solver.passport-superposition-so.wasm
-	@${CARGO_BIN_WASM32}
+	@${CARGO_BIN_WASM32} \
+		${CARGO_OPT_FEATURES_FLAG} \
+		${CARGO_EXTRA_FEATURES}
 	@${WASMOPT_PASSPORT} \
 		${RELEASE_WASM}/contract-solver.wasm \
 		-o solver.passport-superposition-so.wasm
@@ -58,7 +65,8 @@ solver.passport-superposition-so.wasm: release-wasm
 
 setter.passport-superposition-so.wasm: release-wasm
 	@rm -f setter.passport-superposition-so.wasm
-	@${CARGO_BIN_WASM32}
+	@${CARGO_BIN_WASM32} \
+		--features storage-gen-apply${CARGO_OPT_COMMA}${CARGO_EXTRA_FEATURES}
 	@${WASMOPT_PASSPORT} \
 		${RELEASE_WASM}/contract-setter.wasm \
 		-o setter.passport-superposition-so.wasm
@@ -66,7 +74,8 @@ setter.passport-superposition-so.wasm: release-wasm
 
 admin.passport-superposition-so.wasm: $(shell find src -type f -name '*.rs')
 	@rm -f admin.passport-superposition-so.wasm
-	@${CARGO_BIN_WASM32} --features storage-gen-admin
+	@${CARGO_BIN_WASM32} \
+		--features storage-gen-admin${CARGO_OPT_COMMA}${CARGO_EXTRA_FEATURES}
 	@${WASMOPT_PASSPORT} \
 		${RELEASE_WASM}/contract-admin.wasm \
 		-o admin.passport-superposition-so.wasm
@@ -81,6 +90,8 @@ vault.passport-superposition-so.wasm: release-wasm
 
 apply.passport-superposition-so.wasm: release-wasm
 	@rm -f apply.passport-superposition-so.wasm
+	@${CARGO_BIN_WASM32} \
+		--features storage-gen-apply${CARGO_OPT_COMMA}${CARGO_EXTRA_FEATURES}
 	@${WASMOPT_PASSPORT} \
 		${RELEASE_WASM}/contract-apply.wasm \
 		-o apply.passport-superposition-so.wasm

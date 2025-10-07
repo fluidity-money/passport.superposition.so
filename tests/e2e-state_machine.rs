@@ -1,8 +1,8 @@
 use libpassport::{state_machine::*, Storage};
 
-use proptest::prelude::*;
-
 use stylus_sdk::alloy_primitives::Address;
+
+use proptest::prelude::*;
 
 fn strat_fillable_sides() -> impl Strategy<Value = (u128, u128, u128, u128)> {
     (100..u128::MAX, 100..u128::MAX).prop_flat_map(|(l_amt, r_amt)| {
@@ -24,10 +24,10 @@ proptest! {
         right_balance_hash in any::<[u8; 64]>(),
         left_order_hash in any::<[u8; 64]>(),
         right_order_hash in any::<[u8; 64]>(),
-        asset_left in any::<Address>(),
-        asset_right in any::<Address>(),
-        owner_left in any::<Address>(),
-        owner_right in any::<Address>(),
+        asset_left in any::<[u8; 20]>(),
+        asset_right in any::<[u8; 20]>(),
+        owner_left in any::<[u8; 20]>(),
+        owner_right in any::<[u8; 20]>(),
         l_ms_ts in any::<u128>(),
         r_ms_ts in any::<u128>(),
         (l_amt, l_ask, r_amt, r_ask) in strat_fillable_sides()
@@ -75,8 +75,26 @@ proptest! {
         assert_eq!(asset_right, s.app.order_asset(&r_order));
         assert_eq!(owner_left, s.app.order_owner(&l_order));
         assert_eq!(owner_right, s.app.order_owner(&r_order));
-        assert_eq!(l_amt, s.app.order_from(owner_left, asset_left, &l_order).unwrap());
-        assert_eq!(r_amt, s.app.order_from(owner_right, asset_right, &r_order).unwrap());
+        assert_eq!(
+            l_amt,
+            s.app
+                .order_from(
+                    Address::from(owner_left),
+                    Address::from(asset_left),
+                    &l_order
+                )
+                .unwrap()
+        );
+        assert_eq!(
+            r_amt,
+            s.app
+                .order_from(
+                    Address::from(owner_right),
+                    Address::from(asset_right),
+                    &r_order
+                )
+                .unwrap()
+        );
         let c = Commit::Inline(
             CommitArgs { ms_ts: 0 },
             Box::new(l_order),
@@ -84,42 +102,77 @@ proptest! {
             commit_hash,
         );
         let left_filled_to_bal = Balance::CommitLeftFilledToBal(Box::new(c.clone()), left_filled_hash);
-        let right_filled_to_bal = Balance::CommitRightFilledToBal(Box::new(c.clone()), right_filled_hash);
+        let right_filled_to_bal =
+            Balance::CommitRightFilledToBal(Box::new(c.clone()), right_filled_hash);
         assert_eq!(owner_left, s.app.balance_owner(&left_filled_to_bal));
         assert_eq!(asset_right, s.app.balance_asset(&left_filled_to_bal));
         assert_eq!(
             l_ask,
-            s.app.balance_amount(owner_right, asset_left, &right_filled_to_bal).unwrap()
+            s.app
+                .balance_amount(
+                    Address::from(owner_right),
+                    Address::from(asset_left),
+                    &right_filled_to_bal
+                )
+                .unwrap()
         );
         assert_eq!(
             r_ask,
-            s.app.balance_amount(owner_left, asset_right, &left_filled_to_bal).unwrap()
+            s.app
+                .balance_amount(
+                    Address::from(owner_left),
+                    Address::from(asset_right),
+                    &left_filled_to_bal
+                )
+                .unwrap()
         );
-        let left_excess_to_order = Order::CommitLeftExcessToOrder(Box::new(c.clone()), left_excess_hash);
-        let right_excess_to_order = Order::CommitRightExcessToOrder(Box::new(c.clone()), right_excess_hash);
+        let left_excess_to_order =
+            Order::CommitLeftExcessToOrder(Box::new(c.clone()), left_excess_hash);
+        let right_excess_to_order =
+            Order::CommitRightExcessToOrder(Box::new(c.clone()), right_excess_hash);
         assert_eq!(owner_left, s.app.order_owner(&left_excess_to_order));
         assert_eq!(asset_left, s.app.order_asset(&left_excess_to_order));
         assert_eq!(owner_right, s.app.order_owner(&right_excess_to_order));
         assert_eq!(asset_right, s.app.order_asset(&right_excess_to_order));
         assert_eq!(
             l_amt - r_ask,
-            s.app.order_from(owner_left, asset_left, &left_excess_to_order).unwrap()
+            s.app
+                .order_from(
+                    Address::from(owner_left),
+                    Address::from(asset_left),
+                    &left_excess_to_order
+                )
+                .unwrap()
         );
         assert_eq!(
             r_amt - l_ask,
-            s.app.order_from(owner_right, asset_right, &right_excess_to_order).unwrap()
+            s.app
+                .order_from(
+                    Address::from(owner_right),
+                    Address::from(asset_right),
+                    &right_excess_to_order
+                )
+                .unwrap()
         );
-        let left_excess_to_order_cancel = Balance::Cancel(
-            Box::new(left_excess_to_order),
-            left_cancel_hash
+        let left_excess_to_order_cancel =
+            Balance::Cancel(Box::new(left_excess_to_order), left_cancel_hash);
+        let right_excess_to_order_cancel =
+            Balance::Cancel(Box::new(right_excess_to_order), right_cancel_hash);
+        assert_eq!(
+            owner_left,
+            s.app.balance_owner(&left_excess_to_order_cancel)
         );
-        let right_excess_to_order_cancel = Balance::Cancel(
-            Box::new(right_excess_to_order),
-            right_cancel_hash
+        assert_eq!(
+            asset_left,
+            s.app.balance_asset(&left_excess_to_order_cancel)
         );
-        assert_eq!(owner_left, s.app.balance_owner(&left_excess_to_order_cancel));
-        assert_eq!(asset_left, s.app.balance_asset(&left_excess_to_order_cancel));
-        assert_eq!(owner_right, s.app.balance_owner(&right_excess_to_order_cancel));
-        assert_eq!(asset_right, s.app.balance_asset(&right_excess_to_order_cancel));
-    }
+        assert_eq!(
+            owner_right,
+            s.app.balance_owner(&right_excess_to_order_cancel)
+        );
+        assert_eq!(
+            asset_right,
+            s.app.balance_asset(&right_excess_to_order_cancel)
+        );
+}
 }

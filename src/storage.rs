@@ -2,7 +2,7 @@ use stylus_sdk::{alloy_primitives::*, prelude::*, storage::*};
 
 use crate::error::{ApplyContext, Error, ErrorDiscriminant};
 
-#[cfg(feature = "std")]
+#[cfg(all(feature = "std", feature = "storage-gen-apply"))]
 use crate::error::{ErrorInterimAccessContext, ErrorTestInterimDetails};
 
 use alloc::{vec, vec::Vec};
@@ -134,14 +134,14 @@ impl Default for Storage {
     }
 }
 
-fn err_checked_add(c: ApplyContext, x: U128, y: u128) -> Error {
+pub fn err_checked_add(c: ApplyContext, x: U128, y: u128) -> Error {
     Error::from(ErrorDiscriminant::CheckedAdd)
         .ctx(c)
         .x(u128::from_le_bytes(x.to_le_bytes()))
         .y(y)
 }
 
-fn err_checked_sub(c: ApplyContext, x: U128, y: u128) -> Error {
+pub fn err_checked_sub(c: ApplyContext, x: U128, y: u128) -> Error {
     Error::from(ErrorDiscriminant::CheckedSub)
         .ctx(c)
         .x(u128::from_le_bytes(x.to_le_bytes()))
@@ -232,37 +232,6 @@ impl StorageApplyV1 {
         )
     }
 
-    pub fn test_tag_hashes(
-        &self,
-        _x: &[u8; 64],
-        _owner: Address,
-        _asset: Address,
-        e: Error,
-    ) -> Error {
-        #[cfg(feature = "std")]
-        let e = SEEN_HASHES.with(|h| {
-            let mut h = h.borrow_mut();
-            h.insert((*_x, _owner, _asset), true);
-            e.test_interim(ErrorInterimAccessContext {
-                accessed_hash: FixedBytes::from_slice(&_x[..32]),
-                interim_hashes: h
-                    .keys()
-                    .map(|(k, owner, asset)| ErrorTestInterimDetails {
-                        asset_l: self.get_hash_asset_l(k),
-                        asset_r: self.get_hash_asset_r(k),
-                        owner_l: self.get_hash_owner_l(k),
-                        owner_r: self.get_hash_owner_r(k),
-                        amt: self.get_interim(*owner, *asset, k),
-                        hash: FixedBytes::from_slice(&k[..32]),
-                        thread_recorded_owner: *owner,
-                        thread_recorded_asset: *asset,
-                    })
-                    .collect::<Vec<_>>(),
-            })
-        });
-        e
-    }
-
     pub fn increase_interim(
         &mut self,
         ctx: ApplyContext,
@@ -278,7 +247,6 @@ impl StorageApplyV1 {
             .getter(asset)
             .getter(TransitiveType::INTERIM.into())
             .get(h);
-        let e = self.test_tag_hashes(hx, owner, asset, err_checked_add(ctx, x, y));
         self.transitive
             .setter(owner)
             .setter(asset)
@@ -286,7 +254,7 @@ impl StorageApplyV1 {
             .setter(h)
             .set(
                 x.checked_add(U128::from_le_bytes(y.to_le_bytes()))
-                    .ok_or(e)?,
+                    .ok_or(err_checked_add(ctx, x, y))?,
             );
         Ok(())
     }
@@ -306,7 +274,6 @@ impl StorageApplyV1 {
             .getter(asset)
             .getter(TransitiveType::INTERIM.into())
             .get(h);
-        let e = self.test_tag_hashes(hx, owner, asset, err_checked_sub(ctx, x, y));
         self.transitive
             .setter(owner)
             .setter(asset)
@@ -314,7 +281,7 @@ impl StorageApplyV1 {
             .setter(h)
             .set(
                 x.checked_sub(U128::from_le_bytes(y.to_le_bytes()))
-                    .ok_or(e)?,
+                    .ok_or(err_checked_sub(ctx, x, y))?,
             );
         Ok(())
     }

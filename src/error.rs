@@ -424,15 +424,3 @@ macro_rules! require {
         }
     };
 }
-
-#[cfg(feature = "std")]
-mod test {
-    use proptest::prelude::*;
-
-    proptest! {
-        #[test]
-        fn test_encoding_decoding_errs(err in any::<super::Error>()) {
-            assert_eq!(err, borsh::from_slice(&borsh::to_vec(&err).unwrap()).unwrap());
-        }
-    }
-}

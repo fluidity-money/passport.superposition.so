@@ -5,7 +5,7 @@ use crate::{
     storage::StorageValidationV1,
 };
 
-use alloc::{vec, vec::Vec};
+use alloc::vec::Vec;
 
 use stylus_sdk::alloy_primitives::FixedBytes;
 
@@ -756,7 +756,7 @@ proptest! {
         let p = SigningKey::from_bytes(&p);
         let prev_digest = match prev_digest {
             Some(v) => v.to_vec(),
-            None => vec![]
+            None => Vec::new()
         };
         let s = make_sig(&p, &msg, &prev_digest).unwrap();
         check_sig(

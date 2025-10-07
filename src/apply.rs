@@ -1,30 +1,36 @@
-use stylus_sdk::alloy_primitives::U256;
 
 #[cfg(feature = "storage-gen-apply")]
-use stylus_sdk::alloy_primitives::Address;
+use stylus_sdk::alloy_primitives::{U256, Address};
 
 use crate::error::{Error, ErrorDiscriminant};
 
 #[cfg(feature = "storage-gen-apply")]
 use crate::{
     call_eip20_extras,
-    error::{ApplyContext, ErrorDiscriminant},
+    error::ApplyContext,
     state_machine::{Balance, BalanceArgs, Commit, Order, OrderArgs, StateMachine, Withdraw},
     storage::StorageApplicationV1,
 };
 
 pub type R<T> = Result<T, Error>;
 
-fn err_same_assets() -> Error {
+pub fn err_same_assets() -> Error {
     Error::from(ErrorDiscriminant::SameAssets)
 }
 
-fn err_bad_asset_asks() -> Error {
+pub fn err_bad_asset_asks() -> Error {
     Error::from(ErrorDiscriminant::BadAssetAsks)
 }
 
-fn err_bad_balance_from_order() -> Error {
+pub fn err_bad_balance_from_order() -> Error {
     Error::from(ErrorDiscriminant::BalanceTransitionToOrderBad)
+}
+
+#[cfg(feature = "storage-gen-apply")]
+fn u128_to_u256(x: u128) -> U256 {
+    let mut b = [0u8; 32];
+    b[16..].copy_from_slice(&x.to_be_bytes());
+    U256::from_be_bytes(b)
 }
 
 #[cfg(feature = "storage-gen-apply")]
@@ -440,10 +446,4 @@ impl StorageApplicationV1 {
             StateMachine::Withdraw(w) => self.apply_withdraw(&w),
         }
     }
-}
-
-fn u128_to_u256(x: u128) -> U256 {
-    let mut b = [0u8; 32];
-    b[16..].copy_from_slice(&x.to_be_bytes());
-    U256::from_be_bytes(b)
 }
