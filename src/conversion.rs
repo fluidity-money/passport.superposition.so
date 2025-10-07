@@ -5,7 +5,7 @@ use crate::{
     storage::StorageValidationV1,
 };
 
-use alloc::vec::Vec;
+use alloc::{vec, vec::Vec};
 
 use stylus_sdk::alloy_primitives::FixedBytes;
 

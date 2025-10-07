@@ -2515,6 +2515,7 @@ dependencies = [
  "lzss",
  "mini-alloc 0.7.0",
  "mutants",
+ "num_enum",
  "proptest",
  "proptest-derive 0.6.0",
  "serde",

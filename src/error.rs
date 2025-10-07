@@ -7,6 +7,8 @@ use stylus_sdk::{
     prelude::calls::errors::Error as StylusErr,
 };
 
+use num_enum::{IntoPrimitive, TryFromPrimitive};
+
 use alloc::{boxed::Box, vec::Vec};
 
 #[cfg(feature = "std")]
@@ -35,7 +37,7 @@ pub enum ApplyContext {
 /// ErrorDiscriminant is not shown to users, even if it contains any
 /// information. It could have its contents printed while running on the
 /// native host.
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug, IntoPrimitive, TryFromPrimitive)]
 #[cfg_attr(
     feature = "std",
     derive(arbitrary::Arbitrary, proptest_derive::Arbitrary)
@@ -172,6 +174,17 @@ pub enum ErrorDiscriminant {
     TestNotEnoughAllowance,
 }
 
+impl TryFrom<u8> for Error {
+    type Error = u8;
+
+    fn try_from(x: u8) -> Result<Self, Self::Error> {
+        Ok(Self {
+            typ: ErrorDiscriminant::try_from(x).map_err(|_| x)?,
+            ..Error::default()
+        })
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct ErrorTestContext {
     pub sender: Address,
@@ -216,7 +229,7 @@ pub struct ErrorInner {
 #[derive(PartialEq)]
 pub struct Error {
     pub typ: ErrorDiscriminant,
-    pub inner: Box<ErrorInner>
+    pub inner: Box<ErrorInner>,
 }
 
 impl Error {
@@ -230,15 +243,17 @@ impl<'a> arbitrary::Arbitrary<'a> for Error {
     fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
         Ok(Error {
             typ: ErrorDiscriminant::arbitrary(u)?,
-            test_context: None,
-            test_interim: None,
-            context: None,
-            x: None,
-            y: None,
-            app: None,
-            side: None,
-            app_to: None,
-            hash: None,
+            inner: Box::new(ErrorInner {
+                test_context: None,
+                test_interim: None,
+                context: None,
+                x: None,
+                y: None,
+                app: None,
+                side: None,
+                app_to: None,
+                hash: None,
+            }),
         })
     }
 }
@@ -252,15 +267,17 @@ impl proptest::prelude::Arbitrary for Error {
         proptest::prelude::any::<ErrorDiscriminant>()
             .prop_map(|typ| Error {
                 typ,
-                test_context: None,
-                test_interim: None,
-                context: None,
-                x: None,
-                y: None,
-                app: None,
-                side: None,
-                app_to: None,
-                hash: None,
+                inner: Box::new(ErrorInner {
+                    test_context: None,
+                    test_interim: None,
+                    context: None,
+                    x: None,
+                    y: None,
+                    app: None,
+                    side: None,
+                    app_to: None,
+                    hash: None,
+                }),
             })
             .boxed()
     }
