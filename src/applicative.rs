@@ -73,9 +73,9 @@ impl serde::Serialize for EdSig {
     }
 }
 
-impl Into<[u8; 64]> for EdSig {
-    fn into(self) -> [u8; 64] {
-        self.0
+impl From<EdSig> for [u8; 64] {
+    fn from(x: EdSig) -> Self {
+        x.0
     }
 }
 

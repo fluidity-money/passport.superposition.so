@@ -14,13 +14,6 @@ use std::{cell::RefCell, collections::HashMap};
 
 pub type KeyEdAddr = FixedBytes<32>;
 
-pub struct StorageBucket {
-    /// The underlying asset of this bucket.
-    pub asset: Address,
-    /// The amount of the spendable asset in this bucket.
-    pub amt: U128,
-}
-
 // Testing storage that's used for offline testing context.
 #[storage]
 #[cfg(not(target_arch = "wasm32"))]
@@ -48,14 +41,14 @@ pub enum TransitiveType {
     ORDER,
 }
 
-impl Into<u8> for TransitiveType {
-    fn into(self) -> u8 {
-        self as u8
+impl From<TransitiveType> for u8 {
+    fn from(x: TransitiveType) -> Self {
+        x as u8
     }
 }
 
 #[storage]
-pub struct StorageApplicationV1 {
+pub struct StorageValidationV1 {
     // Count of the number of seen addresses, that we use our shortened
     // accounts list form to look up. We use this instead of a map so we can
     // use a u64 instead of the native wasm word (u32).
@@ -67,6 +60,13 @@ pub struct StorageApplicationV1 {
     // Owners of the offset of these addresses, using the ed25519 signatures.
     pub ed25519_owners: StorageMap<u64, StorageAddress>,
 
+    /// The owner of the left side of the hash given. It should not be zero.
+    pub details_hash_owner_l: StorageMap<FixedBytes<32>, StorageAddress>,
+}
+
+#[storage]
+#[cfg(feature = "storage-gen-apply")]
+pub struct StorageApplyV1 {
     /// Transitive state that could be a part of an operation. If the field used is true,
     /// Storage for amounts available for spending at a timestamp. Is owner =>
     /// TRANSITIVE_TYPE => asset => timestamp => amount.
@@ -77,9 +77,6 @@ pub struct StorageApplicationV1 {
 
     /// Amounts that could be withdrawn from the system. Owner => asset => amount.
     pub withdrawable: StorageMap<Address, StorageMap<Address, StorageU128>>,
-
-    /// The owner of the left side of the hash given. It should not be zero.
-    pub details_hash_owner_l: StorageMap<FixedBytes<32>, StorageAddress>,
 
     /// The owner of the right side of the hash given.
     pub details_hash_owner_r: StorageMap<FixedBytes<32>, StorageAddress>,
@@ -92,7 +89,16 @@ pub struct StorageApplicationV1 {
 
     /// The desired asset by the order at this hash on its own.
     pub details_hash_order_desired_amt: StorageMap<FixedBytes<32>, StorageU128>,
+}
 
+#[storage]
+#[cfg(not(feature = "storage-gen-apply"))]
+pub struct StorageApplyV1;
+
+#[storage]
+pub struct StorageApplicationV1 {
+    pub validation: StorageValidationV1,
+    pub apply: StorageApplyV1,
     // It's very important that this contains nothing during a on-chain
     // deployment.
     pub test_eip20: StorageTest,
@@ -142,10 +148,41 @@ fn err_checked_sub(c: ApplyContext, x: U128, y: u128) -> Error {
         .y(y)
 }
 
-impl StorageApplicationV1 {
-    pub fn set_hash_details_l(&mut self, h: &[u8; 64], owner: Address, asset: Address) {
+impl StorageValidationV1 {
+    pub fn set_hash_details_owner_l(&mut self, h: &[u8; 64], owner: Address) {
         let h = FixedBytes::from_slice(&h[..32]);
         self.details_hash_owner_l.setter(h).set(owner);
+    }
+
+    pub fn get_hash_owner_l(&self, h: &[u8; 64]) -> Address {
+        self.details_hash_owner_l
+            .get(FixedBytes::from_slice(&h[..32]))
+    }
+
+    pub fn find_ed25519_key(&self, i: u64) -> Result<VerifyingKey, Error> {
+        let v = self.ed25519_keys.get(i);
+        if v.is_zero() {
+            Err(Error::from(ErrorDiscriminant::AccountIdNotFound))
+        } else {
+            VerifyingKey::from_bytes(&v.0)
+                .map_err(|_| Error::from(ErrorDiscriminant::BadVerifyingKey))
+        }
+    }
+
+    pub fn find_ed25519_addr(&self, i: u64) -> Result<Address, Error> {
+        let addr = self.ed25519_owners.get(i);
+        if addr.is_zero() {
+            Err(Error::from(ErrorDiscriminant::AccountIdNotFound))
+        } else {
+            Ok(addr)
+        }
+    }
+}
+
+#[cfg(feature = "storage-gen-apply")]
+impl StorageApplyV1 {
+    pub fn set_hash_details_asset_l(&mut self, h: &[u8; 64], asset: Address) {
+        let h = FixedBytes::from_slice(&h[..32]);
         self.details_hash_asset_l.setter(h).set(asset);
     }
 
@@ -171,11 +208,6 @@ impl StorageApplicationV1 {
             .get(FixedBytes::from_slice(&h[..32]))
     }
 
-    pub fn get_hash_owner_l(&self, h: &[u8; 64]) -> Address {
-        self.details_hash_owner_l
-            .get(FixedBytes::from_slice(&h[..32]))
-    }
-
     pub fn get_hash_owner_r(&self, h: &[u8; 64]) -> Address {
         self.details_hash_owner_r
             .get(FixedBytes::from_slice(&h[..32]))
@@ -187,25 +219,6 @@ impl StorageApplicationV1 {
                 .get(FixedBytes::from_slice(&h[..32]))
                 .to_be_bytes(),
         )
-    }
-
-    pub fn find_ed25519_key(&self, i: u64) -> Result<VerifyingKey, Error> {
-        let v = self.ed25519_keys.get(i);
-        if v.is_zero() {
-            Err(Error::from(ErrorDiscriminant::AccountIdNotFound))
-        } else {
-            VerifyingKey::from_bytes(&v.0)
-                .map_err(|_| Error::from(ErrorDiscriminant::BadVerifyingKey))
-        }
-    }
-
-    pub fn find_ed25519_addr(&self, i: u64) -> Result<Address, Error> {
-        let addr = self.ed25519_owners.get(i);
-        if addr.is_zero() {
-            Err(Error::from(ErrorDiscriminant::AccountIdNotFound))
-        } else {
-            Ok(addr)
-        }
     }
 
     pub fn get_interim(&self, owner: Address, asset: Address, h: &[u8; 64]) -> u128 {

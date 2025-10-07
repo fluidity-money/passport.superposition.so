@@ -2,7 +2,7 @@ use crate::{
     applicative::*,
     error::*,
     state_machine::{self, StateMachine},
-    storage::StorageApplicationV1,
+    storage::StorageValidationV1,
 };
 
 use alloc::vec::Vec;
@@ -29,7 +29,9 @@ fn err_verify(from: ApplicativeLabel) -> Error {
 }
 
 fn err_verify_two(from: ApplicativeLabel, x: u8) -> Error {
-    Error::from(ErrorDiscriminant::BadStrictVerifyTwo).app(from).side(x)
+    Error::from(ErrorDiscriminant::BadStrictVerifyTwo)
+        .app(from)
+        .side(x)
 }
 
 pub type Hash = [u8; 64];
@@ -94,7 +96,7 @@ pub fn make_sig(key: &SigningKey, sig: &[u8], prev_digest: &[u8]) -> Result<EdSi
         .sign_digest(
             Sha512::default()
                 .chain_update(sig)
-                .chain_update(&prev_digest),
+                .chain_update(prev_digest),
         )
         .into();
     Ok(s.into())
@@ -119,7 +121,7 @@ impl<const CAP: usize> borsh::io::Write for Scratch<CAP> {
         // We don't bother with runtime protection here since we'll be
         // the only users. It's a compile time error if a type somehow
         // gets through that exceeds the size restriction.
-        if buf.len() == 0 {
+        if buf.is_empty() {
             return Ok(0);
         }
         self.x[self.c..self.c + buf.len()].copy_from_slice(buf);
@@ -146,15 +148,15 @@ impl<const CAP: usize> core::ops::Deref for Scratch<CAP> {
     }
 }
 
-fn serialise_inplace<'a, T: BorshSerialize, const CAP: usize>(x: &T) -> Scratch<CAP> {
+fn serialise_inplace<T: BorshSerialize, const CAP: usize>(x: &T) -> Scratch<CAP> {
     let mut b = Scratch::default();
     x.serialize(&mut b).unwrap();
     b
 }
 
-fn digest_inplace<'a, T: BorshSerialize, const CAP: usize>(x: &T) -> [u8; 64] {
+fn digest_inplace<T: BorshSerialize, const CAP: usize>(x: &T) -> [u8; 64] {
     Sha512::default()
-        .chain_update(&serialise_inplace::<_, CAP>(x))
+        .chain_update(serialise_inplace::<_, CAP>(x))
         .finalize()
         .into()
 }
@@ -213,10 +215,10 @@ fn get_commit_hash(st: &state_machine::Commit) -> Hash {
 }
 
 fn err_hash_already_onchain(h: &[u8; 64]) -> Error {
-    Error::from(ErrorDiscriminant::HashAlreadyOnchain).hash(h.clone())
+    Error::from(ErrorDiscriminant::HashAlreadyOnchain).hash(*h)
 }
 
-impl StorageApplicationV1 {
+impl StorageValidationV1 {
     fn ensure_hash_unseen(&self, hash: &[u8; 64]) -> Result<(), Error> {
         // We need to truncate the first part of the hash to access it in the storage tree.
         if !self
@@ -232,7 +234,7 @@ impl StorageApplicationV1 {
     /// Validate the Balance against the signature given using an array on the stack.
     fn validate_balance(
         &self,
-        accounts: &Vec<u64>,
+        accounts: &[u64],
         (owner_i, owner_sig): &UserSig,
         args: &ArgsBalance,
     ) -> Result<state_machine::Balance, Error> {
@@ -576,19 +578,19 @@ impl StorageApplicationV1 {
     ) -> Result<StateMachine, Error> {
         match ap {
             Applicative::Balance(sig, args) => Ok(StateMachine::Balance(
-                self.validate_balance(accounts, &sig, args)?,
+                self.validate_balance(accounts, sig, args)?,
             )),
             Applicative::Withdraw(solver_sig, user_sig, _, ap) => Ok(StateMachine::Withdraw(
-                self.validate_withdraw(solver_key, accounts, &solver_sig, &user_sig, ap)?,
+                self.validate_withdraw(solver_key, accounts, solver_sig, user_sig, ap)?,
             )),
             Applicative::Order(user_sig, args, ap) => Ok(StateMachine::Order(
-                self.validate_order(solver_key, accounts, &user_sig, &args, ap)?,
+                self.validate_order(solver_key, accounts, user_sig, args, ap)?,
             )),
             Applicative::Cancel(solver_sig, user_sig, ap) => Ok(StateMachine::Balance(
-                self.validate_cancel(solver_key, accounts, &solver_sig, &user_sig, ap)?,
+                self.validate_cancel(solver_key, accounts, solver_sig, user_sig, ap)?,
             )),
             Applicative::Commit(solver_sig, args, ap1, ap2) => Ok(StateMachine::Commit(
-                self.validate_commit(solver_key, accounts, &solver_sig, &args, ap1, ap2)?,
+                self.validate_commit(solver_key, accounts, solver_sig, args, ap1, ap2)?,
             )),
             Applicative::CommitLeftFilledToBalance(ap) => Ok(StateMachine::Balance(
                 self.validate_commit_left_filled_to_bal(solver_key, accounts, ap)?,
@@ -603,7 +605,7 @@ impl StorageApplicationV1 {
                 self.validate_commit_right_excess_to_order(solver_key, accounts, ap)?,
             )),
             Applicative::Join(user_sig, left, right) => Ok(StateMachine::Balance(
-                self.validate_join(solver_key, accounts, &user_sig, &left, &right)?,
+                self.validate_join(solver_key, accounts, user_sig, left, right)?,
             )),
         }
     }
@@ -616,7 +618,6 @@ pub fn sign_balance(k: &SigningKey, args: &ArgsBalance) -> EdSig {
         &[],
     )
     .unwrap()
-    .into()
 }
 
 pub fn digest_wrapped_balance(from: ApplicativeLabel, ap: &Applicative) -> Result<[u8; 64], Error> {
@@ -651,7 +652,7 @@ pub fn digest_wrapped_balance(from: ApplicativeLabel, ap: &Applicative) -> Resul
 pub fn digest_order(args: &ArgsOrder, ap: &Applicative) -> Result<[u8; 64], Error> {
     Ok(chain_digests(
         &digest_inplace::<_, { size_of::<ArgsOrder>() }>(args),
-        &digest_wrapped_balance(ApplicativeLabel::Order, &ap)?,
+        &digest_wrapped_balance(ApplicativeLabel::Order, ap)?,
     ))
 }
 

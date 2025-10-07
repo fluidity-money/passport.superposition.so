@@ -14,6 +14,7 @@ path = "src/contract-solver/main.rs"
 [[bin]]
 name = "contract-setter"
 path = "src/contract-setter/main.rs"
+required-features = ["storage-gen-apply"]
 
 [[bin]]
 name = "contract-admin"
@@ -27,6 +28,7 @@ path = "src/contract-vault/main.rs"
 [[bin]]
 name = "contract-apply"
 path = "src/contract-apply/main.rs"
+required-features = ["storage-gen-apply"]
 
 [[bin]]
 name = "webapp"
@@ -109,3 +111,5 @@ network-mainnet = []
 network-testnet = []
 network-custom = []
 storage-gen-admin = []
+storage-gen-apply = []
+return-values = []

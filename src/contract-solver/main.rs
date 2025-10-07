@@ -24,8 +24,11 @@ cfg_if::cfg_if! {
 pub unsafe extern "C" fn user_entrypoint(len: usize) -> usize {
     entry_non_reentrant(len, |s, args| match OpSolver::deserialize(args).unwrap() {
         OpSolver::Solve(accounts, args) => {
-            // Codesize hack:
-            let m = match s.app.validate(&pick_solver_key(NETWORK), &accounts, &args) {
+            let m = match s
+                .app
+                .validation
+                .validate(&pick_solver_key(NETWORK), &accounts, &args)
+            {
                 Ok(v) => v,
                 Err(v) => {
                     s.vm().write_result(&[v.dis_u8()]);
@@ -35,8 +38,8 @@ pub unsafe extern "C" fn user_entrypoint(len: usize) -> usize {
             // It would be better to hand up to the caller the return value here, but
             // for codesize reasons, we shortcircuit here using exit_early. This also
             // lets us implicitly flush for all of the other facets.
-            let (r, rd) = reentrancy::begin_apply(&mut s.app, m);
-            s.vm().write_result(&rd);
+            let (r, _rd) = reentrancy::begin_apply(&mut s.app, m);
+            s.vm().write_result(&_rd);
             r
         }
     })

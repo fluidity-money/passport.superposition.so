@@ -1,8 +1,11 @@
-use crate::{state_machine::StateMachine};
+use crate::state_machine::StateMachine;
 
+use stylus_sdk::prelude::{HostAccess, TopLevelStorage};
+
+#[cfg(target_arch = "wasm32")]
 use stylus_sdk::{
     alloy_primitives::Address,
-    prelude::{delegate_call, errors::Error, HostAccess, TopLevelStorage},
+    prelude::{delegate_call, errors::Error},
     stylus_core::Call,
 };
 
@@ -41,4 +44,12 @@ pub fn begin_apply(
             _ => unimplemented!(),
         }
     }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub fn begin_apply(
+    _env: &mut (impl TopLevelStorage + HostAccess),
+    _s: StateMachine,
+) -> (usize, Vec<u8>) {
+    todo!()
 }

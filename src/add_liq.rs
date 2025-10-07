@@ -1,3 +1,4 @@
+#[cfg(feature = "storage-gen-apply")]
 use crate::{
     call_eip20_extras,
     error::{ApplyContext, Error, ErrorDiscriminant},
@@ -5,11 +6,13 @@ use crate::{
     DONE_UNIT, R,
 };
 
+#[cfg(feature = "storage-gen-apply")]
 use stylus_sdk::{
     alloy_primitives::{Address, FixedBytes, U128, U256},
     prelude::HostAccess,
 };
 
+#[cfg(feature = "storage-gen-apply")]
 impl StorageApplicationV1 {
     pub fn add_liq(
         &mut self,
@@ -36,7 +39,7 @@ impl StorageApplicationV1 {
         let spender = self.vm().contract_address();
         call_eip20_extras::permit(self, token, owner, spender, value, deadline, v, r, s)?;
         call_eip20_extras::transfer_from(self, token, owner, spender, value)?;
-        self.withdrawable
+        self.apply.withdrawable
             .setter(recipient)
             .setter(token)
             .update_check_add(value_)
@@ -44,7 +47,7 @@ impl StorageApplicationV1 {
                 Error::from(ErrorDiscriminant::CheckedAdd)
                     .ctx(ApplyContext::AddLiq)
                     .x(u128::from_le_bytes(
-                        self.withdrawable.getter(recipient).get(token).to_le_bytes(),
+                        self.apply.withdrawable.getter(recipient).get(token).to_le_bytes(),
                     ))
                     .y(u128::from_le_bytes(value_.to_le_bytes())),
             )?;

@@ -1,3 +1,4 @@
+#[cfg(feature = "storage-gen-apply")]
 use crate::{
     done_u64,
     error::{ApplyContext, Error, ErrorDiscriminant},
@@ -5,13 +6,16 @@ use crate::{
     Storage, R,
 };
 
+#[cfg(feature = "storage-gen-apply")]
 use ed25519_dalek::{Signature, VerifyingKey};
 
+#[cfg(feature = "storage-gen-apply")]
 use stylus_sdk::{
     alloy_primitives::{Address, FixedBytes, U64},
     prelude::HostAccess,
 };
 
+#[cfg(feature = "storage-gen-apply")]
 impl Storage {
     fn chain_id(&self) -> u128 {
         self.vm().chain_id() as u128
@@ -50,14 +54,16 @@ impl Storage {
             .map_err(|_| Error::from(ErrorDiscriminant::BadVerifyingKey))?
             .verify_strict(&addr_nonce_chain, &Signature::from_bytes(&sig))
             .map_err(|_| Error::from(ErrorDiscriminant::BadOnboardingSig))?;
-        let key_count = u64::from_le_bytes(self.app.ed25519_count.get().to_le_bytes());
+        let key_count = u64::from_le_bytes(self.app.validation.ed25519_count.get().to_le_bytes());
         self.app
+            .validation
             .ed25519_count
             .update_check_add(U64::from(1))
             .ok_or(Error::from(ErrorDiscriminant::CheckedAdd64).ctx(ApplyContext::Onboard))?;
         let key = FixedBytes(key);
-        self.app.ed25519_keys.setter(key_count).set(key);
+        self.app.validation.ed25519_keys.setter(key_count).set(key);
         self.app
+            .validation
             .ed25519_owners
             .setter(key_count)
             .set(Address::from(owner));

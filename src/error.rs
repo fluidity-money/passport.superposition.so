@@ -7,7 +7,7 @@ use stylus_sdk::{
     prelude::calls::errors::Error as StylusErr,
 };
 
-use alloc::vec::Vec;
+use alloc::{boxed::Box, vec::Vec};
 
 #[cfg(feature = "std")]
 use proptest::strategy::Strategy;
@@ -198,9 +198,8 @@ pub struct ErrorInterimAccessContext {
     pub interim_hashes: Vec<ErrorTestInterimDetails>,
 }
 
-#[derive(PartialEq)]
-pub struct Error {
-    pub typ: ErrorDiscriminant,
+#[derive(Debug, Clone, PartialEq)]
+pub struct ErrorInner {
     // Used to hint information about the app when an error happens if this
     // is tagged on.
     pub test_context: Option<ErrorTestContext>,
@@ -212,6 +211,12 @@ pub struct Error {
     pub side: Option<u8>,
     pub app_to: Option<ApplicativeLabel>,
     pub hash: Option<[u8; 64]>,
+}
+
+#[derive(PartialEq)]
+pub struct Error {
+    pub typ: ErrorDiscriminant,
+    pub inner: Box<ErrorInner>
 }
 
 impl Error {
@@ -263,47 +268,47 @@ impl proptest::prelude::Arbitrary for Error {
 
 impl Error {
     pub fn test_context(mut self, e: ErrorTestContext) -> Self {
-        self.test_context = Some(e);
+        self.inner.test_context = Some(e);
         self
     }
 
     pub fn test_interim(mut self, v: ErrorInterimAccessContext) -> Self {
-        self.test_interim = Some(v);
+        self.inner.test_interim = Some(v);
         self
     }
 
     pub fn ctx(mut self, c: ApplyContext) -> Self {
-        self.context = Some(c);
+        self.inner.context = Some(c);
         self
     }
 
     pub fn x(mut self, x: u128) -> Self {
-        self.x = Some(x);
+        self.inner.x = Some(x);
         self
     }
 
     pub fn y(mut self, y: u128) -> Self {
-        self.y = Some(y);
+        self.inner.y = Some(y);
         self
     }
 
     pub fn app(mut self, from: ApplicativeLabel) -> Self {
-        self.app = Some(from);
+        self.inner.app = Some(from);
         self
     }
 
     pub fn side(mut self, side: u8) -> Self {
-        self.side = Some(side);
+        self.inner.side = Some(side);
         self
     }
 
     pub fn app_to(mut self, to: ApplicativeLabel) -> Self {
-        self.app_to = Some(to);
+        self.inner.app_to = Some(to);
         self
     }
 
     pub fn hash(mut self, h: [u8; 64]) -> Self {
-        self.hash = Some(h);
+        self.inner.hash = Some(h);
         self
     }
 }
@@ -312,15 +317,17 @@ impl Default for Error {
     fn default() -> Self {
         Error {
             typ: ErrorDiscriminant::Unknown,
-            test_context: None,
-            test_interim: None,
-            context: None,
-            x: None,
-            y: None,
-            app: None,
-            side: None,
-            app_to: None,
-            hash: None,
+            inner: Box::new(ErrorInner {
+                test_context: None,
+                test_interim: None,
+                context: None,
+                x: None,
+                y: None,
+                app: None,
+                side: None,
+                app_to: None,
+                hash: None,
+            }),
         }
     }
 }
@@ -335,12 +342,7 @@ impl core::fmt::Debug for Error {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
         let mut d = f.debug_struct("Error");
         d.field("typ", &self.typ);
-        if let Some(ref c) = self.test_context {
-            d.field("eip20 context", c);
-        }
-        if let Some(ref c) = self.test_interim {
-            d.field("interim values", c);
-        }
+        d.field("inner", &self.inner);
         d.finish()
     }
 }
@@ -370,9 +372,10 @@ pub fn map_stylus_err(
 
 impl From<ErrorDiscriminant> for Error {
     fn from(x: ErrorDiscriminant) -> Self {
-        let mut e = Error::default();
-        e.typ = x;
-        e
+        Error {
+            typ: x,
+            ..Error::default()
+        }
     }
 }
 
