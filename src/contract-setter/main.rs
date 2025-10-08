@@ -1,9 +1,12 @@
 #![cfg_attr(target_arch = "wasm32", no_main, no_std)]
 
-use libpassport::{entry_non_reentrant, ops::OpSetter, wasm_vm_harness, DONE_UNIT};
+use libpassport::{entry_non_reentrant, error::Error, ops::OpSetter, wasm_vm_harness, DONE_UNIT};
 
 #[cfg(not(target_arch = "wasm32"))]
 use libpassport::host_vm_harness;
+
+#[cfg(all(not(target_arch = "wasm32"), feature = "std"))]
+use libpassport::return_data;
 
 use stylus_sdk::{host::VM, prelude::HostAccess};
 
@@ -48,7 +51,16 @@ pub fn entry(vm: VM, len: usize) -> usize {
         };
         match r {
             Ok(v) => s.vm().write_result(&borsh::to_vec(&v).unwrap()),
-            Err(v) => s.vm().write_result(&[v.dis_u8().into()]),
+            Err(v) => s.vm().write_result(&{
+                #[cfg(feature = "errors-extra-context")]
+                {
+                    borsh::to_vec(&v).unwrap()
+                }
+                #[cfg(not(feature = "errors-extra-context"))]
+                {
+                    [v.dis_u8().into()]
+                }
+            }),
         }
         s.vm().flush_cache(true);
         rd
@@ -63,5 +75,22 @@ pub unsafe extern "C" fn user_entrypoint(len: usize) -> usize {
 #[cfg(not(target_arch = "wasm32"))]
 fn main() {
     let (vm, len) = host_vm_harness();
-    std::process::exit(entry(vm, len).try_into().unwrap())
+    let c = entry(vm, len).try_into().unwrap();
+    #[cfg(feature = "std")]
+    {
+        let rd = return_data();
+        let d = const_hex::encode(&rd);
+        if c > 0 {
+            #[cfg(feature = "errors-extra-context")]
+            {
+                let err: Error = borsh::de::from_slice(&rd).unwrap();
+                eprintln!("{err}");
+            }
+            #[cfg(not(feature = "errors-extra-context"))]
+            eprintln!("0x{d}");
+        } else {
+            println!("0x{d}");
+        }
+    }
+    std::process::exit(c)
 }

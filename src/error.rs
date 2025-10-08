@@ -3,7 +3,7 @@ use borsh::{BorshDeserialize, BorshSerialize};
 pub use crate::{applicative::ApplicativeLabel, result::Res};
 
 use stylus_sdk::{
-    alloy_primitives::{Address, FixedBytes, U256},
+    alloy_primitives::{Address},
     prelude::calls::errors::Error as StylusErr,
 };
 
@@ -40,7 +40,9 @@ pub enum ApplyContext {
 /// ErrorDiscriminant is not shown to users, even if it contains any
 /// information. It could have its contents printed while running on the
 /// native host.
-#[derive(Clone, PartialEq, Debug, IntoPrimitive, TryFromPrimitive)]
+#[derive(
+    Clone, PartialEq, Debug, IntoPrimitive, TryFromPrimitive, BorshSerialize, BorshDeserialize,
+)]
 #[cfg_attr(
     feature = "std",
     derive(arbitrary::Arbitrary, proptest_derive::Arbitrary)
@@ -188,38 +190,8 @@ impl TryFrom<u8> for Error {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct ErrorTestContext {
-    pub sender: Address,
-    pub recipient: Address,
-    pub asset: Address,
-    pub amt: U256,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct ErrorTestInterimDetails {
-    pub owner_l: Address,
-    pub owner_r: Address,
-    pub asset_l: Address,
-    pub asset_r: Address,
-    pub amt: u128,
-    pub hash: FixedBytes<32>,
-    pub thread_recorded_owner: Address,
-    pub thread_recorded_asset: Address,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct ErrorInterimAccessContext {
-    pub accessed_hash: FixedBytes<32>,
-    pub interim_hashes: Vec<ErrorTestInterimDetails>,
-}
-
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, BorshSerialize, BorshDeserialize)]
 pub struct ErrorInner {
-    // Used to hint information about the app when an error happens if this
-    // is tagged on.
-    pub test_context: Option<ErrorTestContext>,
-    pub test_interim: Option<ErrorInterimAccessContext>,
     pub context: Option<ApplyContext>,
     pub x: Option<u128>,
     pub y: Option<u128>,
@@ -227,17 +199,41 @@ pub struct ErrorInner {
     pub side: Option<u8>,
     pub app_to: Option<ApplicativeLabel>,
     pub hash: Option<[u8; 64]>,
-    pub asset_left: Option<Address>,
-    pub asset_right: Option<Address>,
-    pub desired_left: Option<Address>,
-    pub desired_right: Option<Address>,
+    pub asset_left: Option<String>,
+    pub asset_right: Option<String>,
+    pub desired_left: Option<String>,
+    pub desired_right: Option<String>,
 }
 
-#[derive(PartialEq)]
+impl Default for ErrorInner {
+    fn default() -> Self {
+        Self {
+            context: None,
+            x: None,
+            y: None,
+            app: None,
+            side: None,
+            app_to: None,
+            hash: None,
+            asset_left: None,
+            asset_right: None,
+            desired_left: None,
+            desired_right: None,
+        }
+    }
+}
+
+#[derive(PartialEq, Clone, BorshSerialize, BorshDeserialize)]
 pub struct Error {
     pub typ: ErrorDiscriminant,
     #[cfg(feature = "errors-extra-context")]
     pub inner: Box<ErrorInner>,
+}
+
+impl From<Error> for Vec<u8> {
+    fn from(x: Error) -> Self {
+        borsh::to_vec(&x).unwrap()
+    }
 }
 
 impl Error {
@@ -253,8 +249,6 @@ impl<'a> arbitrary::Arbitrary<'a> for Error {
             typ: ErrorDiscriminant::arbitrary(u)?,
             #[cfg(feature = "errors-extra-context")]
             inner: Box::new(ErrorInner {
-                test_context: None,
-                test_interim: None,
                 context: None,
                 x: None,
                 y: None,
@@ -284,24 +278,6 @@ impl proptest::prelude::Arbitrary for Error {
 }
 
 impl Error {
-    #[allow(unused_mut)]
-    pub fn test_context(mut self, _e: ErrorTestContext) -> Self {
-        #[cfg(feature = "errors-extra-context")]
-        {
-            self.inner.test_context = Some(_e);
-        }
-        self
-    }
-
-    #[allow(unused_mut)]
-    pub fn test_interim(mut self, _v: ErrorInterimAccessContext) -> Self {
-        #[cfg(feature = "errors-extra-context")]
-        {
-            self.inner.test_interim = Some(_v);
-        }
-        self
-    }
-
     #[allow(unused_mut)]
     pub fn ctx(mut self, _c: ApplyContext) -> Self {
         #[cfg(feature = "errors-extra-context")]
@@ -369,7 +345,7 @@ impl Error {
     pub fn asset_left(mut self, _a: Address) -> Self {
         #[cfg(feature = "errors-extra-context")]
         {
-            self.inner.asset_left = Some(_a);
+            self.inner.asset_left = Some(_a.to_string());
         }
         self
     }
@@ -378,7 +354,7 @@ impl Error {
     pub fn asset_right(mut self, _a: Address) -> Self {
         #[cfg(feature = "errors-extra-context")]
         {
-            self.inner.asset_right = Some(_a);
+            self.inner.asset_right = Some(_a.to_string());
         }
         self
     }
@@ -387,7 +363,7 @@ impl Error {
     pub fn desired_left(mut self, _a: Address) -> Self {
         #[cfg(feature = "errors-extra-context")]
         {
-            self.inner.desired_left = Some(_a);
+            self.inner.desired_left = Some(_a.to_string());
         }
         self
     }
@@ -396,7 +372,7 @@ impl Error {
     pub fn desired_right(mut self, _a: Address) -> Self {
         #[cfg(feature = "errors-extra-context")]
         {
-            self.inner.desired_right = Some(_a);
+            self.inner.desired_right = Some(_a.to_string());
         }
         self
     }
@@ -404,7 +380,11 @@ impl Error {
 
 impl Default for Error {
     fn default() -> Self {
-        Error::from(ErrorDiscriminant::Unknown)
+        Error {
+            typ: ErrorDiscriminant::Unknown,
+            #[cfg(feature = "errors-extra-context")]
+            inner: Box::new(ErrorInner::default()),
+        }
     }
 }
 

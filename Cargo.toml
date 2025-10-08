@@ -100,10 +100,14 @@ const-hex = { version = "1.12.0", features = ["alloc"] }
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies.stylus-sdk]
 version = "=0.10.0-beta.1"
 default-features = false
-features = ["mini-alloc", "stylus-test"]
+features = ["stylus-test"]
 
 [features]
-std = ["stylus-panic/std", "errors-extra-context"]
+std = [
+	"stylus-panic/std",
+	"errors-extra-context",
+	"stylus-sdk/stylus-test"
+]
 dryrun = []
 errors-extra-context = []
 harness-stylus-interpreter = [

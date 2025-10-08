@@ -46,10 +46,12 @@ impl Storage {
         // were given, and an external-facing function to the address they gave
         // us.
         #[cfg(not(feature = "dryrun"))]
+        dbg!(self.chain_id(), chain);
         if self.chain_id() != chain {
             return Err(Error::from(ErrorDiscriminant::OnboardDifferentChainId));
         }
         harness_dbg!("After the chain id");
+        dbg!(Address::from(contract));
         if self.vm().contract_address().0 != contract {
             return Err(Error::from(ErrorDiscriminant::OnboardDifferentContract));
         }
@@ -58,6 +60,7 @@ impl Storage {
         harness_dbg!("Owner is found");
         let addr_nonce_chain = make_onboarding_sig(&owner.into_array(), &contract, nonce, chain);
         harness_dbg!("Making onboarding sig");
+        dbg!("About to do verifyin gkey");
         VerifyingKey::from_bytes(&key)
             .map_err(|_| Error::from(ErrorDiscriminant::BadVerifyingKey))?
             .verify_strict(&addr_nonce_chain, &Signature::from_bytes(&sig))

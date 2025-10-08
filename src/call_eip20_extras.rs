@@ -192,16 +192,7 @@ mod implem {
     ) -> Result<(), Error> {
         let available = env.test_eip20.balances.setter(addr).get(from);
         if amt > available {
-            return Err(
-                Error::from(ErrorDiscriminant::TestNotEnoughBalForTransfer).test_context(
-                    ErrorTestContext {
-                        sender: from,
-                        recipient,
-                        asset: addr,
-                        amt,
-                    },
-                ),
-            );
+            return Err(Error::from(ErrorDiscriminant::TestNotEnoughBalForTransfer));
         }
         env.test_eip20
             .balances
@@ -233,16 +224,7 @@ mod implem {
             .getter(from) // Source
             .get(spender); // Us
         if exp < amt {
-            return Err(
-                Error::from(ErrorDiscriminant::TestNotEnoughAllowance).test_context(
-                    ErrorTestContext {
-                        sender: from,
-                        recipient: spender,
-                        asset: addr,
-                        amt,
-                    },
-                ),
-            );
+            return Err(Error::from(ErrorDiscriminant::TestNotEnoughAllowance));
         }
         _transfer(env, addr, from, to, amt)
     }

@@ -3,7 +3,7 @@
 use libpassport::{entry_non_reentrant, wasm_vm_harness, ops::OpAdmin};
 
 #[cfg(not(target_arch = "wasm32"))]
-use libpassport::host_vm_harenss;
+use libpassport::host_vm_harness;
 
 use stylus_sdk::host::VM;
 
@@ -23,5 +23,5 @@ pub unsafe extern "C" fn user_entrypoint(len: usize) -> usize {
 #[cfg(not(target_arch = "wasm32"))]
 fn main() {
     let (vm, len) = host_vm_harness();
-    entry(vm, len)
+    std::process::exit(entry(vm, len).try_into().unwrap())
 }

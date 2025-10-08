@@ -8,6 +8,9 @@ use libpassport::{
 #[cfg(not(target_arch = "wasm32"))]
 use libpassport::host_vm_harness;
 
+#[cfg(all(not(target_arch = "wasm32"), feature = "std"))]
+use libpassport::return_data;
+
 use stylus_sdk::{host::VM, prelude::HostAccess};
 
 use borsh::BorshDeserialize;
@@ -55,5 +58,15 @@ pub unsafe extern "C" fn user_entrypoint(len: usize) -> usize {
 #[cfg(not(target_arch = "wasm32"))]
 fn main() {
     let (vm, len) = host_vm_harness();
-    std::process::exit(entry(vm, len).try_into().unwrap())
+    let c = entry(vm, len).try_into().unwrap();
+    #[cfg(feature = "std")]
+    {
+        let d = const_hex::encode(&return_data());
+        if c > 0 {
+            eprintln!("0x{d}");
+        } else {
+            println!("0x{d}");
+        }
+    }
+    std::process::exit(c)
 }

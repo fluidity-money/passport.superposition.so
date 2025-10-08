@@ -38,8 +38,7 @@ pub type OurLzss = lzss::Lzss<12, 11, 0, { 1 << 12 }, { 2 << 12 }>;
 
 pub use stylus_panic;
 
-#[cfg(target_arch = "wasm32")]
-use stylus_sdk::prelude::CalldataAccess;
+use stylus_sdk::prelude::HostAccess;
 
 use stylus_sdk::host::VM;
 
@@ -127,7 +126,9 @@ pub fn wasm_vm_harness() -> VM {
 #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
 thread_local! {
     static VM_ARGS: std::cell::RefCell<Vec<u8>> =
-        const { std::cell::RefCell::new(Vec::new()) }
+        const { std::cell::RefCell::new(Vec::new()) };
+    static VM_RETURN: std::cell::RefCell<Vec<u8>> =
+        const { std::cell::RefCell::new(Vec::new()) };
 }
 
 #[cfg(feature = "std")]
@@ -136,17 +137,26 @@ thread_local! {
 pub struct VmArgs {
     #[arg(short, long)]
     pub sender: Option<Address>,
+    #[arg(short, long, default_value = "98985")]
+    pub chain_id: u64,
+    #[arg(short, long, default_value = "0x0000000000000000000000000000000000000000")]
+    pub addr: Option<Address>,
 }
 
 #[cfg(not(target_arch = "wasm32"))]
 pub fn host_vm_harness() -> (VM, usize) {
     #[allow(unused_mut)]
-    let mut vm = VM {
-        host: Box::new(stylus_sdk::testing::vm::TestVM::new()),
-    };
+    let test_vm = stylus_sdk::testing::vm::TestVM::new();
     #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
     let args_len = {
         let args = VmArgs::parse();
+        test_vm.set_chain_id(args.chain_id);
+        if let Some(sender) = args.sender {
+            test_vm.set_sender(sender)
+        };
+        if let Some(c) = args.addr {
+            test_vm.set_contract_address(c)
+        }
         let mut b = String::new();
         std::io::stdin().read_to_string(&mut b).unwrap();
         let a = const_hex::decode(b.trim()).unwrap();
@@ -156,9 +166,17 @@ pub fn host_vm_harness() -> (VM, usize) {
         }
         l
     };
+    let vm = VM {
+        host: Box::new(test_vm),
+    };
     #[cfg(not(all(feature = "std", not(target_arch = "wasm32"))))]
     let args_len = 0;
     (vm, args_len)
+}
+
+#[cfg(all(not(target_arch = "wasm32"), feature = "std"))]
+pub fn return_data() -> Vec<u8> {
+    VM_RETURN.with(|x| x.borrow().clone())
 }
 
 pub fn entry_non_reentrant(
@@ -186,7 +204,7 @@ pub fn entry_non_reentrant(
             vm,
         )
     };
-    entry(
+    let c = entry(
         &mut s,
         &mut OurLzss::decompress_stack(
             lzss::SliceReader::new(&args[1..]),
@@ -194,5 +212,8 @@ pub fn entry_non_reentrant(
         )
         .unwrap()
         .as_slice(),
-    )
+    );
+    #[cfg(all(not(target_arch = "wasm32"), feature = "std"))]
+    VM_RETURN.with(|x| *x.borrow_mut() = s.vm().read_return_data(0, None));
+    c
 }
