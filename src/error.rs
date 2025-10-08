@@ -9,7 +9,10 @@ use stylus_sdk::{
 
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 
-use alloc::{boxed::Box, vec::Vec};
+use alloc::vec::Vec;
+
+#[cfg(feature = "errors-extra-context")]
+use alloc::boxed::Box;
 
 #[cfg(feature = "std")]
 use proptest::strategy::Strategy;
@@ -224,11 +227,16 @@ pub struct ErrorInner {
     pub side: Option<u8>,
     pub app_to: Option<ApplicativeLabel>,
     pub hash: Option<[u8; 64]>,
+    pub asset_left: Option<Address>,
+    pub asset_right: Option<Address>,
+    pub desired_left: Option<Address>,
+    pub desired_right: Option<Address>,
 }
 
 #[derive(PartialEq)]
 pub struct Error {
     pub typ: ErrorDiscriminant,
+    #[cfg(feature = "errors-extra-context")]
     pub inner: Box<ErrorInner>,
 }
 
@@ -243,6 +251,7 @@ impl<'a> arbitrary::Arbitrary<'a> for Error {
     fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
         Ok(Error {
             typ: ErrorDiscriminant::arbitrary(u)?,
+            #[cfg(feature = "errors-extra-context")]
             inner: Box::new(ErrorInner {
                 test_context: None,
                 test_interim: None,
@@ -253,6 +262,10 @@ impl<'a> arbitrary::Arbitrary<'a> for Error {
                 side: None,
                 app_to: None,
                 hash: None,
+                asset_left: None,
+                asset_right: None,
+                desired_left: None,
+                desired_right: None,
             }),
         })
     }
@@ -265,87 +278,133 @@ impl proptest::prelude::Arbitrary for Error {
 
     fn arbitrary_with(_args: Self::Parameters) -> Self::Strategy {
         proptest::prelude::any::<ErrorDiscriminant>()
-            .prop_map(|typ| Error {
-                typ,
-                inner: Box::new(ErrorInner {
-                    test_context: None,
-                    test_interim: None,
-                    context: None,
-                    x: None,
-                    y: None,
-                    app: None,
-                    side: None,
-                    app_to: None,
-                    hash: None,
-                }),
-            })
+            .prop_map(|typ| Error::from(typ))
             .boxed()
     }
 }
 
 impl Error {
-    pub fn test_context(mut self, e: ErrorTestContext) -> Self {
-        self.inner.test_context = Some(e);
+    #[allow(unused_mut)]
+    pub fn test_context(mut self, _e: ErrorTestContext) -> Self {
+        #[cfg(feature = "errors-extra-context")]
+        {
+            self.inner.test_context = Some(_e);
+        }
         self
     }
 
-    pub fn test_interim(mut self, v: ErrorInterimAccessContext) -> Self {
-        self.inner.test_interim = Some(v);
+    #[allow(unused_mut)]
+    pub fn test_interim(mut self, _v: ErrorInterimAccessContext) -> Self {
+        #[cfg(feature = "errors-extra-context")]
+        {
+            self.inner.test_interim = Some(_v);
+        }
         self
     }
 
-    pub fn ctx(mut self, c: ApplyContext) -> Self {
-        self.inner.context = Some(c);
+    #[allow(unused_mut)]
+    pub fn ctx(mut self, _c: ApplyContext) -> Self {
+        #[cfg(feature = "errors-extra-context")]
+        {
+            self.inner.context = Some(_c);
+        }
         self
     }
 
-    pub fn x(mut self, x: u128) -> Self {
-        self.inner.x = Some(x);
+    #[allow(unused_mut)]
+    pub fn x(mut self, _x: u128) -> Self {
+        #[cfg(feature = "errors-extra-context")]
+        {
+            self.inner.x = Some(_x);
+        }
         self
     }
 
-    pub fn y(mut self, y: u128) -> Self {
-        self.inner.y = Some(y);
+    #[allow(unused_mut)]
+    pub fn y(mut self, _y: u128) -> Self {
+        #[cfg(feature = "errors-extra-context")]
+        {
+            self.inner.y = Some(_y);
+        }
         self
     }
 
-    pub fn app(mut self, from: ApplicativeLabel) -> Self {
-        self.inner.app = Some(from);
+    #[allow(unused_mut)]
+    pub fn app(mut self, _from: ApplicativeLabel) -> Self {
+        #[cfg(feature = "errors-extra-context")]
+        {
+            self.inner.app = Some(_from);
+        }
         self
     }
 
-    pub fn side(mut self, side: u8) -> Self {
-        self.inner.side = Some(side);
+    #[allow(unused_mut)]
+    pub fn side(mut self, _side: u8) -> Self {
+        #[cfg(feature = "errors-extra-context")]
+        {
+            self.inner.side = Some(_side);
+        }
         self
     }
 
-    pub fn app_to(mut self, to: ApplicativeLabel) -> Self {
-        self.inner.app_to = Some(to);
+    #[allow(unused_mut)]
+    pub fn app_to(mut self, _to: ApplicativeLabel) -> Self {
+        #[cfg(feature = "errors-extra-context")]
+        {
+            self.inner.app_to = Some(_to);
+        }
         self
     }
 
-    pub fn hash(mut self, h: [u8; 64]) -> Self {
-        self.inner.hash = Some(h);
+    #[allow(unused_mut)]
+    pub fn hash(mut self, _h: [u8; 64]) -> Self {
+        #[cfg(feature = "errors-extra-context")]
+        {
+            self.inner.hash = Some(_h);
+        }
+        self
+    }
+
+    #[allow(unused_mut)]
+    pub fn asset_left(mut self, _a: Address) -> Self {
+        #[cfg(feature = "errors-extra-context")]
+        {
+            self.inner.asset_left = Some(_a);
+        }
+        self
+    }
+
+    #[allow(unused_mut)]
+    pub fn asset_right(mut self, _a: Address) -> Self {
+        #[cfg(feature = "errors-extra-context")]
+        {
+            self.inner.asset_right = Some(_a);
+        }
+        self
+    }
+
+    #[allow(unused_mut)]
+    pub fn desired_left(mut self, _a: Address) -> Self {
+        #[cfg(feature = "errors-extra-context")]
+        {
+            self.inner.desired_left = Some(_a);
+        }
+        self
+    }
+
+    #[allow(unused_mut)]
+    pub fn desired_right(mut self, _a: Address) -> Self {
+        #[cfg(feature = "errors-extra-context")]
+        {
+            self.inner.desired_right = Some(_a);
+        }
         self
     }
 }
 
 impl Default for Error {
     fn default() -> Self {
-        Error {
-            typ: ErrorDiscriminant::Unknown,
-            inner: Box::new(ErrorInner {
-                test_context: None,
-                test_interim: None,
-                context: None,
-                x: None,
-                y: None,
-                app: None,
-                side: None,
-                app_to: None,
-                hash: None,
-            }),
-        }
+        Error::from(ErrorDiscriminant::Unknown)
     }
 }
 
@@ -359,6 +418,7 @@ impl core::fmt::Debug for Error {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
         let mut d = f.debug_struct("Error");
         d.field("typ", &self.typ);
+        #[cfg(feature = "errors-extra-context")]
         d.field("inner", &self.inner);
         d.finish()
     }

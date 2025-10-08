@@ -1,0 +1,12 @@
+[profile.default]
+src = "src"
+out = "out"
+libs = ["lib"]
+test = "tests"
+fs_permissions = [
+	{ access = "read", path = "admin.passport-superposition-so.wasm" },
+	{ access = "read", path = "apply.passport-superposition-so.wasm" },
+	{ access = "read", path = "setter.passport-superposition-so.wasm" },
+	{ access = "read", path = "solver.passport-superposition-so.wasm" },
+	{ access = "read", path = "vault.passport-superposition-so.wasm" },
+]

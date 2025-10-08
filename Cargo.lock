@@ -3482,9 +3482,12 @@ dependencies = [
 
 [[package]]
 name = "stylus-panic"
-version = "0.3.0"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fa2d3b7ec6efdd51d1305919a478948be43da7e8c12d4767d1611ebc2c21cc1a"
+checksum = "09d3fca972878490176c4483e32be20b9532d7b9902c01c44fbe50a5c7c14ce8"
+dependencies = [
+ "alloy-primitives",
+]
 
 [[package]]
 name = "stylus-proc"

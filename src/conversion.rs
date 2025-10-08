@@ -20,6 +20,8 @@ use alloc::boxed::Box;
 #[cfg(not(target_arch = "wasm32"))]
 use proptest::prelude::*;
 
+use stylus_panic::harness_dbg;
+
 fn err_sig(from: ApplicativeLabel) -> Error {
     Error::from(ErrorDiscriminant::BadSignatureCreation).app(from)
 }
@@ -45,6 +47,7 @@ fn check_sig(
     msg: &[u8],
     prev_digest: &[u8],
 ) -> ValidateCarry {
+    harness_dbg!("check_sig", from);
     let d = Sha512::default()
         .chain_update(msg)
         .chain_update(prev_digest);
@@ -71,6 +74,7 @@ fn check_sig_two(
     msg: &[u8],
     prev_digest: &[u8],
 ) -> ValidateCarry {
+    harness_dbg!("check_sig_two", from);
     let d = Sha512::default()
         .chain_update(msg)
         .chain_update(prev_digest);
@@ -220,6 +224,7 @@ fn err_hash_already_onchain(h: &[u8; 64]) -> Error {
 
 impl StorageValidationV1 {
     fn ensure_hash_unseen(&self, hash: &[u8; 64]) -> Result<(), Error> {
+        harness_dbg!("ensure_hash_unseen");
         // We need to truncate the first part of the hash to access it in the storage tree.
         if !self
             .details_hash_owner_l
@@ -238,6 +243,7 @@ impl StorageValidationV1 {
         (owner_i, owner_sig): &UserSig,
         args: &ArgsBalance,
     ) -> Result<state_machine::Balance, Error> {
+        harness_dbg!("validate_balance", args);
         let owner_id = accounts[*owner_i as usize];
         let o = self.find_ed25519_key(owner_id)?;
         let d = check_sig(
@@ -269,6 +275,7 @@ impl StorageValidationV1 {
         accounts: &Vec<u64>,
         ap: &Applicative,
     ) -> Result<state_machine::Balance, Error> {
+        harness_dbg!("validate_comment_left_filled_to_bal", ap);
         let commit = self.validate_wrapped_commit(
             solver_key,
             ApplicativeLabel::CommitLeftFilledToBalance,
@@ -290,6 +297,7 @@ impl StorageValidationV1 {
         accounts: &Vec<u64>,
         ap: &Applicative,
     ) -> Result<state_machine::Balance, Error> {
+        harness_dbg!("validate_comment_right_filled_to_bal", ap);
         let commit = self.validate_wrapped_commit(
             solver_key,
             ApplicativeLabel::CommitRightFilledToBalance,
@@ -312,6 +320,7 @@ impl StorageValidationV1 {
         accounts: &Vec<u64>,
         ap: &Applicative,
     ) -> Result<state_machine::Balance, Error> {
+        harness_dbg!("validate_wrapped_balance", from);
         match ap {
             Applicative::Balance(sig, args) => self.validate_balance(accounts, sig, args),
             Applicative::CommitLeftFilledToBalance(ap) => {
@@ -335,6 +344,7 @@ impl StorageValidationV1 {
         args: &ArgsOrder,
         ap: &Applicative,
     ) -> Result<state_machine::Order, Error> {
+        harness_dbg!("validate_order");
         let bal = self.validate_wrapped_balance(solver_key, label(ap), accounts, ap)?;
         let bal_hash = get_bal_hash(&bal);
         let owner_id = accounts[*owner_i as usize];
@@ -365,6 +375,7 @@ impl StorageValidationV1 {
         accounts: &Vec<u64>,
         ap: &Applicative,
     ) -> Result<state_machine::Order, Error> {
+        harness_dbg!("validate_commit_left_excess_to_order");
         let commit = self.validate_wrapped_commit(
             solver_key,
             ApplicativeLabel::CommitLeftExcessToOrder,
@@ -386,6 +397,7 @@ impl StorageValidationV1 {
         accounts: &Vec<u64>,
         ap: &Applicative,
     ) -> Result<state_machine::Order, Error> {
+        harness_dbg!("validate_commit_right_excess_to_order");
         let commit = self.validate_wrapped_commit(
             solver_key,
             ApplicativeLabel::CommitRightExcessToOrder,
@@ -408,6 +420,7 @@ impl StorageValidationV1 {
         accounts: &Vec<u64>,
         ap: &Applicative,
     ) -> Result<state_machine::Order, Error> {
+        harness_dbg!("validate_wrapped_order");
         match ap {
             Applicative::Order(sig, args, ap) => {
                 self.validate_order(solver_key, accounts, sig, args, ap)
@@ -434,6 +447,7 @@ impl StorageValidationV1 {
         left: &Applicative,
         right: &Applicative,
     ) -> Result<state_machine::Commit, Error> {
+        harness_dbg!("validate_commit");
         let l = ApplicativeLabel::Commit;
         let left_order = self.validate_wrapped_order(solver_key, l, accounts, left)?;
         let right_order = self.validate_wrapped_order(solver_key, l, accounts, right)?;
@@ -468,6 +482,7 @@ impl StorageValidationV1 {
         accounts: &Vec<u64>,
         ap: &Applicative,
     ) -> Result<state_machine::Commit, Error> {
+        harness_dbg!("validate_wrapped_commit");
         match ap {
             Applicative::Commit(sig, args, left, right) => {
                 self.validate_commit(solver_key, accounts, sig, args, left, right)
@@ -488,6 +503,7 @@ impl StorageValidationV1 {
         (owner_i, owner_sig): &UserSig,
         ap: &Applicative,
     ) -> Result<state_machine::Withdraw, Error> {
+        harness_dbg!("validate_withdraw");
         // Since the argument to the right isn't known in the type here, we
         // validate the signature, and we feed the computed digest into a
         // concatenation here.
@@ -518,6 +534,7 @@ impl StorageValidationV1 {
         (owner_i, owner_sig): &UserSig,
         ap: &Applicative,
     ) -> Result<state_machine::Balance, Error> {
+        harness_dbg!("validate_cancel");
         let order =
             self.validate_wrapped_order(solver_key, ApplicativeLabel::Cancel, accounts, ap)?;
         let order_hash = get_order_hash(&order);
@@ -546,6 +563,7 @@ impl StorageValidationV1 {
         left: &Applicative,
         right: &Applicative,
     ) -> Result<state_machine::Balance, Error> {
+        harness_dbg!("validate_join");
         let l = ApplicativeLabel::Join;
         let left_bal = self.validate_wrapped_balance(solver_key, l, accounts, left)?;
         let right_bal = self.validate_wrapped_balance(solver_key, l, accounts, right)?;

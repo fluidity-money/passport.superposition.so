@@ -41,6 +41,17 @@ pub use stylus_panic;
 #[cfg(target_arch = "wasm32")]
 use stylus_sdk::prelude::CalldataAccess;
 
+use stylus_sdk::host::VM;
+
+#[cfg(feature = "std")]
+use clap::Parser as ClapParser;
+
+#[cfg(feature = "std")]
+use std::io::Read;
+
+#[cfg(feature = "std")]
+use stylus_sdk::alloy_primitives::Address;
+
 pub use crate::{
     error::{done_u64, DONE_UNIT, NOOP, R},
     storage::Storage,
@@ -104,20 +115,60 @@ fn set_reentrancy_flag() {
 #[cfg(any(not(target_arch = "wasm32"), feature = "dryrun"))]
 fn set_reentrancy_flag() {}
 
+pub fn wasm_vm_harness() -> VM {
+    #[cfg(target_arch = "wasm32")]
+    return VM(stylus_sdk::host::WasmVM {});
+    #[cfg(not(target_arch = "wasm32"))]
+    return VM {
+        host: Box::new(stylus_sdk::host::WasmVM {}),
+    };
+}
+
+#[cfg(all(feature = "std", not(target_arch = "wasm32")))]
+thread_local! {
+    static VM_ARGS: std::cell::RefCell<Vec<u8>> =
+        const { std::cell::RefCell::new(Vec::new()) }
+}
+
+#[cfg(feature = "std")]
+#[derive(Debug, Clone, PartialEq, ClapParser)]
+#[command(version, about)]
+pub struct VmArgs {
+    pub sender: Address,
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub fn host_vm_harness() -> (VM, usize) {
+    #[allow(unused_mut)]
+    let mut vm = VM {
+        host: Box::new(stylus_sdk::testing::vm::TestVM::new()),
+    };
+    #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
+    let args_len = {
+        let args = VmArgs::parse();
+        let mut b = Vec::new();
+        let s = std::io::stdin().read_to_end(&mut b).unwrap();
+        let a = const_hex::decode(s).unwrap();
+        let l = a.len();
+        if !s.is_empty() {
+            VM_ARGS.with(|x| *x.borrow_mut() = a)
+        }
+        l
+    };
+    #[cfg(not(all(feature = "std", not(target_arch = "wasm32"))))]
+    let args_len = 0;
+    (vm, args_len)
+}
+
 pub fn entry_non_reentrant(
+    vm: VM,
     len: usize,
     entry: impl FnOnce(&mut Storage, &mut &[u8]) -> usize,
 ) -> usize {
-    #[cfg(target_arch = "wasm32")]
-    let vm = stylus_sdk::host::VM(stylus_sdk::host::WasmVM {});
-    #[cfg(not(target_arch = "wasm32"))]
-    let vm = stylus_sdk::host::VM {
-        host: Box::new(stylus_sdk::testing::vm::TestVM::new()),
-    };
+    #[cfg(all(not(target_arch = "wasm32"), feature = "std"))]
+    let args = VM_ARGS.with(|x| x);
     #[cfg(target_arch = "wasm32")]
     let args = vm.read_args(len);
-    #[cfg(not(target_arch = "wasm32"))]
-    let args = vm.host.read_args(len);
     // Blow up if we're reentrant! If someone is using this, they should
     // not tolerate reentrancy.
     if is_reentrancy() {
@@ -140,6 +191,6 @@ pub fn entry_non_reentrant(
             lzss::VecWriter::with_capacity(1024 * 10),
         )
         .unwrap()
-        .as_slice()
+        .as_slice(),
     )
 }

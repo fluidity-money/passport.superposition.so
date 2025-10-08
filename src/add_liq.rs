@@ -9,7 +9,7 @@ use crate::{
 #[cfg(feature = "storage-gen-apply")]
 use stylus_sdk::{
     alloy_primitives::{Address, FixedBytes, U128, U256},
-    prelude::HostAccess,
+    prelude::{HostAccess},
 };
 
 #[cfg(feature = "storage-gen-apply")]

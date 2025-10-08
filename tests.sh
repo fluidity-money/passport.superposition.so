@@ -1,3 +1,5 @@
 #!/bin/sh
 
-cargo test --features std,storage-gen-admin,storage-gen-apply -- $@
+arbos-forge test -vv
+
+#cargo test --features std,errors-extra-context,storage-gen-admin,storage-gen-apply -- $@

@@ -2,9 +2,6 @@ use stylus_sdk::{alloy_primitives::*, prelude::*, storage::*};
 
 use crate::error::{ApplyContext, Error, ErrorDiscriminant};
 
-#[cfg(all(feature = "std", feature = "storage-gen-apply"))]
-use crate::error::{ErrorInterimAccessContext, ErrorTestInterimDetails};
-
 use alloc::{vec, vec::Vec};
 
 use ed25519_dalek::VerifyingKey;
