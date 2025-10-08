@@ -9,13 +9,16 @@ use stylus_sdk::{
 
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 
-use alloc::vec::Vec;
+use alloc::{string::String, vec::Vec};
 
 #[cfg(feature = "errors-extra-context")]
 use alloc::boxed::Box;
 
 #[cfg(feature = "std")]
 use proptest::strategy::Strategy;
+
+#[cfg(feature = "errors-extra-context")]
+use alloc::string::ToString;
 
 #[derive(BorshSerialize, BorshDeserialize, Clone, Copy, PartialEq, Debug)]
 #[cfg_attr(

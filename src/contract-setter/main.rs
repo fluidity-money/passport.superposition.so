@@ -1,6 +1,9 @@
 #![cfg_attr(target_arch = "wasm32", no_main, no_std)]
 
-use libpassport::{entry_non_reentrant, error::Error, ops::OpSetter, wasm_vm_harness, DONE_UNIT};
+use libpassport::{entry_non_reentrant, ops::OpSetter, wasm_vm_harness, DONE_UNIT};
+
+#[cfg(not(target_arch = "wasm32"))]
+use libpassport::error::Error;
 
 #[cfg(not(target_arch = "wasm32"))]
 use libpassport::host_vm_harness;
@@ -38,11 +41,9 @@ pub fn entry(vm: VM, len: usize) -> usize {
                 s.app.add_liq(token, recipient, value, deadline, v, r, s_)
             }
         };
-        stylus_panic::harness_dbg!("I MADE IT OUSIDET THIS FHTHTHRT");
         let rd = match r {
             Ok(_) => 0,
             Err(ref _reason) => {
-                stylus_panic::harness_dbg!(_reason);
                 #[cfg(feature = "harness-stylus-interpreter")]
                 panic!("reverted: {_reason:?}");
                 #[allow(unreachable_code)]

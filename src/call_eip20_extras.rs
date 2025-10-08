@@ -114,7 +114,7 @@ mod implem {
     }
 }
 
-#[cfg(all(target_arch = "wasm32", feature = "dryrun"))]
+#[cfg(feature = "dryrun")]
 #[allow(unused)]
 mod implem {
     use super::*;
@@ -157,7 +157,7 @@ mod implem {
     }
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "dryrun")))]
 #[allow(unused)]
 mod implem {
     use crate::storage::StorageApplicationV1;

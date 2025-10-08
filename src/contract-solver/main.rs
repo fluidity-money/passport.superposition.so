@@ -31,18 +31,27 @@ pub fn entry(vm: VM, len: usize) -> usize {
     entry_non_reentrant(vm, len, |s, args| {
         match OpSolver::deserialize(args).unwrap() {
             OpSolver::Solve(accounts, args) => {
-                let m = match s
+                let r = match s
                     .app
                     .validation
                     .validate(&pick_solver_key(NETWORK), &accounts, &args)
                 {
                     Ok(v) => v,
                     Err(v) => {
-                        s.vm().write_result(&[v.dis_u8()]);
+                        s.vm().write_result(&{
+                            #[cfg(feature = "errors-extra-context")]
+                            {
+                                borsh::to_vec(&v).unwrap()
+                            }
+                            #[cfg(not(feature = "errors-extra-context"))]
+                            {
+                                [v.dis_u8().into()]
+                            }
+                        });
                         return 1;
                     }
                 };
-                let (r, _rd) = reentrancy::begin_apply(&mut s.app, m);
+                let (r, _rd) = reentrancy::begin_apply(&mut s.app, r);
                 s.vm().write_result(&_rd);
                 r
             }

@@ -38,6 +38,10 @@ pub type OurLzss = lzss::Lzss<12, 11, 0, { 1 << 12 }, { 2 << 12 }>;
 
 pub use stylus_panic;
 
+#[cfg(target_arch = "wasm32")]
+use stylus_sdk::prelude::CalldataAccess;
+
+#[cfg(not(target_arch = "wasm32"))]
 use stylus_sdk::prelude::HostAccess;
 
 use stylus_sdk::host::VM;
@@ -135,12 +139,12 @@ thread_local! {
 #[derive(Debug, Clone, PartialEq, ClapParser)]
 #[command(version, about)]
 pub struct VmArgs {
-    #[arg(short, long)]
-    pub sender: Option<Address>,
+    #[arg(short, long, default_value = "0xfeb6034fc7df27df18a3a6bad5fb94c0d3dcb6d5")]
+    pub sender: Address,
     #[arg(short, long, default_value = "98985")]
     pub chain_id: u64,
     #[arg(short, long, default_value = "0x0000000000000000000000000000000000000000")]
-    pub addr: Option<Address>,
+    pub addr: Address,
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -151,12 +155,8 @@ pub fn host_vm_harness() -> (VM, usize) {
     let args_len = {
         let args = VmArgs::parse();
         test_vm.set_chain_id(args.chain_id);
-        if let Some(sender) = args.sender {
-            test_vm.set_sender(sender)
-        };
-        if let Some(c) = args.addr {
-            test_vm.set_contract_address(c)
-        }
+        test_vm.set_sender(args.sender);
+        test_vm.set_contract_address(args.addr);
         let mut b = String::new();
         std::io::stdin().read_to_string(&mut b).unwrap();
         let a = const_hex::decode(b.trim()).unwrap();
