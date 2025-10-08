@@ -12,9 +12,10 @@ use ed25519_dalek::{Signature, VerifyingKey};
 #[cfg(feature = "storage-gen-apply")]
 use stylus_sdk::{
     alloy_primitives::{Address, FixedBytes, U64},
-    prelude::{AccountAccess, HostAccess},
+    prelude::HostAccess,
 };
 
+#[cfg(feature = "storage-gen-apply")]
 use stylus_panic::harness_dbg;
 
 #[cfg(feature = "storage-gen-apply")]

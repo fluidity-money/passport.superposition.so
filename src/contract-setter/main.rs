@@ -63,5 +63,5 @@ pub unsafe extern "C" fn user_entrypoint(len: usize) -> usize {
 #[cfg(not(target_arch = "wasm32"))]
 fn main() {
     let (vm, len) = host_vm_harness();
-    entry(vm, len)
+    std::process::exit(entry(vm, len).try_into().unwrap())
 }

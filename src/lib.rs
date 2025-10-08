@@ -134,7 +134,8 @@ thread_local! {
 #[derive(Debug, Clone, PartialEq, ClapParser)]
 #[command(version, about)]
 pub struct VmArgs {
-    pub sender: Address,
+    #[arg(short, long)]
+    pub sender: Option<Address>,
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -146,11 +147,11 @@ pub fn host_vm_harness() -> (VM, usize) {
     #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
     let args_len = {
         let args = VmArgs::parse();
-        let mut b = Vec::new();
-        let s = std::io::stdin().read_to_end(&mut b).unwrap();
-        let a = const_hex::decode(s).unwrap();
+        let mut b = String::new();
+        std::io::stdin().read_to_string(&mut b).unwrap();
+        let a = const_hex::decode(b.trim()).unwrap();
         let l = a.len();
-        if !s.is_empty() {
+        if !b.is_empty() {
             VM_ARGS.with(|x| *x.borrow_mut() = a)
         }
         l
@@ -162,15 +163,16 @@ pub fn host_vm_harness() -> (VM, usize) {
 
 pub fn entry_non_reentrant(
     vm: VM,
-    len: usize,
+    _len: usize,
     entry: impl FnOnce(&mut Storage, &mut &[u8]) -> usize,
 ) -> usize {
     #[cfg(all(not(target_arch = "wasm32"), feature = "std"))]
-    let args = VM_ARGS.with(|x| x);
+    let args = VM_ARGS.with(|x| x.borrow().clone());
+    #[cfg(all(not(target_arch = "wasm32"), not(feature = "std")))]
+    let args = alloc::vec::Vec::new();
     #[cfg(target_arch = "wasm32")]
-    let args = vm.read_args(len);
-    // Blow up if we're reentrant! If someone is using this, they should
-    // not tolerate reentrancy.
+    let args = vm.read_args(_len);
+    // Blow up if we're reentrant!
     if is_reentrancy() {
         // Roll back the state, we shouldn't be here!
         return 1;
