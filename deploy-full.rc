@@ -8,12 +8,10 @@ fn usage {
 	log '<SPN_SUPERPOSITION_URL> <SPN_SUPERPOSITION_KEY> unset'
 }
 
-fn err_exit {
+if(~ $SPN_SUPERPOSITION_URL $SPN_SUPERPOSITION_KEY '') {
 	usage
-	exit 1
+	exit 2
 }
-
-if(~ $SPN_SUPERPOSITION_URL $SPN_SUPERPOSITION_KEY '') err_exit
 
 if(~ $SPN_PASSPORT_SOLVER '') {
 	SPN_PASSPORT_SOLVER=`{./deploy.rc solver.passport-superposition-so.wasm}

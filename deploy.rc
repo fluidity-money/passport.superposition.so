@@ -2,7 +2,7 @@
 
 if(~ $SPN_SUPERPOSITION_URL $SPN_SUPERPOSITION_KEY '') {
 	echo '<SPN_SUPERPOSITION_URL> <SPN_SUPERPOSITION_KEY> unset' >[1=2]
-	exit 1
+	exit 2
 }
 
 wasm_file=$1

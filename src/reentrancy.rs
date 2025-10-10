@@ -13,7 +13,7 @@ use alloc::vec::Vec;
 
 #[cfg(target_arch = "wasm32")]
 #[link(wasm_import_module = "vm_hooks")]
-extern "C" {
+unsafe extern "C" {
     fn storage_load_bytes32(key: *const u8, out: *mut u8);
 }
 

@@ -7,7 +7,7 @@ if(~ \
 	$SPN_PASSPORT_APPLY \
 	$SPN_PASSPORT_SETTER \
 	$SPN_PASSPORT_ADMIN \
-	'') exit 1
+	'') exit 2
 
 forge create \
 	--broadcast \

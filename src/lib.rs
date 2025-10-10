@@ -66,21 +66,21 @@ use alloc::boxed::Box;
 #[cfg(target_arch = "wasm32")]
 #[link(wasm_import_module = "vm_hooks")]
 #[allow(unused)]
-extern "C" {
+unsafe extern "C" {
     pub(crate) fn pay_for_memory_grow(pages: u16);
 }
 
 #[cfg(all(target_arch = "wasm32", not(feature = "dryrun")))]
 #[link(wasm_import_module = "vm_hooks")]
-extern "C" {
+unsafe extern "C" {
     fn transient_load_bytes32(key: *const u8, dest: *const u8);
     fn transient_store_bytes32(key: *const u8, value: *const u8);
 }
 
 #[cfg(target_arch = "wasm32")]
-#[no_mangle]
-pub unsafe fn mark_used() {
-    pay_for_memory_grow(0);
+#[unsafe(no_mangle)]
+pub fn mark_used() {
+    unsafe { pay_for_memory_grow(0) }
     panic!();
 }
 
@@ -139,11 +139,19 @@ thread_local! {
 #[derive(Debug, Clone, PartialEq, ClapParser)]
 #[command(version, about)]
 pub struct VmArgs {
-    #[arg(short, long, default_value = "0xfeb6034fc7df27df18a3a6bad5fb94c0d3dcb6d5")]
+    #[arg(
+        short,
+        long,
+        default_value = "0xfeb6034fc7df27df18a3a6bad5fb94c0d3dcb6d5"
+    )]
     pub sender: Address,
     #[arg(short, long, default_value = "98985")]
     pub chain_id: u64,
-    #[arg(short, long, default_value = "0x0000000000000000000000000000000000000000")]
+    #[arg(
+        short,
+        long,
+        default_value = "0x0000000000000000000000000000000000000000"
+    )]
     pub addr: Address,
 }
 

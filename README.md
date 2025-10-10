@@ -53,3 +53,6 @@ The validation step during the applicative from does the following:
 It does not do the following:
 
 1. Checking if the user has enough balance to actually do things in the eip20 asset
+
+## Deployments
+

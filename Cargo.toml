@@ -5,7 +5,6 @@ edition = "2024"
 
 [lib]
 name = "libpassport"
-edition = "2021"
 
 [[bin]]
 name = "contract-solver"
