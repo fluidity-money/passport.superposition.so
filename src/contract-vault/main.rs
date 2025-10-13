@@ -1,16 +1,14 @@
 #![cfg_attr(target_arch = "wasm32", no_main, no_std)]
 
-use libpassport::{entry_non_reentrant, wasm_vm_harness, ops::OpVault};
+use libpassport::{entry_non_reentrant, ops::OpVault};
 
 #[cfg(not(target_arch = "wasm32"))]
 use libpassport::host_vm_harness;
 
-use stylus_sdk::host::VM;
-
 use borsh::BorshDeserialize;
 
-pub fn entry(vm: VM, len: usize) -> usize {
-    entry_non_reentrant(vm, len, |_, args| {
+pub fn entry(len: usize) -> usize {
+    entry_non_reentrant(len, |args| {
         match OpVault::deserialize(args).unwrap() {
             OpVault::MoveLiquidity => todo!(),
         }
@@ -19,7 +17,7 @@ pub fn entry(vm: VM, len: usize) -> usize {
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn user_entrypoint(len: usize) -> usize {
-    entry(wasm_vm_harness(), len)
+    entry(len)
 }
 
 #[cfg(not(target_arch = "wasm32"))]

@@ -1,7 +1,5 @@
 use ed25519_dalek::SigningKey;
 
-use stylus_sdk::alloy_primitives::Address;
-
 use crate::{
     applicative::{
         Applicative, ArgsBalance, ArgsOrder, Asset, EdSig, UserApplicative, U128,
@@ -11,6 +9,8 @@ use crate::{
 };
 
 use alloc::boxed::Box;
+
+pub type Address = [u8; 20];
 
 /// This code implements crypto's UserApplicative trait, to provide a
 /// user-friendly vehicle to construct the Applicative type including
@@ -37,13 +37,13 @@ impl UserApplicative for UserContext {
     fn balance(
         &self,
         asset: Address,
-        chain: u128,
+        chain: u64,
         amount: u128,
         ms_timestamp: u128,
     ) -> Applicative {
         let args = ArgsBalance {
-            asset: Asset(*asset.0),
-            chain: U128(chain),
+            asset: Asset(asset),
+            chain: chain,
             amount: U128(amount),
             ms_timestamp: U128(ms_timestamp),
         };
@@ -74,7 +74,7 @@ impl UserApplicative for UserContext {
     ) -> Result<Applicative, Error> {
         let args = ArgsOrder {
             from_amt: U128(from_amt),
-            desired_asset: Asset(*desired_asset.0),
+            desired_asset: Asset(desired_asset),
             desired_chain: U128(desired_chain),
             desired_amt: U128(desired_amt),
         };

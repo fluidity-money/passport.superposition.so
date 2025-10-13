@@ -1,8 +1,6 @@
 // Applicative form of the state machine, that gets converted to an
 // internal representation during the program's simulation.
 
-use stylus_sdk::alloy_primitives::Address;
-
 #[cfg(feature = "std")]
 use serde::{Deserialize as SerdeDeserialize, Serialize as SerdeSerialize};
 
@@ -11,6 +9,8 @@ use borsh::{BorshDeserialize, BorshSerialize};
 use alloc::boxed::Box;
 
 use crate::error::Error;
+
+pub type Address = [u8; 20];
 
 // Concatenated form of the ed25519 r and s values for use with
 // ed25519_dalek.
@@ -218,7 +218,7 @@ impl From<Nonce> for u8 {
 )]
 pub struct ArgsBalance {
     pub asset: Asset,
-    pub chain: U128,
+    pub chain: u64,
     pub amount: U128,
     pub ms_timestamp: U128,
 }
@@ -372,7 +372,7 @@ impl std::fmt::Display for Applicative {
 /// User friendly trait for construction of Applicative with types
 /// included in a side effectful way.
 pub trait UserApplicative {
-    fn balance(&self, asset: Address, chain: u128, amount: u128, ms_timestamp: u128)
+    fn balance(&self, asset: Address, chain: u64, amount: u128, ms_timestamp: u128)
         -> Applicative;
 
     fn withdraw(

@@ -1,381 +1,313 @@
-use stylus_sdk::{alloy_primitives::*, prelude::*, storage::*};
+use ed25519_dalek::VerifyingKey;
+
+use bobcat_sdk::{maths::*, storage::*};
 
 use crate::error::{ApplyContext, Error, ErrorDiscriminant};
 
-use alloc::{vec, vec::Vec};
+pub type Address = [u8; 20];
 
-use ed25519_dalek::VerifyingKey;
-
-#[cfg(feature = "std")]
-use std::{cell::RefCell, collections::HashMap};
-
-pub type KeyEdAddr = FixedBytes<32>;
-
-// Testing storage that's used for offline testing context.
-#[storage]
-#[cfg(not(target_arch = "wasm32"))]
-pub struct StorageTest {
-    pub balances: StorageMap<Address, StorageMap<Address, StorageU256>>,
-    // Contract => Owner (user) => Spender (passport) => Amount
-    pub allowances: StorageMap<Address, StorageMap<Address, StorageMap<Address, StorageU256>>>,
-    pub hashes: StorageVec<StorageFixedBytes<32>>,
+fn hash_ed25519_count() -> U {
+    const_keccak256(b"ed25519_count")
 }
 
-#[cfg(feature = "std")]
-thread_local! {
-    pub static SEEN_HASHES: RefCell<HashMap<([u8; 64], Address, Address), bool>> =
-        RefCell::new(HashMap::new());
+// Count of the number of seen addresses, that we use our shortened
+// accounts list form to look up. We use this instead of a map so we can
+// use a u64 instead of the native wasm word (u32).
+pub fn get_ed25519_count() -> U {
+    storage_load(&hash_ed25519_count())
 }
 
-#[storage]
-#[cfg(target_arch = "wasm32")]
-pub struct StorageTest;
-
-#[repr(u8)]
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum TransitiveType {
-    INTERIM,
-    ORDER,
+pub fn incr_ed25519_count() -> Result<U, Error> {
+    storage_checked_add_res(&hash_ed25519_count(), &U::ONE)
+        .map_err(|(x, y)| Error::from(ErrorDiscriminant::CheckedAdd).x(x).y(y))
 }
 
-impl From<TransitiveType> for u8 {
-    fn from(x: TransitiveType) -> Self {
-        x as u8
+pub fn hash_ed25519_key(id: &U) -> U {
+    slot_map(&const_keccak256(b"ed25519_keys"), id)
+}
+
+// Find the VerifyingKey using an id.
+pub fn get_ed25519_key(id: &U) -> U {
+    storage_load(&hash_ed25519_key(id))
+}
+
+pub fn set_ed25519_key(id: &U, key: &U) {
+    storage_store(&hash_ed25519_key(id), key)
+}
+
+fn hash_ed25510_owner(id: &U) -> U {
+    slot_map(&const_keccak256(b"ed25519_owners"), id)
+}
+
+// Find the address owner of a key using its id.
+pub fn get_ed25519_owner(id: &U) -> Address {
+    storage_load(&hash_ed25510_owner(id)).into()
+}
+
+pub fn set_ed25519_owner(id: &U, key: &U) {
+    storage_store(&hash_ed25510_owner(id), key)
+}
+
+fn hash_details_hash_owner_l(h: &U) -> U {
+    slot_map(&const_keccak256(b"details_hash_owner_l"), &h)
+}
+
+fn hash_details_hash_owner_r(h: &U) -> U {
+    slot_map(&const_keccak256(b"details_hash_owner_r"), &h)
+}
+
+fn hash_interim_amount(owner: &Address, asset: &Address, hash: &U) -> U {
+    slot_map(
+        &slot_map(
+            &slot_map(&const_keccak256(b"interim_amount"), &owner.into()),
+            &asset.into(),
+        ),
+        hash,
+    )
+}
+
+// Get the interim amount for the owner, the asset, and the hash given.
+pub fn get_interim_amount(owner: &Address, asset: &Address, hash: &U) -> u128 {
+    storage_load(&hash_interim_amount(owner, asset, hash)).into()
+}
+
+pub fn get_interim_amount_hash(owner: &Address, asset: &Address, hash: &[u8; 64]) -> u128 {
+    let h: [u8; 32] = hash[..32].try_into().unwrap();
+    get_interim_amount(owner, asset, &U::from(h))
+}
+
+pub fn increase_interim_amount(
+    ctx: ApplyContext,
+    owner: &Address,
+    asset: &Address,
+    hash: &[u8; 64],
+    amt: &U,
+) -> Result<U, Error> {
+    let hash: [u8; 32] = hash[..32].try_into().unwrap();
+    storage_checked_add_res(&hash_interim_amount(owner, asset, &U::from(hash)), amt)
+        .map_err(|(x, y)| err_checked_add(ctx, x, y))
+}
+
+pub fn decrease_interim_amount(
+    ctx: ApplyContext,
+    owner: &Address,
+    asset: &Address,
+    hash: &[u8; 64],
+    amt: &U,
+) -> Result<U, Error> {
+    let hash: [u8; 32] = hash[..32].try_into().unwrap();
+    storage_checked_sub_res(&hash_interim_amount(owner, asset, &U::from(hash)), amt)
+        .map_err(|(x, y)| err_checked_sub(ctx, x, y))
+}
+
+pub fn hash_order_amount(owner: &Address, asset: &Address, hash: &U) -> U {
+    slot_map(
+        &slot_map(
+            &slot_map(&const_keccak256(b"order_amount"), &owner.into()),
+            &asset.into(),
+        ),
+        hash,
+    )
+    .into()
+}
+
+// Get the order amount for the owner, the asset, and the hash given.
+pub fn get_order_amt(owner: &Address, asset: &Address, hash: &U) -> u128 {
+    storage_load(&hash_order_amount(owner, asset, hash)).into()
+}
+
+pub fn increase_order_amount(
+    ctx: ApplyContext,
+    owner: &Address,
+    asset: &Address,
+    hash: &[u8; 64],
+    amt: &U,
+) -> Result<U, Error> {
+    let hash: [u8; 32] = hash[..32].try_into().unwrap();
+    storage_checked_add_res(&hash_order_amount(owner, asset, &U::from(hash)), amt)
+        .map_err(|(x, y)| err_checked_add(ctx, x, y))
+}
+
+pub fn decrease_order_amount(
+    ctx: ApplyContext,
+    owner: &Address,
+    asset: &Address,
+    hash: &[u8; 64],
+    amt: &U,
+) -> Result<U, Error> {
+    let hash: [u8; 32] = hash[..32].try_into().unwrap();
+    storage_checked_sub_res(&hash_order_amount(owner, asset, &U::from(hash)), amt)
+        .map_err(|(x, y)| err_checked_sub(ctx, x, y))
+}
+
+pub fn get_order_amt_hash(owner: &Address, asset: &Address, hash: &[u8; 64]) -> u128 {
+    let h: [u8; 32] = hash[..32].try_into().unwrap();
+    get_order_amt(owner, asset, &U::from(h))
+}
+
+fn hash_withdrawable(owner: &Address, asset: &Address) -> U {
+    slot_map(
+        &slot_map(&const_keccak256(b"withdrawable"), &owner.into()),
+        &asset.into(),
+    )
+}
+
+// Get the withdrawable amount for an owner and asset.
+pub fn get_withdrawable(owner: &Address, asset: &Address) -> U {
+    storage_load(&hash_withdrawable(owner, asset))
+}
+
+pub fn increase_withdrawable(
+    ctx: ApplyContext,
+    owner: &Address,
+    asset: &Address,
+    amt: &U,
+) -> Result<U, Error> {
+    storage_checked_add_res(&hash_withdrawable(owner, asset), amt)
+        .map_err(|(x, y)| err_checked_add(ctx, x, y))
+}
+
+pub fn decrease_withdrawable(
+    ctx: ApplyContext,
+    owner: &Address,
+    asset: &Address,
+    amt: &U,
+) -> Result<U, Error> {
+    storage_checked_sub_res(&hash_withdrawable(owner, asset), amt)
+        .map_err(|(x, y)| err_checked_sub(ctx, x, y))
+}
+
+// Get the owner of the right side of the hash given.
+pub fn get_details_hash_owner_r(h: &U) -> Address {
+    storage_load(&slot_map(&const_keccak256(b"details_hash_owner_r"), h)).into()
+}
+
+pub fn hash_get_details_hash_asset_l(h: &U) -> U {
+    slot_map(&const_keccak256(b"details_hash_asset_l"), h)
+}
+
+// Get the first asset in this hash.
+pub fn get_details_hash_asset_l(h: &U) -> Address {
+    storage_load(&hash_get_details_hash_asset_l(h)).into()
+}
+
+pub fn get_details_hash_asset_l_hash(h: &[u8; 64]) -> Address {
+    let h: [u8; 32] = h[..32].try_into().unwrap();
+    get_details_hash_asset_l(&U::from(h))
+}
+
+pub fn set_details_hash_asset_l(h: &U, v: &Address) {
+    storage_store(&hash_get_details_hash_asset_l(h), &v.into())
+}
+
+pub fn set_details_hash_asset_l_hash(h: &[u8; 64], v: &Address) {
+    let h: [u8; 32] = h[..32].try_into().unwrap();
+    set_details_hash_asset_l(&U::from(h), v.into())
+}
+
+pub fn hash_details_hash_asset_r(h: &U) -> U {
+    slot_map(&const_keccak256(b"details_hash_asset_r"), h)
+}
+
+// Get the second asset of the hash. This is used by orders to store the desired asset.
+pub fn get_details_hash_asset_r(h: &U) -> Address {
+    storage_load(&hash_details_hash_asset_r(h)).into()
+}
+
+pub fn set_details_hash_asset_r(h: &U, v: &Address) {
+    storage_store(&hash_details_hash_asset_r(h), &v.into())
+}
+
+pub fn set_details_hash_asset_r_hash(h: &[u8; 64], v: &Address) {
+    let h: [u8; 32] = h[..32].try_into().unwrap();
+    set_details_hash_asset_r(&U::from(h), v.into())
+}
+
+pub fn get_details_hash_asset_r_hash(h: &[u8; 64]) -> Address {
+    let h: [u8; 32] = h[..32].try_into().unwrap();
+    get_details_hash_asset_r(&U::from(h))
+}
+
+fn hash_details_hash_order_desired_amt(h: &U) -> U {
+    slot_map(&const_keccak256(b"details_hash_order_desired_amt"), h)
+}
+
+// Get the desired asset amount by the order at this hash.
+pub fn get_details_hash_order_desired_amt(h: &U) -> u128 {
+    storage_load(&hash_details_hash_order_desired_amt(h)).into()
+}
+
+// Get the desired asset amount by the order at this hash.
+pub fn get_details_hash_order_desired_amt_hash(h: &[u8; 64]) -> u128 {
+    let h: [u8; 32] = h[..32].try_into().unwrap();
+    get_details_hash_order_desired_amt(&U::from(h))
+}
+
+fn err_checked_add(c: ApplyContext, x: U, y: U) -> Error {
+    Error::from(ErrorDiscriminant::CheckedAdd).ctx(c).x(x).y(y)
+}
+
+fn err_checked_sub(c: ApplyContext, x: U, y: U) -> Error {
+    Error::from(ErrorDiscriminant::CheckedSub).ctx(c).x(x).y(y)
+}
+
+fn err_hash_already_onchain(h: &[u8; 64]) -> Error {
+    Error::from(ErrorDiscriminant::HashAlreadyOnchain).hash(*h)
+}
+
+pub fn add_details_hash_order_desired_amt(ctx: ApplyContext, h: &U, extra: &U) -> Result<U, Error> {
+    storage_checked_add_res(&hash_details_hash_order_desired_amt(h), extra)
+        .map_err(|(x, y)| err_checked_add(ctx, x, y))
+}
+
+// Get the owner of this contract.
+pub fn get_owner() -> Address {
+    storage_load(&const_keccak256(b"owner")).into()
+}
+
+pub fn set_hash_details_owner_l(h: &[u8; 64], owner: Address) {
+    let k: [u8; 32] = h[..32].try_into().unwrap();
+    storage_store(&hash_details_hash_owner_l(&U(k)), &U::from(owner)).into()
+}
+
+pub fn get_hash_owner_l(h: &[u8; 64]) -> Address {
+    let k: [u8; 32] = h[..32].try_into().unwrap();
+    storage_load(&hash_details_hash_owner_l(&U(k))).into()
+}
+
+pub fn get_hash_owner_r(h: &[u8; 64]) -> Address {
+    let k: [u8; 32] = h[..32].try_into().unwrap();
+    storage_load(&hash_details_hash_owner_r(&U(k))).into()
+}
+
+pub fn set_hash_owner_r(h: &[u8; 64], v: &Address) {
+    let k: [u8; 32] = h[..32].try_into().unwrap();
+    storage_store(&hash_details_hash_owner_r(&U(k)), &U::from(v))
+}
+
+pub fn find_ed25519_key(i: &U) -> Result<VerifyingKey, Error> {
+    let v = get_ed25519_key(i);
+    if v.is_zero() {
+        Err(Error::from(ErrorDiscriminant::AccountIdNotFound))
+    } else {
+        VerifyingKey::from_bytes(&v.0).map_err(|_| Error::from(ErrorDiscriminant::BadVerifyingKey))
     }
 }
 
-#[storage]
-pub struct StorageValidationV1 {
-    // Count of the number of seen addresses, that we use our shortened
-    // accounts list form to look up. We use this instead of a map so we can
-    // use a u64 instead of the native wasm word (u32).
-    pub ed25519_count: StorageU64,
-
-    // Tool to find the VerifyingKey using an id, to reduce calldata size.
-    pub ed25519_keys: StorageMap<u64, StorageFixedBytes<32>>,
-
-    // Owners of the offset of these addresses, using the ed25519 signatures.
-    pub ed25519_owners: StorageMap<u64, StorageAddress>,
-
-    /// The owner of the left side of the hash given. It should not be zero.
-    pub details_hash_owner_l: StorageMap<FixedBytes<32>, StorageAddress>,
-}
-
-#[storage]
-#[cfg(feature = "storage-gen-apply")]
-pub struct StorageApplyV1 {
-    /// Transitive state that could be a part of an operation. If the field used is true,
-    /// Storage for amounts available for spending at a timestamp. Is owner =>
-    /// TRANSITIVE_TYPE => asset => timestamp => amount.
-    pub transitive: StorageMap<
-        Address,
-        StorageMap<Address, StorageMap<u8, StorageMap<FixedBytes<32>, StorageU128>>>,
-    >,
-
-    /// Amounts that could be withdrawn from the system. Owner => asset => amount.
-    pub withdrawable: StorageMap<Address, StorageMap<Address, StorageU128>>,
-
-    /// The owner of the right side of the hash given.
-    pub details_hash_owner_r: StorageMap<FixedBytes<32>, StorageAddress>,
-
-    /// The first asset in this hash.
-    pub details_hash_asset_l: StorageMap<FixedBytes<32>, StorageAddress>,
-
-    /// The second asset of the hash. This is used by orders to store the desired asset.
-    pub details_hash_asset_r: StorageMap<FixedBytes<32>, StorageAddress>,
-
-    /// The desired asset by the order at this hash on its own.
-    pub details_hash_order_desired_amt: StorageMap<FixedBytes<32>, StorageU128>,
-}
-
-#[storage]
-#[cfg(not(feature = "storage-gen-apply"))]
-pub struct StorageApplyV1;
-
-#[storage]
-pub struct StorageApplicationV1 {
-    pub validation: StorageValidationV1,
-    pub apply: StorageApplyV1,
-    // It's very important that this contains nothing during a on-chain
-    // deployment.
-    pub test_eip20: StorageTest,
-}
-
-#[storage]
-#[cfg(feature = "storage-gen-admin")]
-pub struct StorageAdminV1 {
-    pub owner: StorageAddress,
-}
-
-#[cfg(not(feature = "storage-gen-admin"))]
-#[storage]
-pub struct StorageAdminV1;
-
-/// Toplevel storage for the entire application. TODO: figure out how to
-/// set offsets for each storage accessor here, then comment out the bits
-/// we don't use in each facet.
-#[storage]
-pub struct Storage {
-    pub app: StorageApplicationV1,
-    pub admin: StorageAdminV1,
-}
-
-unsafe impl TopLevelStorage for Storage {}
-unsafe impl TopLevelStorage for StorageApplicationV1 {}
-
-#[cfg(feature = "std")]
-impl Default for Storage {
-    fn default() -> Self {
-        use stylus_sdk::testing::vm::TestVM;
-        Storage::from(&TestVM::new())
+pub fn find_ed25519_addr(i: &U) -> Result<Address, Error> {
+    let addr = get_ed25519_owner(i);
+    if addr == [0u8; 20] {
+        Err(Error::from(ErrorDiscriminant::AccountIdNotFound))
+    } else {
+        Ok(addr)
     }
 }
 
-pub fn err_checked_add(c: ApplyContext, x: U128, y: u128) -> Error {
-    Error::from(ErrorDiscriminant::CheckedAdd)
-        .ctx(c)
-        .x(u128::from_le_bytes(x.to_le_bytes()))
-        .y(y)
+pub fn ensure_hash_unseen(hash: &[u8; 64]) -> Result<(), Error> {
+    if get_hash_owner_l(hash) == [0u8; 20] {
+        return Err(err_hash_already_onchain(hash));
+    }
+    Ok(())
 }
 
-pub fn err_checked_sub(c: ApplyContext, x: U128, y: u128) -> Error {
-    Error::from(ErrorDiscriminant::CheckedSub)
-        .ctx(c)
-        .x(u128::from_le_bytes(x.to_le_bytes()))
-        .y(y)
-}
-
-impl StorageValidationV1 {
-    pub fn set_hash_details_owner_l(&mut self, h: &[u8; 64], owner: Address) {
-        let h = FixedBytes::from_slice(&h[..32]);
-        self.details_hash_owner_l.setter(h).set(owner);
-    }
-
-    pub fn get_hash_owner_l(&self, h: &[u8; 64]) -> Address {
-        self.details_hash_owner_l
-            .get(FixedBytes::from_slice(&h[..32]))
-    }
-
-    pub fn find_ed25519_key(&self, i: u64) -> Result<VerifyingKey, Error> {
-        let v = self.ed25519_keys.get(i);
-        if v.is_zero() {
-            Err(Error::from(ErrorDiscriminant::AccountIdNotFound))
-        } else {
-            VerifyingKey::from_bytes(&v.0)
-                .map_err(|_| Error::from(ErrorDiscriminant::BadVerifyingKey))
-        }
-    }
-
-    pub fn find_ed25519_addr(&self, i: u64) -> Result<Address, Error> {
-        let addr = self.ed25519_owners.get(i);
-        if addr.is_zero() {
-            Err(Error::from(ErrorDiscriminant::AccountIdNotFound))
-        } else {
-            Ok(addr)
-        }
-    }
-}
-
-#[cfg(feature = "storage-gen-apply")]
-impl StorageApplyV1 {
-    pub fn set_hash_details_asset_l(&mut self, h: &[u8; 64], asset: Address) {
-        let h = FixedBytes::from_slice(&h[..32]);
-        self.details_hash_asset_l.setter(h).set(asset);
-    }
-
-    pub fn set_hash_details_r(&mut self, h: &[u8; 64], owner: Address, asset: Address) {
-        let h = FixedBytes::from_slice(&h[..32]);
-        self.details_hash_owner_r.setter(h).set(owner);
-        self.details_hash_asset_r.setter(h).set(asset);
-    }
-
-    pub fn set_hash_details_desired_asset(&mut self, h: &[u8; 64], asset: Address) {
-        // Sets the right side asset.
-        let h = FixedBytes::from_slice(&h[..32]);
-        self.details_hash_asset_r.setter(h).set(asset);
-    }
-
-    pub fn get_hash_asset_l(&self, h: &[u8; 64]) -> Address {
-        self.details_hash_asset_l
-            .get(FixedBytes::from_slice(&h[..32]))
-    }
-
-    pub fn get_hash_asset_r(&self, h: &[u8; 64]) -> Address {
-        self.details_hash_asset_r
-            .get(FixedBytes::from_slice(&h[..32]))
-    }
-
-    pub fn get_hash_owner_r(&self, h: &[u8; 64]) -> Address {
-        self.details_hash_owner_r
-            .get(FixedBytes::from_slice(&h[..32]))
-    }
-
-    pub fn get_hash_order_desired_amount(&self, h: &[u8; 64]) -> u128 {
-        u128::from_be_bytes(
-            self.details_hash_order_desired_amt
-                .get(FixedBytes::from_slice(&h[..32]))
-                .to_be_bytes(),
-        )
-    }
-
-    pub fn get_interim(&self, owner: Address, asset: Address, h: &[u8; 64]) -> u128 {
-        u128::from_be_bytes(
-            self.transitive
-                .getter(owner)
-                .getter(asset)
-                .get(TransitiveType::INTERIM.into())
-                .get(FixedBytes::from_slice(&h[..32]))
-                .to_be_bytes(),
-        )
-    }
-
-    pub fn increase_interim(
-        &mut self,
-        ctx: ApplyContext,
-        owner: Address,
-        asset: Address,
-        hx: &[u8; 64],
-        y: u128,
-    ) -> Result<(), Error> {
-        let h = FixedBytes::from_slice(&hx[..32]);
-        let x = self
-            .transitive
-            .getter(owner)
-            .getter(asset)
-            .getter(TransitiveType::INTERIM.into())
-            .get(h);
-        self.transitive
-            .setter(owner)
-            .setter(asset)
-            .setter(TransitiveType::INTERIM.into())
-            .setter(h)
-            .set(
-                x.checked_add(U128::from_le_bytes(y.to_le_bytes()))
-                    .ok_or(err_checked_add(ctx, x, y))?,
-            );
-        Ok(())
-    }
-
-    pub fn decrease_interim(
-        &mut self,
-        ctx: ApplyContext,
-        owner: Address,
-        asset: Address,
-        hx: &[u8; 64],
-        y: u128,
-    ) -> Result<(), Error> {
-        let h = FixedBytes::from_slice(&hx[..32]);
-        let x = self
-            .transitive
-            .getter(owner)
-            .getter(asset)
-            .getter(TransitiveType::INTERIM.into())
-            .get(h);
-        self.transitive
-            .setter(owner)
-            .setter(asset)
-            .setter(TransitiveType::INTERIM.into())
-            .setter(h)
-            .set(
-                x.checked_sub(U128::from_le_bytes(y.to_le_bytes()))
-                    .ok_or(err_checked_sub(ctx, x, y))?,
-            );
-        Ok(())
-    }
-
-    pub fn increase_withdrawal(
-        &mut self,
-        ctx: ApplyContext,
-        owner: Address,
-        asset: Address,
-        y: u128,
-    ) -> Result<(), Error> {
-        let x = self.withdrawable.getter(owner).getter(asset).get();
-        self.withdrawable.setter(owner).setter(asset).set(
-            x.checked_add(U128::from_le_bytes(y.to_le_bytes()))
-                .ok_or(err_checked_add(ctx, x, y))?,
-        );
-        Ok(())
-    }
-
-    pub fn decrease_withdrawal(
-        &mut self,
-        ctx: ApplyContext,
-        owner: Address,
-        asset: Address,
-        y: u128,
-    ) -> Result<(), Error> {
-        let x = self.withdrawable.getter(owner).getter(asset).get();
-        self.withdrawable.setter(owner).setter(asset).set(
-            x.checked_sub(U128::from_le_bytes(y.to_le_bytes()))
-                .ok_or(err_checked_sub(ctx, x, y))?,
-        );
-        Ok(())
-    }
-
-    pub fn get_order(&self, owner: Address, asset: Address, h: &[u8; 64]) -> u128 {
-        let h = FixedBytes::from_slice(&h[..32]);
-        u128::from_be_bytes(
-            self.transitive
-                .getter(owner)
-                .getter(asset)
-                .getter(TransitiveType::ORDER.into())
-                .get(h)
-                .to_be_bytes(),
-        )
-    }
-
-    pub fn increase_order(
-        &mut self,
-        ctx: ApplyContext,
-        owner: Address,
-        asset: Address,
-        h: &[u8; 64],
-        y: u128,
-    ) -> Result<(), Error> {
-        let h = FixedBytes::from_slice(&h[..32]);
-        let x = self
-            .transitive
-            .getter(owner)
-            .getter(asset)
-            .getter(TransitiveType::ORDER.into())
-            .get(h);
-        self.transitive
-            .setter(owner)
-            .setter(asset)
-            .setter(TransitiveType::ORDER.into())
-            .setter(h)
-            .set(
-                x.checked_add(U128::from_le_bytes(y.to_le_bytes()))
-                    .ok_or(err_checked_add(ctx, x, y))?,
-            );
-        Ok(())
-    }
-
-    pub fn decrease_order(
-        &mut self,
-        ctx: ApplyContext,
-        owner: Address,
-        asset: Address,
-        h: &[u8; 64],
-        y: u128,
-    ) -> Result<(), Error> {
-        let h = FixedBytes::from_slice(&h[..32]);
-        let x = self
-            .transitive
-            .getter(owner)
-            .getter(asset)
-            .getter(TransitiveType::ORDER.into())
-            .get(h);
-        self.transitive
-            .setter(owner)
-            .setter(asset)
-            .setter(TransitiveType::ORDER.into())
-            .setter(h)
-            .set(
-                x.checked_sub(U128::from_le_bytes(y.to_le_bytes()))
-                    .ok_or(err_checked_sub(ctx, x, y))?,
-            );
-        Ok(())
-    }
-}
+pub struct Storage;

@@ -1,17 +1,14 @@
 #![cfg_attr(target_arch = "wasm32", no_main, no_std)]
 
 use libpassport::{
-    entry_non_reentrant, immutables::pick_solver_key, network::Network, ops::OpSolver, reentrancy,
-    wasm_vm_harness,
+    conversion::validate, entry_non_reentrant, immutables::pick_solver_key, network::Network,
+    ops::OpSolver, reentrancy,
 };
-
-#[cfg(not(target_arch = "wasm32"))]
-use libpassport::host_vm_harness;
 
 #[cfg(all(not(target_arch = "wasm32"), feature = "std"))]
 use libpassport::return_data;
 
-use stylus_sdk::{host::VM, prelude::HostAccess};
+use bobcat_sdk::entry::write_result;
 
 use borsh::BorshDeserialize;
 
@@ -27,41 +24,35 @@ cfg_if::cfg_if! {
     }
 }
 
-pub fn entry(vm: VM, len: usize) -> usize {
-    entry_non_reentrant(vm, len, |s, args| {
-        match OpSolver::deserialize(args).unwrap() {
-            OpSolver::Solve(accounts, args) => {
-                let r = match s
-                    .app
-                    .validation
-                    .validate(&pick_solver_key(NETWORK), &accounts, &args)
-                {
-                    Ok(v) => v,
-                    Err(v) => {
-                        s.vm().write_result(&{
-                            #[cfg(feature = "errors-extra-context")]
-                            {
-                                borsh::to_vec(&v).unwrap()
-                            }
-                            #[cfg(not(feature = "errors-extra-context"))]
-                            {
-                                [v.dis_u8().into()]
-                            }
-                        });
-                        return 1;
-                    }
-                };
-                let (r, _rd) = reentrancy::begin_apply(&mut s.app, r);
-                s.vm().write_result(&_rd);
-                r
-            }
+pub fn entry(len: usize) -> usize {
+    entry_non_reentrant(len, |args| match OpSolver::deserialize(args).unwrap() {
+        OpSolver::Solve(accounts, args) => {
+            let r = match validate(&pick_solver_key(NETWORK), &accounts, &args) {
+                Ok(v) => v,
+                Err(v) => {
+                    write_result(&{
+                        #[cfg(feature = "errors-extra-context")]
+                        {
+                            borsh::to_vec(&v).unwrap()
+                        }
+                        #[cfg(not(feature = "errors-extra-context"))]
+                        {
+                            [v.dis_u8().into()]
+                        }
+                    });
+                    return 1;
+                }
+            };
+            let (r, _rd) = reentrancy::begin_apply(r);
+            write_result(&_rd);
+            r
         }
     })
 }
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn user_entrypoint(len: usize) -> usize {
-    entry(wasm_vm_harness(), len)
+    entry(len)
 }
 
 #[cfg(not(target_arch = "wasm32"))]

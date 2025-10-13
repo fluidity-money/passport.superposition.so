@@ -56,12 +56,6 @@ opt-level = "z"
 incremental = false
 
 [dependencies]
-alloy-core = { version = "1.0.33", default-features = false }
-alloy-primitives = { version = "1.0.33", default-features = false, features = ["native-keccak"] }
-alloy-sol-macro-expander = "1.0.33"
-alloy-sol-macro-input = "1.0.33"
-alloy-sol-macro = { version = "1.0.33", default-features = false }
-alloy-sol-types = { version = "1.0.33", default-features = false }
 array-concat = "0.5.3"
 borsh = { version = "1.5.5", default-features = false, features = ["derive"] }
 const-hex = { version = "1.12.0", default-features = false }
@@ -74,21 +68,12 @@ ed25519-dalek = { version = "2.1.1", default-features = false, features = ["dige
 cfg-if = "1.0.3"
 stylus-panic = "0.4.1"
 num_enum = { version = "0.7.4", default-features = false }
-
-[dependencies.stylus-sdk]
-version = "=0.10.0-beta.1"
-default-features = false
-features = ["mini-alloc", "reentrant"]
-
-[dependencies.stylus-core]
-version = "=0.10.0-beta.1"
-default-features = false
+bobcat-sdk  = { version = "0.2.0", path = "/home/user/Documents/fluidity/bobcat-sdk/bobcat-sdk", features = ["borsh", "alloc"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 proptest-derive = "0.6.0"
 proptest = "1.5.0"
 arbitrary = { version = "1.4.1", features = ["derive"] }
-alloy-primitives = { version = "^1.0.1", default-features = false, features = ["tiny-keccak", "arbitrary"] }
 clap = { version = "4.5.46", features = ["derive"] }
 serde = "1.0.228"
 serde_sexpr = "0.1.0"
@@ -96,16 +81,11 @@ serde_sexpr = "0.1.0"
 [dev-dependencies]
 const-hex = { version = "1.12.0", features = ["alloc"] }
 
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies.stylus-sdk]
-version = "=0.10.0-beta.1"
-default-features = false
-features = ["stylus-test"]
-
 [features]
 std = [
 	"stylus-panic/std",
 	"errors-extra-context",
-	"stylus-sdk/stylus-test"
+	"bobcat-sdk/std"
 ]
 dryrun = []
 errors-extra-context = []

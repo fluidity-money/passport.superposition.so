@@ -1,24 +1,17 @@
 #![cfg_attr(target_arch = "wasm32", no_main, no_std)]
 
-use libpassport::{entry_non_reentrant, ops::OpSetter, wasm_vm_harness, DONE_UNIT};
+use bobcat_sdk::{entry::write_result, storage::flush_cache};
 
-#[cfg(not(target_arch = "wasm32"))]
-use libpassport::error::Error;
-
-#[cfg(not(target_arch = "wasm32"))]
-use libpassport::host_vm_harness;
-
-#[cfg(all(not(target_arch = "wasm32"), feature = "std"))]
-use libpassport::return_data;
-
-use stylus_sdk::{host::VM, prelude::HostAccess};
+use libpassport::{
+    add_liq::add_liq, entry_non_reentrant, onboard::onboard, ops::OpSetter, DONE_UNIT,
+};
 
 use borsh::BorshDeserialize;
 
 extern crate alloc;
 
-pub fn entry(vm: VM, len: usize) -> usize {
-    entry_non_reentrant(vm, len, |s, args| {
+pub fn entry(len: usize) -> usize {
+    entry_non_reentrant(len, |args| {
         let r = match OpSetter::deserialize(args).unwrap() {
             OpSetter::Dummy => DONE_UNIT,
             OpSetter::Onboard(
@@ -33,12 +26,12 @@ pub fn entry(vm: VM, len: usize) -> usize {
                 permit_v,
                 permit_r,
                 permit_s,
-            ) => s.onboard(
-                key, sig, contract, nonce, chain, token, value, deadline, permit_v, permit_r,
+            ) => onboard(
+                *key, sig, contract, nonce, chain, token, value, deadline, permit_v, permit_r,
                 permit_s,
             ),
             OpSetter::AddLiquidity(token, recipient, value, deadline, v, r, s_) => {
-                s.app.add_liq(token, recipient, value, deadline, v, r, s_)
+                add_liq(token, recipient, value, deadline, v, r, s_)
             }
         };
         let rd = match r {
@@ -51,8 +44,8 @@ pub fn entry(vm: VM, len: usize) -> usize {
             }
         };
         match r {
-            Ok(v) => s.vm().write_result(&borsh::to_vec(&v).unwrap()),
-            Err(v) => s.vm().write_result(&{
+            Ok(v) => write_result(&borsh::to_vec(&v).unwrap()),
+            Err(v) => write_result(&{
                 #[cfg(feature = "errors-extra-context")]
                 {
                     borsh::to_vec(&v).unwrap()
@@ -63,20 +56,19 @@ pub fn entry(vm: VM, len: usize) -> usize {
                 }
             }),
         }
-        s.vm().flush_cache(true);
+        flush_cache();
         rd
     })
 }
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn user_entrypoint(len: usize) -> usize {
-    entry(wasm_vm_harness(), len)
+    entry(len)
 }
 
 #[cfg(not(target_arch = "wasm32"))]
 fn main() {
-    let (vm, len) = host_vm_harness();
-    let c = entry(vm, len).try_into().unwrap();
+    let c = entry(len).try_into().unwrap();
     #[cfg(feature = "std")]
     {
         let rd = return_data();

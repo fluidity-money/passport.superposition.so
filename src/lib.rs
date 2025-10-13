@@ -38,13 +38,7 @@ pub type OurLzss = lzss::Lzss<12, 11, 0, { 1 << 12 }, { 2 << 12 }>;
 
 pub use stylus_panic;
 
-#[cfg(target_arch = "wasm32")]
-use stylus_sdk::prelude::CalldataAccess;
-
-#[cfg(not(target_arch = "wasm32"))]
-use stylus_sdk::prelude::HostAccess;
-
-use stylus_sdk::host::VM;
+use bobcat_sdk::entry::read_args_vec;
 
 #[cfg(feature = "std")]
 use clap::Parser as ClapParser;
@@ -55,13 +49,13 @@ use std::io::Read;
 #[cfg(feature = "std")]
 use stylus_sdk::alloy_primitives::Address;
 
-pub use crate::{
-    error::{done_u64, DONE_UNIT, NOOP, R},
-    storage::Storage,
-};
+pub use crate::error::{done_u64, DONE_UNIT, NOOP, R};
 
 #[allow(unused_imports)]
 use alloc::boxed::Box;
+
+#[global_allocator]
+static ALLOC: mini_alloc::MiniAlloc = mini_alloc::MiniAlloc::INIT;
 
 #[cfg(target_arch = "wasm32")]
 #[link(wasm_import_module = "vm_hooks")]
@@ -75,13 +69,6 @@ unsafe extern "C" {
 unsafe extern "C" {
     fn transient_load_bytes32(key: *const u8, dest: *const u8);
     fn transient_store_bytes32(key: *const u8, value: *const u8);
-}
-
-#[cfg(target_arch = "wasm32")]
-#[unsafe(no_mangle)]
-pub fn mark_used() {
-    unsafe { pay_for_memory_grow(0) }
-    panic!();
 }
 
 //uint256(keccak256(abi.encodePacked("superposition.passport.reentrancy-canary"))) - 1
@@ -117,15 +104,6 @@ fn set_reentrancy_flag() {
 
 #[cfg(any(not(target_arch = "wasm32"), feature = "dryrun"))]
 fn set_reentrancy_flag() {}
-
-pub fn wasm_vm_harness() -> VM {
-    #[cfg(target_arch = "wasm32")]
-    return VM(stylus_sdk::host::WasmVM {});
-    #[cfg(not(target_arch = "wasm32"))]
-    return VM {
-        host: Box::new(stylus_sdk::host::WasmVM {}),
-    };
-}
 
 #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
 thread_local! {
@@ -187,33 +165,15 @@ pub fn return_data() -> Vec<u8> {
     VM_RETURN.with(|x| x.borrow().clone())
 }
 
-pub fn entry_non_reentrant(
-    vm: VM,
-    _len: usize,
-    entry: impl FnOnce(&mut Storage, &mut &[u8]) -> usize,
-) -> usize {
-    #[cfg(all(not(target_arch = "wasm32"), feature = "std"))]
-    let args = VM_ARGS.with(|x| x.borrow().clone());
-    #[cfg(all(not(target_arch = "wasm32"), not(feature = "std")))]
-    let args = alloc::vec::Vec::new();
-    #[cfg(target_arch = "wasm32")]
-    let args = vm.read_args(_len);
+pub fn entry_non_reentrant(len: usize, entry: impl FnOnce(&mut &[u8]) -> usize) -> usize {
+    let args = read_args_vec(len);
     // Blow up if we're reentrant!
     if is_reentrancy() {
         // Roll back the state, we shouldn't be here!
         return 1;
     }
     set_reentrancy_flag();
-    #[allow(unused_mut)]
-    let mut s = unsafe {
-        <Storage as stylus_sdk::storage::StorageType>::new(
-            stylus_sdk::alloy_primitives::U256::ZERO,
-            0,
-            vm,
-        )
-    };
     let c = entry(
-        &mut s,
         &mut OurLzss::decompress_stack(
             lzss::SliceReader::new(&args[1..]),
             lzss::VecWriter::with_capacity(1024 * 10),

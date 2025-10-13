@@ -2,10 +2,7 @@ use borsh::{BorshDeserialize, BorshSerialize};
 
 pub use crate::{applicative::ApplicativeLabel, result::Res};
 
-use stylus_sdk::{
-    alloy_primitives::{Address},
-    prelude::calls::errors::Error as StylusErr,
-};
+use bobcat_sdk::maths::U;
 
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 
@@ -19,6 +16,8 @@ use proptest::strategy::Strategy;
 
 #[cfg(feature = "errors-extra-context")]
 use alloc::string::ToString;
+
+type Address = [u8; 20];
 
 #[derive(BorshSerialize, BorshDeserialize, Clone, Copy, PartialEq, Debug)]
 #[cfg_attr(
@@ -132,10 +131,6 @@ pub enum ErrorDiscriminant {
     /// Checked add overflow in the math!
     CheckedAdd,
 
-    /// Checked add overflow for a 64 bit somewhere. Not including 64 bit here saves us the
-    /// encoding codesize.
-    CheckedAdd64,
-
     /// Zero amount in the balance object.
     ZeroBalanceAmount,
 
@@ -143,21 +138,7 @@ pub enum ErrorDiscriminant {
 
     BadAssetAsks,
 
-    Erc20TransferFromCall,
-
-    Erc20TransferFromDecode,
-
-    Erc20TransferFromFalse,
-
-    Erc20BalanceOfCall,
-
-    Erc20BalanceOfDecode,
-
-    Erc20TransferCall,
-
-    Erc20TransferDecode,
-
-    Erc20TransferFalse,
+    Erc20Invoke,
 
     /// This happens if the amount that the user asked to transition from their balance to their
     /// order is incorrect during the Order stage.
@@ -182,22 +163,11 @@ pub enum ErrorDiscriminant {
     TestNotEnoughAllowance,
 }
 
-impl TryFrom<u8> for Error {
-    type Error = u8;
-
-    fn try_from(x: u8) -> Result<Self, Self::Error> {
-        Ok(Self {
-            typ: ErrorDiscriminant::try_from(x).map_err(|_| x)?,
-            ..Error::default()
-        })
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, BorshSerialize, BorshDeserialize)]
 pub struct ErrorInner {
     pub context: Option<ApplyContext>,
-    pub x: Option<u128>,
-    pub y: Option<u128>,
+    pub x: Option<U>,
+    pub y: Option<U>,
     pub app: Option<ApplicativeLabel>,
     pub side: Option<u8>,
     pub app_to: Option<ApplicativeLabel>,
@@ -291,7 +261,7 @@ impl Error {
     }
 
     #[allow(unused_mut)]
-    pub fn x(mut self, _x: u128) -> Self {
+    pub fn x(mut self, _x: U) -> Self {
         #[cfg(feature = "errors-extra-context")]
         {
             self.inner.x = Some(_x);
@@ -300,7 +270,7 @@ impl Error {
     }
 
     #[allow(unused_mut)]
-    pub fn y(mut self, _y: u128) -> Self {
+    pub fn y(mut self, _y: U) -> Self {
         #[cfg(feature = "errors-extra-context")]
         {
             self.inner.y = Some(_y);
@@ -407,27 +377,10 @@ impl core::fmt::Debug for Error {
     }
 }
 
-impl From<StylusErr> for Error {
-    fn from(x: StylusErr) -> Error {
-        map_stylus_err(ErrorDiscriminant::BadCall, ErrorDiscriminant::BadUnpack, x)
-    }
-}
-
 pub type R = Result<Res, Error>;
 
 pub fn err_cd(typ: ErrorDiscriminant) -> R {
     Err(Error::from(typ))
-}
-
-pub fn map_stylus_err(
-    call_unp: ErrorDiscriminant,
-    unpack_unp: ErrorDiscriminant,
-    x: StylusErr,
-) -> Error {
-    match x {
-        StylusErr::AbiDecodingFailed(_) => Error::from(unpack_unp),
-        StylusErr::Revert(_) => Error::from(call_unp),
-    }
 }
 
 impl From<ErrorDiscriminant> for Error {
@@ -436,14 +389,6 @@ impl From<ErrorDiscriminant> for Error {
             typ: x,
             ..Error::default()
         }
-    }
-}
-
-impl From<alloy_sol_types::Error> for Error {
-    fn from(_: alloy_sol_types::Error) -> Self {
-        // It's likely we're using this for a failed decoding, so that's what
-        // we're always assuming.
-        Error::from(ErrorDiscriminant::BadUnpack)
     }
 }
 

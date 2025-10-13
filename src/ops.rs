@@ -9,6 +9,8 @@ use alloc::vec::Vec;
 
 use borsh::{BorshDeserialize, BorshSerialize};
 
+use bobcat_sdk::maths::U;
+
 #[cfg(feature = "std")]
 use serde::{Deserialize as SerdeDeserialize, Serialize as SerdeSerialize};
 
@@ -63,27 +65,27 @@ pub enum OpSetter {
     // created this key for the association. We use the user's sender
     // address to know if they're legitimate.
     Onboard(
-        [u8; 32], // Verifying key
+        U,        // Verifying key
         [u8; 64], // Verifying signature
         [u8; 20], // Contract
         u16,      // Nonce
-        u128,     // Chain
+        u64,     // Chain
         [u8; 20], // Token
         u128,     // Value
-        [u8; 32], // Deadline
+        U,        // Deadline
         u8,       // Permit V
-        [u8; 32], // Permit R
-        [u8; 32], // Permit S
+        U,        // Permit R
+        U,        // Permit S
     ),
     // Add liquidity to a user's address without completing any onboarding.
     AddLiquidity(
         [u8; 20], // Token
         [u8; 20], // Recipient
         u128,     // Value
-        [u8; 32], // Deadline
+        U,        // Deadline
         u8,       // V
-        [u8; 32], // R
-        [u8; 32], // S
+        U,        // R
+        U,        // S
     ),
 }
 
