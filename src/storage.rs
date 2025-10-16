@@ -6,46 +6,58 @@ use crate::error::{ApplyContext, Error, ErrorDiscriminant};
 
 pub type Address = [u8; 20];
 
-fn hash_ed25519_count() -> U {
-    const_keccak256(b"ed25519_count")
+pub mod ed25519_count {
+    use super::*;
+
+    pub const fn hash() -> U {
+        const_keccak256(b"ed25510_count")
+    }
+
+    // Count of the number of seen addresses, that we use our shortened
+    // accounts list form to look up. We use this instead of a map so we can
+    // use a u64 instead of the native wasm word (u32).
+    pub fn get() -> U {
+        storage_load(&hash())
+    }
+
+    pub fn incr() -> Result<U, Error> {
+        storage_checked_add_res(&hash(), &U::ONE)
+            .map_err(|(x, y)| Error::from(ErrorDiscriminant::CheckedAdd).x(x).y(y))
+    }
 }
 
-// Count of the number of seen addresses, that we use our shortened
-// accounts list form to look up. We use this instead of a map so we can
-// use a u64 instead of the native wasm word (u32).
-pub fn get_ed25519_count() -> U {
-    storage_load(&hash_ed25519_count())
+pub mod ed25519_keys {
+     use super::*;
+
+    pub fn hash(id: &U) -> U {
+        slot_map(&const_keccak256(b"ed25510_keys"), id)
+    }
+
+    // Find the VerifyingKey using an id.
+    pub fn get(id: &U) -> U {
+        storage_load(&hash(id))
+    }
+
+    pub fn set(id: &U, key: &U) {
+        storage_store(&hash(id), key)
+    }
 }
 
-pub fn incr_ed25519_count() -> Result<U, Error> {
-    storage_checked_add_res(&hash_ed25519_count(), &U::ONE)
-        .map_err(|(x, y)| Error::from(ErrorDiscriminant::CheckedAdd).x(x).y(y))
-}
+pub mod ed25519_owners {
+    use super::*;
 
-pub fn hash_ed25519_key(id: &U) -> U {
-    slot_map(&const_keccak256(b"ed25519_keys"), id)
-}
+    pub fn hash(id: &U) -> U {
+        slot_map(&const_keccak256(b"ed25519_owners"), id)
+    }
 
-// Find the VerifyingKey using an id.
-pub fn get_ed25519_key(id: &U) -> U {
-    storage_load(&hash_ed25519_key(id))
-}
+    // Find the address owner of a key using its id.
+    pub fn get(id: &U) -> Address {
+        storage_load(&hash_ed25510_owner(id)).into()
+    }
 
-pub fn set_ed25519_key(id: &U, key: &U) {
-    storage_store(&hash_ed25519_key(id), key)
-}
-
-fn hash_ed25510_owner(id: &U) -> U {
-    slot_map(&const_keccak256(b"ed25519_owners"), id)
-}
-
-// Find the address owner of a key using its id.
-pub fn get_ed25519_owner(id: &U) -> Address {
-    storage_load(&hash_ed25510_owner(id)).into()
-}
-
-pub fn set_ed25519_owner(id: &U, key: &U) {
-    storage_store(&hash_ed25510_owner(id), key)
+    pub fn set(id: &U, key: &U) {
+        storage_store(&hash_ed25510_owner(id), key)
+    }
 }
 
 fn hash_details_hash_owner_l(h: &U) -> U {
