@@ -1,6 +1,6 @@
 #![cfg_attr(target_arch = "wasm32", no_main, no_std)]
 
-use bobcat_sdk::{entry::write_result, storage::flush_cache};
+use bobcat_sdk::{entry::write_result_slice, storage::flush_cache};
 
 use libpassport::{
     add_liq::add_liq, entry_non_reentrant, onboard::onboard, ops::OpSetter, DONE_UNIT,
@@ -44,8 +44,8 @@ pub fn entry(len: usize) -> usize {
             }
         };
         match r {
-            Ok(v) => write_result(&borsh::to_vec(&v).unwrap()),
-            Err(v) => write_result(&{
+            Ok(v) => write_result_slice(&borsh::to_vec(&v).unwrap()),
+            Err(v) => write_result_slice(&{
                 #[cfg(feature = "errors-extra-context")]
                 {
                     borsh::to_vec(&v).unwrap()

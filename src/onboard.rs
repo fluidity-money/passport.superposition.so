@@ -46,10 +46,10 @@ pub fn onboard(
         .map_err(|_| Error::from(ErrorDiscriminant::BadVerifyingKey))?
         .verify_strict(&addr_nonce_chain, &Signature::from_bytes(&sig))
         .map_err(|_| Error::from(ErrorDiscriminant::BadOnboardingSig))?;
-    let key_count = get_ed25519_count();
-    incr_ed25519_count()?;
-    set_ed25519_key(&key_count, &U::from(key));
-    set_ed25519_owner(&key_count, &U::from(owner));
+    let key_count = ed25519_count::get();
+    ed25519_count::incr()?;
+    ed25519_keys::set(&key_count, &U::from(key));
+    ed25519_owners::set(&key_count, &U::from(owner));
     add_liq(token, owner, value, deadline, permit_v, permit_r, permit_s)?;
     done_u64(key_count.into())
 }

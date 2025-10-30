@@ -8,7 +8,7 @@ use libpassport::{
 #[cfg(all(not(target_arch = "wasm32"), feature = "std"))]
 use libpassport::return_data;
 
-use bobcat_sdk::entry::write_result;
+use bobcat_sdk::entry::write_result_slice;
 
 use borsh::BorshDeserialize;
 
@@ -30,7 +30,7 @@ pub fn entry(len: usize) -> usize {
             let r = match validate(&pick_solver_key(NETWORK), &accounts, &args) {
                 Ok(v) => v,
                 Err(v) => {
-                    write_result(&{
+                    write_result_slice(&{
                         #[cfg(feature = "errors-extra-context")]
                         {
                             borsh::to_vec(&v).unwrap()
@@ -44,7 +44,7 @@ pub fn entry(len: usize) -> usize {
                 }
             };
             let (r, _rd) = reentrancy::begin_apply(r);
-            write_result(&_rd);
+            write_result_slice(&_rd);
             r
         }
     })

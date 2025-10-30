@@ -52,11 +52,11 @@ pub mod ed25519_owners {
 
     // Find the address owner of a key using its id.
     pub fn get(id: &U) -> Address {
-        storage_load(&hash_ed25510_owner(id)).into()
+        storage_load(&hash(id)).into()
     }
 
     pub fn set(id: &U, key: &U) {
-        storage_store(&hash_ed25510_owner(id), key)
+        storage_store(&hash(id), key)
     }
 }
 
@@ -298,7 +298,7 @@ pub fn set_hash_owner_r(h: &[u8; 64], v: &Address) {
 }
 
 pub fn find_ed25519_key(i: &U) -> Result<VerifyingKey, Error> {
-    let v = get_ed25519_key(i);
+    let v = ed25519_keys::get(i);
     if v.is_zero() {
         Err(Error::from(ErrorDiscriminant::AccountIdNotFound))
     } else {
@@ -307,7 +307,7 @@ pub fn find_ed25519_key(i: &U) -> Result<VerifyingKey, Error> {
 }
 
 pub fn find_ed25519_addr(i: &U) -> Result<Address, Error> {
-    let addr = get_ed25519_owner(i);
+    let addr = ed25519_owners::get(i);
     if addr == [0u8; 20] {
         Err(Error::from(ErrorDiscriminant::AccountIdNotFound))
     } else {

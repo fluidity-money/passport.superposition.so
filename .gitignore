@@ -1,6 +1,5 @@
 *.wasm
 target
-passport-cli
 out
 cache
 _build
