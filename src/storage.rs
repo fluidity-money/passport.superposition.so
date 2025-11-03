@@ -10,7 +10,7 @@ pub mod ed25519_count {
     use super::*;
 
     pub const fn hash() -> U {
-        const_keccak256(b"ed25510_count")
+        const_keccak256(b"ed25519_count")
     }
 
     // Count of the number of seen addresses, that we use our shortened
@@ -30,7 +30,7 @@ pub mod ed25519_keys {
      use super::*;
 
     pub fn hash(id: &U) -> U {
-        slot_map(&const_keccak256(b"ed25510_keys"), id)
+        slot_map(&const_keccak256(b"ed25519_keys"), id)
     }
 
     // Find the VerifyingKey using an id.
@@ -316,7 +316,7 @@ pub fn find_ed25519_addr(i: &U) -> Result<Address, Error> {
 }
 
 pub fn ensure_hash_unseen(hash: &[u8; 64]) -> Result<(), Error> {
-    if get_hash_owner_l(hash) == [0u8; 20] {
+    if get_hash_owner_l(hash) != [0u8; 20] {
         return Err(err_hash_already_onchain(hash));
     }
     Ok(())

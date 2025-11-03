@@ -9,6 +9,9 @@ use libpassport::{apply::apply, state_machine::StateMachine};
 
 use borsh::de::BorshDeserialize;
 
+#[global_allocator]
+static ALLOC: mini_alloc::MiniAlloc = mini_alloc::MiniAlloc::INIT;
+
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn user_entrypoint(len: usize) -> usize {
     let args = read_args_vec(len);
@@ -20,6 +23,3 @@ pub unsafe extern "C" fn user_entrypoint(len: usize) -> usize {
     flush_cache();
     1
 }
-
-#[cfg(not(target_arch = "wasm32"))]
-fn main() {}

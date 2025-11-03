@@ -4,6 +4,9 @@ use libpassport::{entry_non_reentrant, ops::OpAdmin};
 
 use borsh::BorshDeserialize;
 
+#[global_allocator]
+static ALLOC: mini_alloc::MiniAlloc = mini_alloc::MiniAlloc::INIT;
+
 pub fn entry(len: usize) -> usize {
     entry_non_reentrant(len, |args| match OpAdmin::deserialize(args).unwrap() {
         OpAdmin::Upgrade(_, _, _, _) => todo!(),
@@ -13,10 +16,4 @@ pub fn entry(len: usize) -> usize {
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn user_entrypoint(len: usize) -> usize {
     entry(len)
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-fn main() {
-    let (vm, len) = host_vm_harness();
-    std::process::exit(entry(vm, len).try_into().unwrap())
 }

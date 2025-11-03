@@ -10,8 +10,6 @@ use libpassport::{
     ops::OpSolver
 };
 
-use stylus_sdk::alloy_primitives::Address;
-
 use ed25519_dalek::SigningKey;
 
 use std::collections::HashMap;
@@ -36,7 +34,7 @@ fn _unsolved_to_app(
                 amount,
                 ms_timestamp,
             },
-        ) => ctx(accounts, n).balance(Address::from(asset.0), chain.0, amount.0, ms_timestamp.0),
+        ) => ctx(accounts, n).balance(Address::from(asset.0), chain, amount, ms_timestamp),
         RecipeUnsolved::Withdraw(n, from) => {
             let from = _unsolved_to_app(accounts, solver, *from);
             let s_sig = solver.withdraw(&from).unwrap();

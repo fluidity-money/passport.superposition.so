@@ -8,6 +8,9 @@ use libpassport::{
 
 use borsh::BorshDeserialize;
 
+#[global_allocator]
+static ALLOC: mini_alloc::MiniAlloc = mini_alloc::MiniAlloc::INIT;
+
 extern crate alloc;
 
 pub fn entry(len: usize) -> usize {

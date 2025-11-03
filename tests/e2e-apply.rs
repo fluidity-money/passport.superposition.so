@@ -18,8 +18,6 @@ use proptest::prelude::*;
 
 use ed25519_dalek::SigningKey;
 
-use stylus_sdk::{alloy_primitives::FixedBytes, prelude::HostAccess};
-
 proptest! {
     #[test]
     fn test_apply(signer_priv_key in any::<[u8; 32]>(), e in any::<Entry>()) {

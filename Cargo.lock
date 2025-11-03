@@ -161,6 +161,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "bobcat-events"
+version = "0.6.3"
+dependencies = [
+ "array-concat",
+ "bobcat-maths",
+]
+
+[[package]]
 name = "bobcat-interfaces"
 version = "0.6.3"
 dependencies = [
@@ -182,6 +190,7 @@ dependencies = [
  "mutants",
  "num-traits",
  "paste",
+ "serde",
 ]
 
 [[package]]
@@ -211,6 +220,7 @@ dependencies = [
  "bobcat-console",
  "bobcat-create",
  "bobcat-entry",
+ "bobcat-events",
  "bobcat-interfaces",
  "bobcat-maths",
  "bobcat-panic",
@@ -889,6 +899,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9a8e94ea7f378bd32cbbd37198a4a91436180c5bb472411e48b5ec2e2124ae9e"
 dependencies = [
  "serde_core",
+ "serde_derive",
 ]
 
 [[package]]

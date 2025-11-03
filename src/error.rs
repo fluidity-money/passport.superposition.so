@@ -14,9 +14,6 @@ use alloc::boxed::Box;
 #[cfg(feature = "std")]
 use proptest::strategy::Strategy;
 
-#[cfg(feature = "errors-extra-context")]
-use alloc::string::ToString;
-
 type Address = [u8; 20];
 
 #[derive(BorshSerialize, BorshDeserialize, Clone, Copy, PartialEq, Debug)]
@@ -318,7 +315,7 @@ impl Error {
     pub fn asset_left(mut self, _a: Address) -> Self {
         #[cfg(feature = "errors-extra-context")]
         {
-            self.inner.asset_left = Some(_a.to_string());
+            self.inner.asset_left = Some(const_hex::encode(_a));
         }
         self
     }
@@ -327,7 +324,7 @@ impl Error {
     pub fn asset_right(mut self, _a: Address) -> Self {
         #[cfg(feature = "errors-extra-context")]
         {
-            self.inner.asset_right = Some(_a.to_string());
+            self.inner.asset_right = Some(const_hex::encode(_a));
         }
         self
     }
@@ -336,7 +333,7 @@ impl Error {
     pub fn desired_left(mut self, _a: Address) -> Self {
         #[cfg(feature = "errors-extra-context")]
         {
-            self.inner.desired_left = Some(_a.to_string());
+            self.inner.desired_left = Some(const_hex::encode(_a));
         }
         self
     }
@@ -345,7 +342,7 @@ impl Error {
     pub fn desired_right(mut self, _a: Address) -> Self {
         #[cfg(feature = "errors-extra-context")]
         {
-            self.inner.desired_right = Some(_a.to_string());
+            self.inner.desired_right = Some(const_hex::encode(_a));
         }
         self
     }

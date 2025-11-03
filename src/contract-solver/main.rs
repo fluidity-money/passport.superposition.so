@@ -12,6 +12,9 @@ use bobcat_sdk::entry::write_result_slice;
 
 use borsh::BorshDeserialize;
 
+#[global_allocator]
+static ALLOC: mini_alloc::MiniAlloc = mini_alloc::MiniAlloc::INIT;
+
 extern crate alloc;
 
 cfg_if::cfg_if! {
@@ -53,20 +56,4 @@ pub fn entry(len: usize) -> usize {
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn user_entrypoint(len: usize) -> usize {
     entry(len)
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-fn main() {
-    let (vm, len) = host_vm_harness();
-    let c = entry(vm, len).try_into().unwrap();
-    #[cfg(feature = "std")]
-    {
-        let d = const_hex::encode(&return_data());
-        if c > 0 {
-            eprintln!("0x{d}");
-        } else {
-            println!("0x{d}");
-        }
-    }
-    std::process::exit(c)
 }
