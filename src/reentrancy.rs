@@ -1,6 +1,6 @@
 use crate::state_machine::StateMachine;
 
-use bobcat_sdk::{storage::{const_slot_off_curve}, maths::U};
+use bobcat_sdk::{storage::{flush_cache, const_slot_off_curve}, maths::U};
 
 use alloc::vec::Vec;
 
