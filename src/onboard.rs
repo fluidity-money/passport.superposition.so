@@ -47,7 +47,7 @@ pub fn onboard(
         .verify_strict(&addr_nonce_chain, &Signature::from_bytes(&sig))
         .map_err(|_| Error::from(ErrorDiscriminant::BadOnboardingSig))?;
     let key_count = ed25519_count::get();
-    ed25519_count::incr()?;
+    ed25519_count::add(&U::ONE);
     ed25519_keys::set(&key_count, &U::from(key));
     ed25519_owners::set(&key_count, &U::from(owner));
     add_liq(token, owner, value, deadline, permit_v, permit_r, permit_s)?;

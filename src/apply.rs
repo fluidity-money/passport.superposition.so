@@ -8,7 +8,7 @@ use crate::{
     call_eip20_extras,
     error::ApplyContext,
     state_machine::{Balance, BalanceArgs, Commit, Order, OrderArgs, StateMachine, Withdraw},
-    storage::*,
+    storage,
 };
 
 pub type R<T> = Result<T, Error>;
@@ -28,21 +28,21 @@ pub fn err_bad_balance_from_order() -> Error {
 pub fn commit_left_owner(c: &Commit) -> Address {
     match c {
         Commit::Inline(_, o, _, _) => order_owner(o),
-        Commit::Onchain(h) => get_hash_owner_l(h),
+        Commit::Onchain(h) => storage::hash_owner_l::get_hash(h).into(),
     }
 }
 
 pub fn commit_right_owner(c: &Commit) -> Address {
     match c {
         Commit::Inline(_, _, o, _) => order_owner(o),
-        Commit::Onchain(h) => get_hash_owner_r(h),
+        Commit::Onchain(h) => storage::hash_owner_r::get_hash(h).into(),
     }
 }
 
 pub fn order_owner(o: &Order) -> Address {
     match o {
         Order::Inline(_, b, _) => balance_owner(b),
-        Order::Onchain(h) => get_hash_owner_l(h),
+        Order::Onchain(h) => storage::hash_owner_l::get_hash(h).into(),
         Order::CommitLeftExcessToOrder(c, _) => commit_left_owner(c),
         Order::CommitRightExcessToOrder(c, _) => commit_right_owner(c),
     }
@@ -51,7 +51,7 @@ pub fn order_owner(o: &Order) -> Address {
 pub fn balance_owner(b: &Balance) -> Address {
     match b {
         Balance::Inline(BalanceArgs { owner, .. }, _) => *owner,
-        Balance::Onchain(h) => get_hash_owner_l(h),
+        Balance::Onchain(h) => storage::hash_owner_l::get_hash(h).into(),
         Balance::CommitLeftFilledToBal(c, _) => commit_left_owner(c),
         Balance::CommitRightFilledToBal(c, _) => commit_right_owner(c),
         Balance::Cancel(o, _) => order_owner(o),
@@ -62,7 +62,9 @@ pub fn balance_owner(b: &Balance) -> Address {
 pub fn balance_amount(owner: Address, asset: Address, b: &Balance) -> R<u128> {
     match b {
         Balance::Inline(BalanceArgs { amt, .. }, _) => Ok(*amt),
-        Balance::Onchain(h) => Ok(get_interim_amount_hash(&owner, &asset, h)),
+        Balance::Onchain(h) => {
+            Ok(storage::interim_amt::get_hash(&owner.into(), &asset.into(), h).into())
+        }
         Balance::CommitLeftFilledToBal(c, _) => commit_left_amount_filled(owner, asset, c),
         Balance::CommitRightFilledToBal(c, _) => commit_right_amount_filled(owner, asset, c),
         Balance::Cancel(o, _) => order_from(owner, asset, o),
@@ -85,7 +87,9 @@ pub fn commit_left_amount_filled(owner: Address, l_asset: Address, c: &Commit) -
             order_desired_amount(owner, l_asset, r)?,
             order_from(owner, l_asset, l)?,
         )),
-        Commit::Onchain(h) => Ok(get_interim_amount_hash(&owner, &l_asset, &h)),
+        Commit::Onchain(h) => {
+            Ok(storage::interim_amt::get_hash(&owner.into(), &l_asset.into(), h).into())
+        }
     }
 }
 
@@ -95,14 +99,16 @@ pub fn commit_right_amount_filled(owner: Address, r_asset: Address, c: &Commit) 
             order_desired_amount(owner, r_asset, l)?,
             order_from(owner, r_asset, r)?,
         )),
-        Commit::Onchain(h) => Ok(get_interim_amount_hash(&owner, &r_asset, &h)),
+        Commit::Onchain(h) => {
+            Ok(storage::interim_amt::get_hash(&owner.into(), &r_asset.into(), h).into())
+        }
     }
 }
 
 pub fn order_desired_amount(owner: Address, asset: Address, c: &Order) -> R<u128> {
     match c {
         Order::Inline(OrderArgs { desired_amt, .. }, _, _) => Ok(*desired_amt),
-        Order::Onchain(h) => Ok(get_details_hash_order_desired_amt_hash(&h)),
+        Order::Onchain(h) => Ok(storage::hash_desired_amt::get_hash(&h).into()),
         Order::CommitLeftExcessToOrder(c, _) => commit_left_amount_unfilled(owner, asset, c),
         Order::CommitRightExcessToOrder(c, _) => commit_right_amount_unfilled(owner, asset, c),
     }
@@ -111,29 +117,25 @@ pub fn order_desired_amount(owner: Address, asset: Address, c: &Order) -> R<u128
 pub fn commit_left_amount_unfilled(owner: Address, asset: Address, o: &Commit) -> R<u128> {
     match o {
         Commit::Inline(_, l, r, _) => {
-            // FIXME: SATURATING SUB NEEDED
-            Ok(order_desired_amount(owner, asset, r)?
-                .checked_sub(order_from(owner, asset, l)?)
-                .unwrap())
+            Ok(order_desired_amount(owner, asset, r)?.saturating_sub(order_from(owner, asset, l)?))
         }
         Commit::Onchain(h) => {
-            let owner = get_hash_owner_l(h);
-            let asset = get_details_hash_asset_l_hash(h);
-            Ok(get_order_amt_hash(&owner, &asset, h))
+            let owner = storage::hash_owner_l::get_hash(h);
+            let asset = storage::hash_asset_l::get_hash(h);
+            Ok(storage::order_amt::get_hash(&owner, &asset, h).into())
         }
     }
 }
 
 pub fn commit_right_amount_unfilled(owner: Address, asset: Address, o: &Commit) -> R<u128> {
     match o {
-        // FIXME: SATURATING SUB
-        Commit::Inline(_, l, r, _) => Ok(order_desired_amount(owner, asset, l)?
-            .checked_sub(order_from(owner, asset, r)?)
-            .unwrap()),
+        Commit::Inline(_, l, r, _) => {
+            Ok(order_desired_amount(owner, asset, l)?.saturating_sub(order_from(owner, asset, r)?))
+        }
         Commit::Onchain(h) => {
-            let owner = get_hash_owner_r(h);
-            let asset = get_details_hash_asset_r_hash(h);
-            Ok(get_order_amt_hash(&owner, &asset, h))
+            let owner = storage::hash_owner_r::get_hash(h);
+            let asset = storage::hash_asset_r::get_hash(h);
+            Ok(storage::order_amt::get_hash(&owner, &asset, h).into())
         }
     }
 }
@@ -141,7 +143,9 @@ pub fn commit_right_amount_unfilled(owner: Address, asset: Address, o: &Commit) 
 pub fn order_from(owner: Address, asset: Address, o: &Order) -> R<u128> {
     match o {
         Order::Inline(OrderArgs { from_amt, .. }, _, _) => Ok(*from_amt),
-        Order::Onchain(h) => Ok(get_order_amt_hash(&owner, &asset, h)),
+        Order::Onchain(h) => {
+            Ok(storage::order_amt::get_hash(&owner.into(), &asset.into(), h).into())
+        }
         Order::CommitLeftExcessToOrder(c, _) => commit_left_amount_unfilled(owner, asset, c),
         Order::CommitRightExcessToOrder(c, _) => commit_right_amount_unfilled(owner, asset, c),
     }
@@ -150,7 +154,9 @@ pub fn order_from(owner: Address, asset: Address, o: &Order) -> R<u128> {
 pub fn order_underlying_amt(owner: Address, asset: Address, o: &Order) -> R<u128> {
     match o {
         Order::Inline(_, b, _) => balance_amount(owner, asset, b),
-        Order::Onchain(h) => Ok(get_order_amt_hash(&owner, &asset, h)),
+        Order::Onchain(h) => {
+            Ok(storage::order_amt::get_hash(&owner.into(), &asset.into(), h).into())
+        }
         Order::CommitLeftExcessToOrder(c, _) => commit_left_amount_unfilled(owner, asset, c),
         Order::CommitRightExcessToOrder(c, _) => commit_right_amount_unfilled(owner, asset, c),
     }
@@ -168,7 +174,7 @@ pub fn order_hash<'a>(o: &'a Order) -> &'a [u8; 64] {
 pub fn balance_asset(b: &Balance) -> Address {
     match b {
         Balance::Inline(BalanceArgs { asset, .. }, _) => *asset,
-        Balance::Onchain(h) => get_details_hash_asset_l_hash(h),
+        Balance::Onchain(h) => storage::hash_asset_l::get_hash(h).into(),
         Balance::CommitLeftFilledToBal(c, _) => commit_right_asset(c),
         Balance::CommitRightFilledToBal(c, _) => commit_left_asset(c),
         Balance::Join(l, _, _) => balance_asset(l),
@@ -179,21 +185,21 @@ pub fn balance_asset(b: &Balance) -> Address {
 pub fn commit_left_asset(c: &Commit) -> Address {
     match c {
         Commit::Inline(_, l, _, _) => order_asset(l),
-        Commit::Onchain(h) => get_details_hash_asset_l_hash(h),
+        Commit::Onchain(h) => storage::hash_asset_l::get_hash(h).into(),
     }
 }
 
 pub fn commit_right_asset(c: &Commit) -> Address {
     match c {
         Commit::Inline(_, _, r, _) => order_asset(r),
-        Commit::Onchain(h) => get_details_hash_asset_r_hash(h),
+        Commit::Onchain(h) => storage::hash_asset_r::get_hash(h).into(),
     }
 }
 
 pub fn order_asset(o: &Order) -> Address {
     match o {
         Order::Inline(_, b, _) => balance_asset(b),
-        Order::Onchain(h) => get_details_hash_asset_l_hash(h),
+        Order::Onchain(h) => storage::hash_asset_l::get_hash(h).into(),
         Order::CommitLeftExcessToOrder(c, _) => commit_left_asset(c),
         Order::CommitRightExcessToOrder(c, _) => commit_right_asset(c),
     }
@@ -202,21 +208,21 @@ pub fn order_asset(o: &Order) -> Address {
 pub fn commit_left_desired_asset(c: &Commit) -> Address {
     match c {
         Commit::Inline(_, o, _, _) => order_desired_asset(o),
-        Commit::Onchain(h) => get_details_hash_asset_r_hash(h),
+        Commit::Onchain(h) => storage::hash_asset_r::get_hash(h).into(),
     }
 }
 
 pub fn commit_right_desired_asset(c: &Commit) -> Address {
     match c {
         Commit::Inline(_, _, o, _) => order_desired_asset(o),
-        Commit::Onchain(h) => get_details_hash_asset_l_hash(h),
+        Commit::Onchain(h) => storage::hash_asset_l::get_hash(h).into(),
     }
 }
 
 pub fn order_desired_asset(o: &Order) -> Address {
     match o {
         Order::Inline(OrderArgs { desired_asset, .. }, _, _) => *desired_asset,
-        Order::Onchain(h) => get_details_hash_asset_r_hash(h),
+        Order::Onchain(h) => storage::hash_asset_r::get_hash(h).into(),
         Order::CommitLeftExcessToOrder(c, _) => commit_left_desired_asset(c),
         Order::CommitRightExcessToOrder(c, _) => commit_right_desired_asset(c),
     }
@@ -255,10 +261,10 @@ pub fn balance_inline(b: &Balance) -> R<()> {
     let Balance::Inline(_, h) = b else {
         unreachable!();
     };
-    let ctx = ApplyContext::ApplyBalanceInline;
-    increase_interim_amount(ctx, &owner, &asset, h, &U::from(amt))?;
-    set_details_hash_asset_l_hash(h, &asset);
-    decrease_withdrawable(ctx, &owner, &asset, &U::from(amt))?;
+    let h: [u8; 32] = h[..32].try_into().unwrap();
+    storage::interim_amt::add(&owner.into(), &asset.into(), &U(h), &U::from(amt));
+    storage::hash_asset_l::set(&U(h), &asset.into());
+    storage::withdrawable::sub(&owner.into(), &asset.into(), &U::from(amt));
     Ok(())
 }
 
@@ -282,11 +288,11 @@ pub fn balance_cancel(b: &Balance) -> R<()> {
     if amt == 0 {
         return Ok(());
     }
-    set_details_hash_asset_l_hash(h, &asset);
-    let ctx = ApplyContext::ApplyBalanceCancel;
+    let h: [u8; 32] = h[..32].try_into().unwrap();
+    storage::hash_asset_l::set(&U(h), &asset.into());
     let amt = U::from(amt);
-    increase_interim_amount(ctx, &owner, &asset, &h, &amt)?;
-    decrease_order_amount(ctx, &owner, &asset, h, &amt)?;
+    storage::interim_amt::add(&owner.into(), &asset.into(), &U(h), &amt);
+    storage::order_amt::sub(&owner.into(), &asset.into(), &U(h), &amt);
     Ok(())
 }
 
@@ -304,11 +310,11 @@ pub fn commit(c: &Commit) -> R<()> {
     let Commit::Inline(_, l, r, _) = c else {
         return Ok(());
     };
-    let hash = commit_hash(c);
+    let hash = U(commit_hash(c)[..32].try_into().unwrap());
     let l_asset = order_asset(l);
-    let l_hash = order_hash(l);
+    let l_hash: U = U(order_hash(l)[..32].try_into().unwrap());
     let r_asset = order_asset(r);
-    let r_hash = order_hash(r);
+    let r_hash: U = U(order_hash(r)[..32].try_into().unwrap());
     let l_desired_asset = order_desired_asset(l);
     let r_desired_asset = order_desired_asset(r);
     let l_owner = order_owner(l);
@@ -323,16 +329,25 @@ pub fn commit(c: &Commit) -> R<()> {
     }
     order(l)?;
     order(r)?;
-    let ctx = ApplyContext::ApplyCommit;
     let l_filled = U::from(l_filled);
     let r_filled = U::from(r_filled);
-    decrease_order_amount(ctx, &l_owner, &l_asset, l_hash, &l_filled)?;
-    decrease_order_amount(ctx, &r_owner, &r_asset, r_hash, &r_filled)?;
-    increase_interim_amount(ctx, &l_owner, &r_asset, hash, &l_filled)?;
-    increase_interim_amount(ctx, &r_owner, &l_asset, hash, &r_filled)?;
-    set_details_hash_asset_l_hash(hash, &l_asset);
-    set_details_hash_asset_r_hash(hash, &r_asset);
-    set_hash_owner_r(hash, &r_owner);
+    storage::order_amt::sub(
+        &l_owner.into(),
+        &l_asset.into(),
+        &l_hash,
+        &l_filled.into(),
+    );
+    storage::order_amt::sub(
+        &r_owner.into(),
+        &r_asset.into(),
+        &r_hash,
+        &r_filled.into(),
+    );
+    storage::interim_amt::add(&l_owner.into(), &r_asset.into(), &hash, &l_filled);
+    storage::interim_amt::add(&r_owner.into(), &l_asset.into(), &hash, &r_filled);
+    storage::hash_asset_l::set(&hash, &l_asset.into());
+    storage::hash_asset_r::set(&hash, &r_asset.into());
+    storage::hash_owner_r::set(&hash, &r_owner.into());
     Ok(())
 }
 
@@ -349,21 +364,20 @@ pub fn order(o: &Order) -> R<()> {
     let amt = order_from(owner, from_asset, o)?;
     let bal_amt = order_underlying_amt(owner, from_asset, o)?;
     let desired_asset = order_desired_asset(o);
-    let h = order_hash(o);
-    let ctx = ApplyContext::ApplyOrder;
+    let h: U = U(order_hash(o)[..32].try_into().unwrap());
     match o {
         Order::Inline(_, b, _) => {
-            let b_hash = match **b {
+            let b_hash: U = match **b {
                 Balance::Inline(_, h)
                 | Balance::Onchain(h)
                 | Balance::CommitLeftFilledToBal(_, h)
                 | Balance::CommitRightFilledToBal(_, h)
                 | Balance::Cancel(_, h)
-                | Balance::Join(_, _, h) => h,
+                | Balance::Join(_, _, h) => U(h[..32].try_into().unwrap()),
             };
             balance(b)?;
-            decrease_interim_amount(ctx, &owner, &from_asset, &b_hash, &U::from(amt))?;
-            increase_order_amount(ctx, &owner, &from_asset, h, &U::from(amt))?;
+            storage::interim_amt::sub(&owner.into(), &from_asset.into(), &b_hash, &U::from(amt));
+            storage::order_amt::add(&owner.into(), &from_asset.into(), &h, &U::from(amt));
         }
         Order::Onchain(_) => (),
         Order::CommitLeftExcessToOrder(c, _) | Order::CommitRightExcessToOrder(c, _) => {
@@ -386,12 +400,11 @@ pub fn withdraw(w: &Withdraw) -> R<()> {
     let owner = withdraw_owner(w);
     let asset = withdraw_asset(w);
     let amt = withdraw_balance(owner, asset, w)?;
-    let hash = withdraw_hash(w);
+    let hash = U(withdraw_hash(w)[..32].try_into().unwrap());
     let Withdraw::Inline(b, _) = w;
     balance(b)?;
-    let ctx = ApplyContext::ApplyWithdraw;
-    decrease_interim_amount(ctx, &owner, &asset, hash, &U::from(amt))?;
-    increase_withdrawable(ctx, &owner, &asset, &U::from(amt))?;
+    storage::interim_amt::sub(&owner.into(), &asset.into(), &hash, &U::from(amt));
+    storage::withdrawable::add(&owner.into(), &asset.into(), &U::from(amt));
     call_eip20_extras::transfer(asset, owner, U::from(amt))
 }
 

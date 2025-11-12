@@ -9,8 +9,6 @@ use super::{
     unsolved::RecipeUnsolved,
 };
 
-use stylus_sdk::alloy_primitives::{Address, FixedBytes};
-
 use libpassport::{
     applicative::EdSig,
     error::Error,
@@ -21,11 +19,15 @@ use libpassport::{
     OurLzss,
 };
 
+use bobcat_sdk::maths::U;
+
 use borsh::{ser::BorshSerialize, BorshDeserialize};
 
 use lzss::{SliceReader, VecWriter};
 
 use ed25519_dalek::{Signer, SigningKey};
+
+type Address = [u8; 20];
 
 #[derive(Clone, Parser, Debug)]
 #[command(version, about)]
@@ -66,11 +68,11 @@ enum Args {
         value: u128,
         deadline: u128,
         permit_v: u8,
-        permit_r: FixedBytes<32>,
-        permit_s: FixedBytes<32>,
+        permit_r: U,
+        permit_s: U,
     },
     SetterOnboardNoKey {
-        verifying_key: FixedBytes<32>,
+        verifying_key: U,
         verifying_sig: EdSig,
         contract: Address,
         nonce: u16,
@@ -79,17 +81,17 @@ enum Args {
         value: u128,
         deadline: u128,
         permit_v: u8,
-        permit_r: FixedBytes<32>,
-        permit_s: FixedBytes<32>,
+        permit_r: U,
+        permit_s: U,
     },
     SetterAddLiquidity {
         token: Address,
         recipient: Address,
         value: u128,
-        deadline: FixedBytes<32>,
+        deadline: U,
         v: u8,
-        r: FixedBytes<32>,
-        s: FixedBytes<32>,
+        r: U,
+        s: U,
     },
     DecodeRes,
     DecodeErr,
@@ -213,8 +215,8 @@ fn setter_onboard_with_key(
     value: u128,
     deadline: u128,
     permit_v: u8,
-    permit_r: FixedBytes<32>,
-    permit_s: FixedBytes<32>,
+    permit_r: U,
+    permit_s: U,
 ) {
     let key = SigningKey::from_bytes(&signing_key.0);
     let sig: EdSig = key
@@ -242,7 +244,7 @@ fn setter_onboard_with_key(
 }
 
 fn setter_onboard_no_key(
-    verifying_key: FixedBytes<32>,
+    verifying_key: U,
     verifying_sig: EdSig,
     contract: Address,
     nonce: u16,
@@ -251,8 +253,8 @@ fn setter_onboard_no_key(
     value: u128,
     deadline: u128,
     permit_v: u8,
-    permit_r: FixedBytes<32>,
-    permit_s: FixedBytes<32>,
+    permit_r: U,
+    permit_s: U,
 ) {
     let mut deadline_buf = [0u8; 32];
     deadline_buf[..32 - 16].copy_from_slice(&deadline.to_be_bytes());

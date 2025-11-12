@@ -230,7 +230,7 @@ fn validate_balance(
         &[],
     )?;
     let h = d.finalize().into();
-    storage::ensure_hash_unseen(&h)?;
+    storage::ensure_hash_unseen(&h).ok_or(Error::from(ErrorDiscriminant::HashAlreadyOnchain))?;
     if args.amount.0 == 0 {
         return Err(Error::from(ErrorDiscriminant::ZeroBalanceAmount));
     }
@@ -258,7 +258,7 @@ fn validate_commit_left_filled_to_bal(
     )?;
     let c_hash = get_commit_hash(&commit);
     let h = chain_digests(&[Nonce::CommitLeftFilledToBalance.into()], &c_hash);
-    storage::ensure_hash_unseen(&h)?;
+    storage::ensure_hash_unseen(&h).ok_or(Error::from(ErrorDiscriminant::HashAlreadyOnchain))?;
     Ok(state_machine::Balance::CommitLeftFilledToBal(
         Box::new(commit),
         h,
@@ -278,7 +278,7 @@ fn validate_commit_right_filled_to_bal(
     )?;
     let c_hash = get_commit_hash(&commit);
     let h = chain_digests(&[Nonce::CommitRightFilledToBalance.into()], &c_hash);
-    storage::ensure_hash_unseen(&h)?;
+    storage::ensure_hash_unseen(&h).ok_or(Error::from(ErrorDiscriminant::HashAlreadyOnchain))?;
     Ok(state_machine::Balance::CommitRightFilledToBal(
         Box::new(commit),
         h,
@@ -350,7 +350,7 @@ fn validate_commit_left_excess_to_order(
     )?;
     let c_hash = get_commit_hash(&commit);
     let hash = chain_digests(&[Nonce::CommitLeftExcessToOrder.into()], &c_hash);
-    storage::ensure_hash_unseen(&hash)?;
+    storage::ensure_hash_unseen(&hash).ok_or(Error::from(ErrorDiscriminant::HashAlreadyOnchain))?;
     Ok(state_machine::Order::CommitLeftExcessToOrder(
         Box::new(commit),
         hash,
@@ -370,7 +370,7 @@ fn validate_commit_right_excess_to_order(
     )?;
     let c_hash = get_commit_hash(&commit);
     let hash = chain_digests(&[Nonce::CommitRightExcessToOrder.into()], &c_hash);
-    storage::ensure_hash_unseen(&hash)?;
+    storage::ensure_hash_unseen(&hash).ok_or(Error::from(ErrorDiscriminant::HashAlreadyOnchain))?;
     Ok(state_machine::Order::CommitRightExcessToOrder(
         Box::new(commit),
         hash,
@@ -384,9 +384,7 @@ fn validate_wrapped_order(
     ap: &Applicative,
 ) -> Result<state_machine::Order, Error> {
     match ap {
-        Applicative::Order(sig, args, ap) => {
-            validate_order(solver_key, accounts, sig, args, ap)
-        }
+        Applicative::Order(sig, args, ap) => validate_order(solver_key, accounts, sig, args, ap),
         Applicative::CommitLeftExcessToOrder(ap) => {
             validate_commit_left_excess_to_order(solver_key, accounts, ap)
         }
@@ -545,15 +543,15 @@ pub fn validate(
     ap: &Applicative,
 ) -> Result<StateMachine, Error> {
     match ap {
-        Applicative::Balance(sig, args) => Ok(StateMachine::Balance(
-            validate_balance(accounts, sig, args)?,
-        )),
+        Applicative::Balance(sig, args) => Ok(StateMachine::Balance(validate_balance(
+            accounts, sig, args,
+        )?)),
         Applicative::Withdraw(solver_sig, user_sig, _, ap) => Ok(StateMachine::Withdraw(
             validate_withdraw(solver_key, accounts, solver_sig, user_sig, ap)?,
         )),
-        Applicative::Order(user_sig, args, ap) => Ok(StateMachine::Order(
-            validate_order(solver_key, accounts, user_sig, args, ap)?,
-        )),
+        Applicative::Order(user_sig, args, ap) => Ok(StateMachine::Order(validate_order(
+            solver_key, accounts, user_sig, args, ap,
+        )?)),
         Applicative::Cancel(solver_sig, user_sig, ap) => Ok(StateMachine::Balance(
             validate_cancel(solver_key, accounts, solver_sig, user_sig, ap)?,
         )),
@@ -572,9 +570,9 @@ pub fn validate(
         Applicative::CommitRightExcessToOrder(ap) => Ok(StateMachine::Order(
             validate_commit_right_excess_to_order(solver_key, accounts, ap)?,
         )),
-        Applicative::Join(user_sig, left, right) => Ok(StateMachine::Balance(
-            validate_join(solver_key, accounts, user_sig, left, right)?,
-        )),
+        Applicative::Join(user_sig, left, right) => Ok(StateMachine::Balance(validate_join(
+            solver_key, accounts, user_sig, left, right,
+        )?)),
     }
 }
 

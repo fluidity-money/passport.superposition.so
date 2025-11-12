@@ -1,4 +1,4 @@
-use crate::{call_eip20_extras, error::ApplyContext, storage::increase_withdrawable, DONE_UNIT, R};
+use crate::{call_eip20_extras, storage::withdrawable, DONE_UNIT, R};
 
 use bobcat_sdk::{
     entry::{contract_address, msg_sender},
@@ -19,6 +19,6 @@ pub fn add_liq(
     let value = U::from(value);
     call_eip20_extras::permit(token, owner, spender, value, deadline, v, r, s)?;
     call_eip20_extras::transfer_from(token, owner, spender, value)?;
-    increase_withdrawable(ApplyContext::AddLiq, &recipient, &token, &value)?;
+    withdrawable::add(&recipient.into(), &token.into(), &value);
     DONE_UNIT
 }

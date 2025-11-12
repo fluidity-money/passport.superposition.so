@@ -34,15 +34,10 @@ pub mod call_eip20_extras;
 
 pub type OurLzss = lzss::Lzss<12, 11, 0, { 1 << 12 }, { 2 << 12 }>;
 
-pub use stylus_panic;
-
 use bobcat_sdk::{storage::const_keccak256, entry::read_args_vec};
 
 #[cfg(feature = "std")]
 use clap::Parser as ClapParser;
-
-#[cfg(feature = "std")]
-use std::io::Read;
 
 use core::str::FromStr;
 

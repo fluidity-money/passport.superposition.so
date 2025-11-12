@@ -34,7 +34,7 @@ fn _unsolved_to_app(
                 amount,
                 ms_timestamp,
             },
-        ) => ctx(accounts, n).balance(Address::from(asset.0), chain, amount, ms_timestamp),
+        ) => ctx(accounts, n).balance(asset.0, chain, amount, ms_timestamp),
         RecipeUnsolved::Withdraw(n, from) => {
             let from = _unsolved_to_app(accounts, solver, *from);
             let s_sig = solver.withdraw(&from).unwrap();
