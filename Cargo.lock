@@ -172,6 +172,7 @@ dependencies = [
  "bobcat-panic",
  "borsh",
  "cfg-if",
+ "clap",
  "const-hex",
  "mutants",
  "num-traits",

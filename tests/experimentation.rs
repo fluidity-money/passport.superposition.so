@@ -1,9 +1,6 @@
-use libpassport::{applicative::*, call_eip20_extras, error::*, Storage};
+use libpassport::{applicative::*, call_eip20_extras, error::*, add_liq::add_liq};
 
-use stylus_sdk::{
-    alloy_primitives::{Address, U256},
-    prelude::HostAccess,
-};
+use bobcat_sdk::{maths::U, entry::msg_sender};
 
 use proptest::prelude::*;
 
@@ -62,13 +59,13 @@ pub enum Entry {
 fn any_balance_no_zero() -> impl Strategy<Value = ArgsBalance> {
     (
         any::<[u8; 20]>(),
-        any::<u128>(),
+        1..u64::MAX,
         1..u128::MAX,
         any::<u128>(),
     )
         .prop_map(|(asset, chain, amount, ms_timestamp)| ArgsBalance {
             asset: Asset(asset),
-            chain: U128(chain),
+            chain,
             amount: U128(amount),
             ms_timestamp: U128(ms_timestamp),
         })
@@ -252,7 +249,7 @@ pub fn convert_test_balance<T: UserApplicative, S: SolverApplicative>(
                     amount,
                     ms_timestamp,
                 },
-        }) => Ok(user_app.balance(Address::from(asset.0), chain.0, amount.0, ms_timestamp.0)),
+        }) => Ok(user_app.balance(Address::from(asset.0), *chain, amount.0, ms_timestamp.0)),
         TestBalance::CommitLeftFilledToBalance(test_commit) => {
             let converted_commit = convert_test_commit(user_app, solver_app, test_commit)?;
             user_app.commit_left_filled_to_balance(converted_commit)
@@ -411,14 +408,13 @@ pub fn starting_amts(e: &Entry) -> Vec<(Address, u128)> {
     v
 }
 
-pub fn apply_balances(s: &mut Storage, v: Vec<(Address, u128)>) -> Result<(), Error> {
+pub fn apply_balances(v: Vec<(Address, u128)>) -> Result<(), Error> {
     for (asset, amt) in v {
         let mut b = [0u8; 32];
         b[16..32].copy_from_slice(&amt.to_be_bytes());
-        let sender = s.vm().msg_sender();
-        call_eip20_extras::give(&mut s.app, asset, sender, U256::from_be_bytes(b));
-        s.app
-            .add_liq(**asset, **sender, amt, [0u8; 32], 0, [0u8; 32], [0u8; 32])?;
+        let sender = msg_sender();
+        //call_eip20_extras::give(asset, sender, U256::from_be_bytes(b));
+        add_liq(asset, sender, amt, U::ZERO, 0, U::ZERO, U::ZERO)?;
     }
     Ok(())
 }

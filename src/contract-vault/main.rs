@@ -2,11 +2,9 @@
 
 use libpassport::{entry_non_reentrant, ops::OpVault};
 
-#[cfg(not(target_arch = "wasm32"))]
-use libpassport::host_vm_harness;
-
 use borsh::BorshDeserialize;
 
+#[cfg(target_arch = "wasm32")]
 #[global_allocator]
 static ALLOC: mini_alloc::MiniAlloc = mini_alloc::MiniAlloc::INIT;
 
@@ -22,3 +20,6 @@ pub fn entry(len: usize) -> usize {
 pub unsafe extern "C" fn user_entrypoint(len: usize) -> usize {
     entry(len)
 }
+
+#[allow(unused)]
+fn main() {}

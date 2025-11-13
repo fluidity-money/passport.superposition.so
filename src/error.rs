@@ -206,6 +206,17 @@ impl From<Error> for Vec<u8> {
     }
 }
 
+impl TryFrom<u8> for Error {
+    type Error = u8;
+
+    fn try_from(x: u8) -> Result<Self, Self::Error> {
+        Ok(Self {
+            typ: ErrorDiscriminant::try_from(x).map_err(|_| x)?,
+            ..Error::default()
+        })
+    }
+}
+
 impl Error {
     pub fn dis_u8(self) -> u8 {
         self.typ as u8

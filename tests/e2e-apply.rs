@@ -7,8 +7,12 @@ use libpassport::{
     network::Network,
     solver_context::*,
     user_context::*,
-    Storage,
+    storage,
+    apply::apply,
+    conversion::validate,
 };
+
+use bobcat_sdk::{maths::U, entry::msg_sender};
 
 mod experimentation;
 
@@ -30,13 +34,11 @@ proptest! {
             0
         );
         let converted = convert(&user_ctx, &solver_ctx, &e).unwrap();
-        let mut s = Storage::from(&stylus_sdk::testing::vm::TestVM::new());
-        let msg_sender = s.vm().msg_sender();
-        s.app.validation.ed25519_keys.setter(0).set(FixedBytes::from_slice(signer_pub.as_bytes()));
-        s.app.validation.ed25519_owners.setter(0).set(msg_sender);
-        apply_balances(&mut s, starting_amts(&e)).unwrap();
-        s.app.apply(
-            s.app.validation.validate(&pick_solver_key(Network::CUSTOM), &vec![0], &converted)
+        storage::ed25519_keys::set(&U::ZERO, signer_pub.as_bytes().into());
+        storage::ed25519_owners::set(&U::ZERO, &msg_sender().into());
+        apply_balances(starting_amts(&e)).unwrap();
+        apply(
+            validate(&pick_solver_key(Network::CUSTOM), &vec![0], &converted)
                 .unwrap()
         )
             .unwrap();

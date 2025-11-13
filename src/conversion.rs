@@ -744,7 +744,7 @@ fn test_signing_assumptions() {
         ]),
         chain: 123123123,
         amount: U128(226069396470166194839733876294202945097),
-        ms_timestamp: U128(285894907003591006624805008666230249480),
+        ms_timestamp: U128(123),
     };
     let signer_priv = SigningKey::from_bytes(&[1u8; 32]);
     let sig = sign_balance(&signer_priv, &args);

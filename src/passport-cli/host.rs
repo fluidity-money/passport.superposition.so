@@ -85,34 +85,42 @@ enum Args {
         owner: ArgsAddr,
         contract: ArgsAddr,
         nonce: u16,
-        chain: u128,
+        chain: u64,
         token: ArgsAddr,
         value: u128,
         deadline: u128,
         permit_v: u8,
+        #[arg(value_parser = ArgsAddr::from_str)]
         permit_r: U,
+        #[arg(value_parser = ArgsAddr::from_str)]
         permit_s: U,
     },
     SetterOnboardNoKey {
+        #[arg(value_parser = ArgsAddr::from_str)]
         verifying_key: U,
         verifying_sig: EdSig,
         contract: ArgsAddr,
         nonce: u16,
-        chain: u128,
+        chain: u64,
         token: ArgsAddr,
         value: u128,
         deadline: u128,
         permit_v: u8,
+        #[arg(value_parser = ArgsAddr::from_str)]
         permit_r: U,
+        #[arg(value_parser = ArgsAddr::from_str)]
         permit_s: U,
     },
     SetterAddLiquidity {
         token: ArgsAddr,
         recipient: ArgsAddr,
         value: u128,
+        #[arg(value_parser = ArgsAddr::from_str)]
         deadline: U,
         v: u8,
+        #[arg(value_parser = ArgsAddr::from_str)]
         r: U,
+        #[arg(value_parser = ArgsAddr::from_str)]
         s: U,
     },
     DecodeRes,
@@ -232,7 +240,7 @@ fn setter_onboard_with_key(
     owner: ArgsAddr,
     contract: ArgsAddr,
     nonce: u16,
-    chain: u128,
+    chain: u64,
     token: ArgsAddr,
     value: u128,
     deadline: u128,
@@ -243,15 +251,15 @@ fn setter_onboard_with_key(
     let key = SigningKey::from_bytes(&signing_key.0);
     let sig: EdSig = key
         .sign(&make_onboarding_sig(
-            &owner.into_array(),
-            &contract.into_array(),
+            &owner.0,
+            &contract.0,
             nonce,
             chain,
         ))
         .to_bytes()
         .into();
     setter_onboard_no_key(
-        FixedBytes::from(key.verifying_key().to_bytes()),
+        U(key.verifying_key().to_bytes()),
         sig,
         contract,
         nonce,
@@ -270,7 +278,7 @@ fn setter_onboard_no_key(
     verifying_sig: EdSig,
     contract: ArgsAddr,
     nonce: u16,
-    chain: u128,
+    chain: u64,
     token: ArgsAddr,
     value: u128,
     deadline: u128,
@@ -278,23 +286,21 @@ fn setter_onboard_no_key(
     permit_r: U,
     permit_s: U,
 ) {
-    let mut deadline_buf = [0u8; 32];
-    deadline_buf[..32 - 16].copy_from_slice(&deadline.to_be_bytes());
     println!(
         "{}{}",
         const_hex::encode(&[Facet::UserSetter.into()]),
         compress(OpSetter::Onboard(
-            *verifying_key,
+            verifying_key,
             verifying_sig.into(),
-            contract.into_array(),
+            contract.0,
             nonce,
             chain,
-            token.into_array(),
+            token.0,
             value,
-            deadline_buf,
+            U::from(deadline),
             permit_v,
-            *permit_r,
-            *permit_s
+            permit_r,
+            permit_s
         ))
     );
 }

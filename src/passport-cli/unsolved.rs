@@ -78,7 +78,7 @@ fn test_print_unsolved_recipe() {
                                 "Alex".to_string(),
                                 ArgsBalance {
                                     asset: asset_a.clone(),
-                                    chain: U128(225476647479317694062150620526444369903),
+                                    chain: 123,
                                     amount: U128(126508738668270503307039462831516350703),
                                     ms_timestamp: U128(88720005195802133222596758088858595407),
                                 },
@@ -96,7 +96,7 @@ fn test_print_unsolved_recipe() {
                                 "Eli".to_string(),
                                 ArgsBalance {
                                     asset: asset_b,
-                                    chain: U128(24713657718869044757078304407331877748),
+                                    chain: 123,
                                     amount: U128(56961730660561917068169863894177734718),
                                     ms_timestamp: U128(11835655638720700881890814969174336643),
                                 },

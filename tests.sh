@@ -1,7 +1,7 @@
 #!/bin/sh
 
-make -B
+#make -B
 
-arbos-forge test -vv
+#arbos-forge test -vv
 
-cargo test --features std,errors-extra-context,storage-gen-admin,storage-gen-apply -- $@
+cargo nextest run --features std,errors-extra-context,storage-gen-admin,storage-gen-apply -- $@

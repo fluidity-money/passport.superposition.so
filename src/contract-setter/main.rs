@@ -8,6 +8,7 @@ use libpassport::{
 
 use borsh::BorshDeserialize;
 
+#[cfg(target_arch = "wasm32")]
 #[global_allocator]
 static ALLOC: mini_alloc::MiniAlloc = mini_alloc::MiniAlloc::INIT;
 
@@ -69,24 +70,6 @@ pub unsafe extern "C" fn user_entrypoint(len: usize) -> usize {
     entry(len)
 }
 
-#[cfg(not(target_arch = "wasm32"))]
-fn main() {
-    let c = entry(len).try_into().unwrap();
-    #[cfg(feature = "std")]
-    {
-        let rd = return_data();
-        let d = const_hex::encode(&rd);
-        if c > 0 {
-            #[cfg(feature = "errors-extra-context")]
-            {
-                let err: Error = borsh::de::from_slice(&rd).unwrap();
-                eprintln!("{err}");
-            }
-            #[cfg(not(feature = "errors-extra-context"))]
-            eprintln!("0x{d}");
-        } else {
-            println!("0x{d}");
-        }
-    }
-    std::process::exit(c)
-}
+#[allow(unused)]
+fn main() {}
+
