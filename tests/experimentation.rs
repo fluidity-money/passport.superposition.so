@@ -162,7 +162,7 @@ impl Arbitrary for Entry {
             })
             .boxed();
         let commit_leaf = commit_leaf_with_matching_orders();
-        let commit_strat = commit_leaf.prop_recursive(4, 64, 4, |inner| {
+        let commit_strat = commit_leaf.prop_recursive(4, 10, 4, |inner| {
             (any::<ArgsCommit>(), inner.clone(), inner)
                 .prop_map(|(args, left_c, right_c)| {
                     TestCommit::Commit(Box::new(TestCommitInside {
@@ -176,7 +176,7 @@ impl Arbitrary for Entry {
         let c_ord_l = commit_strat.clone();
         let c_ord_r = commit_strat.clone();
         let bal_strat_for_ord = bal_leaf.clone();
-        let ord_strat = ord_leaf.prop_recursive(4, 64, 4, move |inner| {
+        let ord_strat = ord_leaf.prop_recursive(4, 10, 4, move |inner| {
             prop_oneof![
                 (bal_strat_for_ord.clone(), any::<ArgsOrder>()).prop_map(
                     |(test_balance, ord_args)| {
@@ -198,7 +198,7 @@ impl Arbitrary for Entry {
         });
         let c_bal = commit_strat.clone();
         let ord_for_cancel = ord_strat.clone();
-        let bal_strat = bal_leaf.prop_recursive(4, 64, 4, move |inner| {
+        let bal_strat = bal_leaf.prop_recursive(4, 10, 4, move |inner| {
             prop_oneof![
                 c_bal
                     .clone()

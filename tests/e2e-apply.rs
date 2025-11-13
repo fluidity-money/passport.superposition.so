@@ -4,16 +4,20 @@
 
 use libpassport::{
     apply::apply,
+    call_eip20_extras,
     conversion::validate,
     immutables::{pick_solver_key, solver_key_offline},
     network::Network,
     solver_context::*,
-    call_eip20_extras,
     storage::{self},
     user_context::*,
 };
 
-use bobcat_sdk::{entry::msg_sender, maths::U, storage::host as storage_host};
+use bobcat_sdk::{
+    entry::{host::set_msg_sender, msg_sender},
+    maths::U,
+    storage::host as storage_host,
+};
 
 mod experimentation;
 
@@ -28,6 +32,7 @@ proptest! {
     fn test_apply(signer_priv_key in any::<[u8; 32]>(), e in any::<Entry>()) {
         storage_host::storage_clear();
         call_eip20_extras::clear();
+        set_msg_sender([1u8; 20]);
         let signer_priv = SigningKey::from_bytes(&signer_priv_key);
         let signer_pub = signer_priv.verifying_key();
         let solver_ctx = SolverContext::new(solver_key_offline());
