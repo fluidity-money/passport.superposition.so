@@ -1,6 +1,6 @@
-use libpassport::{applicative::*, call_eip20_extras, error::*, add_liq::add_liq};
+use libpassport::{add_liq::add_liq, applicative::*, call_eip20_extras, error::*};
 
-use bobcat_sdk::{maths::U, entry::msg_sender};
+use bobcat_sdk::{entry::msg_sender, maths::U};
 
 use proptest::prelude::*;
 
@@ -56,19 +56,21 @@ pub enum Entry {
     CommitRightExcessToOrder(TestCommit),
 }
 
-fn any_balance_no_zero() -> impl Strategy<Value = ArgsBalance> {
-    (
-        any::<[u8; 20]>(),
-        1..u64::MAX,
-        1..u128::MAX,
-        any::<u128>(),
-    )
-        .prop_map(|(asset, chain, amount, ms_timestamp)| ArgsBalance {
-            asset: Asset(asset),
+#[derive(PartialEq)]
+enum S {
+    Left,
+    Right,
+}
+
+fn any_balance_no_zero(side: S) -> impl Strategy<Value = ArgsBalance> {
+    (1..u64::MAX, 1..u128::MAX, any::<u128>()).prop_map(move |(chain, amount, ms_timestamp)| {
+        ArgsBalance {
+            asset: Asset(if side == S::Left { [1; 20] } else { [2; 20] }),
             chain,
             amount: U128(amount),
             ms_timestamp: U128(ms_timestamp),
-        })
+        }
+    })
 }
 
 fn order_from_bal(ArgsBalance { amount, .. }: ArgsBalance) -> impl Strategy<Value = ArgsOrder> {
@@ -83,13 +85,15 @@ fn order_from_bal(ArgsBalance { amount, .. }: ArgsBalance) -> impl Strategy<Valu
 }
 
 fn commit_leaf_with_matching_orders() -> impl Strategy<Value = TestCommit> {
-    any_balance_no_zero()
+    any_balance_no_zero(S::Left)
         .prop_flat_map(|left_bal_args| {
             let left_asset = left_bal_args.asset.clone();
             let right_desired_asset = left_asset.clone();
-            any_balance_no_zero()
-                .prop_filter("right asset must differ from left asset",
-                    move |right_bal_args| right_bal_args.asset.0 != left_asset.0)
+            any_balance_no_zero(S::Right)
+                .prop_filter(
+                    "right asset must differ from left asset",
+                    move |right_bal_args| right_bal_args.asset.0 != left_asset.0,
+                )
                 .prop_flat_map(move |right_bal_args| {
                     let right_asset = right_bal_args.asset.clone();
                     let left_desired_asset = right_asset.clone();
@@ -99,43 +103,53 @@ fn commit_leaf_with_matching_orders() -> impl Strategy<Value = TestCommit> {
                     (
                         0..left_bal.amount.0,
                         any::<u128>(),
-                        1..u128::MAX,
+                        1..right_bal.amount.0,
                         0..right_bal.amount.0,
                         any::<u128>(),
-                        1..u128::MAX,
+                        1..left_bal.amount.0,
                         any::<ArgsCommit>(),
-                    ).prop_map(move |(left_from_amt, left_desired_chain, left_desired_amt,
-                                      right_from_amt, right_desired_chain, right_desired_amt, args)| {
-                        let left_order = TestOrder::Order(Box::new(TestOrderInside {
-                            from: Box::new(TestBalance::Balance(TestBalanceInside {
-                                args: left_bal.clone(),
-                            })),
-                            args: ArgsOrder {
-                                from_amt: U128(left_from_amt),
-                                desired_asset: left_desired_asset.clone(),
-                                desired_chain: U128(left_desired_chain),
-                                desired_amt: U128(left_desired_amt),
-                            },
-                        }));
+                    )
+                        .prop_map(
+                            move |(
+                                left_from_amt,
+                                left_desired_chain,
+                                left_desired_amt,
+                                right_from_amt,
+                                right_desired_chain,
+                                right_desired_amt,
+                                args,
+                            )| {
+                                let left_order = TestOrder::Order(Box::new(TestOrderInside {
+                                    from: Box::new(TestBalance::Balance(TestBalanceInside {
+                                        args: left_bal.clone(),
+                                    })),
+                                    args: ArgsOrder {
+                                        from_amt: U128(left_from_amt),
+                                        desired_asset: left_desired_asset.clone(),
+                                        desired_chain: U128(left_desired_chain),
+                                        desired_amt: U128(left_desired_amt),
+                                    },
+                                }));
 
-                        let right_order = TestOrder::Order(Box::new(TestOrderInside {
-                            from: Box::new(TestBalance::Balance(TestBalanceInside {
-                                args: right_bal.clone(),
-                            })),
-                            args: ArgsOrder {
-                                from_amt: U128(right_from_amt),
-                                desired_asset: right_desired_asset.clone(),
-                                desired_chain: U128(right_desired_chain),
-                                desired_amt: U128(right_desired_amt),
-                            },
-                        }));
+                                let right_order = TestOrder::Order(Box::new(TestOrderInside {
+                                    from: Box::new(TestBalance::Balance(TestBalanceInside {
+                                        args: right_bal.clone(),
+                                    })),
+                                    args: ArgsOrder {
+                                        from_amt: U128(right_from_amt),
+                                        desired_asset: right_desired_asset.clone(),
+                                        desired_chain: U128(right_desired_chain),
+                                        desired_amt: U128(right_desired_amt),
+                                    },
+                                }));
 
-                        TestCommit::Commit(Box::new(TestCommitInside {
-                            args,
-                            left: Box::new(left_order),
-                            right: Box::new(right_order),
-                        }))
-                    })
+                                TestCommit::Commit(Box::new(TestCommitInside {
+                                    args,
+                                    left: Box::new(left_order),
+                                    right: Box::new(right_order),
+                                }))
+                            },
+                        )
                 })
         })
         .boxed()
@@ -146,10 +160,10 @@ impl Arbitrary for Entry {
     type Strategy = BoxedStrategy<Self>;
 
     fn arbitrary_with(_: Self::Parameters) -> Self::Strategy {
-        let bal_leaf = any_balance_no_zero()
+        let bal_leaf = any_balance_no_zero(S::Left)
             .prop_map(|args| TestBalance::Balance(TestBalanceInside { args }))
             .boxed();
-        let ord_leaf = any_balance_no_zero()
+        let ord_leaf = any_balance_no_zero(S::Left)
             .prop_flat_map(move |bal_args| {
                 order_from_bal(bal_args.clone()).prop_map(move |ord_args| {
                     TestOrder::Order(Box::new(TestOrderInside {
