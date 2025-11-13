@@ -410,10 +410,8 @@ pub fn starting_amts(e: &Entry) -> Vec<(Address, u128)> {
 
 pub fn apply_balances(v: Vec<(Address, u128)>) -> Result<(), Error> {
     for (asset, amt) in v {
-        let mut b = [0u8; 32];
-        b[16..32].copy_from_slice(&amt.to_be_bytes());
         let sender = msg_sender();
-        //call_eip20_extras::give(asset, sender, U256::from_be_bytes(b));
+        call_eip20_extras::give(sender.into(), amt.into());
         add_liq(asset, sender, amt, U::ZERO, 0, U::ZERO, U::ZERO)?;
     }
     Ok(())

@@ -331,18 +331,8 @@ pub fn commit(c: &Commit) -> R<()> {
     order(r)?;
     let l_filled = U::from(l_filled);
     let r_filled = U::from(r_filled);
-    storage::order_amt::sub(
-        &l_owner.into(),
-        &l_asset.into(),
-        &l_hash,
-        &l_filled.into(),
-    );
-    storage::order_amt::sub(
-        &r_owner.into(),
-        &r_asset.into(),
-        &r_hash,
-        &r_filled.into(),
-    );
+    storage::order_amt::sub(&l_owner.into(), &l_asset.into(), &l_hash, &l_filled.into());
+    storage::order_amt::sub(&r_owner.into(), &r_asset.into(), &r_hash, &r_filled.into());
     storage::interim_amt::add(&l_owner.into(), &r_asset.into(), &hash, &l_filled);
     storage::interim_amt::add(&r_owner.into(), &l_asset.into(), &hash, &r_filled);
     storage::hash_asset_l::set(&hash, &l_asset.into());
@@ -405,7 +395,8 @@ pub fn withdraw(w: &Withdraw) -> R<()> {
     balance(b)?;
     storage::interim_amt::sub(&owner.into(), &asset.into(), &hash, &U::from(amt));
     storage::withdrawable::add(&owner.into(), &asset.into(), &U::from(amt));
-    call_eip20_extras::transfer(asset, owner, U::from(amt))
+    call_eip20_extras::transfer(asset, owner, &U::from(amt))
+        .ok_or(Error::from(ErrorDiscriminant::Erc20Invoke))
 }
 
 pub fn apply(s: StateMachine) -> R<()> {
