@@ -27,7 +27,29 @@ use lzss::{SliceReader, VecWriter};
 
 use ed25519_dalek::{Signer, SigningKey};
 
-type Address = [u8; 20];
+#[derive(Debug, Clone, PartialEq)]
+pub struct ArgsAddr(pub [u8; 20]);
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct FromStrErr;
+
+impl core::fmt::Display for FromStrErr {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{self:?}")
+    }
+}
+
+impl core::error::Error for FromStrErr {}
+
+impl FromStr for ArgsAddr {
+    type Err = FromStrErr;
+
+    fn from_str(x: &str) -> Result<Self, Self::Err> {
+        const_hex::decode_to_array::<_, 20>(x)
+            .map(|x| ArgsAddr(x))
+            .map_err(|_| FromStrErr)
+    }
+}
 
 #[derive(Clone, Parser, Debug)]
 #[command(version, about)]
@@ -60,11 +82,11 @@ enum Args {
     SetterDummy,
     SetterOnboardWithKey {
         signing_key: Key,
-        owner: Address,
-        contract: Address,
+        owner: ArgsAddr,
+        contract: ArgsAddr,
         nonce: u16,
         chain: u128,
-        token: Address,
+        token: ArgsAddr,
         value: u128,
         deadline: u128,
         permit_v: u8,
@@ -74,10 +96,10 @@ enum Args {
     SetterOnboardNoKey {
         verifying_key: U,
         verifying_sig: EdSig,
-        contract: Address,
+        contract: ArgsAddr,
         nonce: u16,
         chain: u128,
-        token: Address,
+        token: ArgsAddr,
         value: u128,
         deadline: u128,
         permit_v: u8,
@@ -85,8 +107,8 @@ enum Args {
         permit_s: U,
     },
     SetterAddLiquidity {
-        token: Address,
-        recipient: Address,
+        token: ArgsAddr,
+        recipient: ArgsAddr,
         value: u128,
         deadline: U,
         v: u8,
@@ -207,11 +229,11 @@ fn solved_calldata(op: Args) {
 
 fn setter_onboard_with_key(
     signing_key: Key,
-    owner: Address,
-    contract: Address,
+    owner: ArgsAddr,
+    contract: ArgsAddr,
     nonce: u16,
     chain: u128,
-    token: Address,
+    token: ArgsAddr,
     value: u128,
     deadline: u128,
     permit_v: u8,
@@ -246,10 +268,10 @@ fn setter_onboard_with_key(
 fn setter_onboard_no_key(
     verifying_key: U,
     verifying_sig: EdSig,
-    contract: Address,
+    contract: ArgsAddr,
     nonce: u16,
     chain: u128,
-    token: Address,
+    token: ArgsAddr,
     value: u128,
     deadline: u128,
     permit_v: u8,

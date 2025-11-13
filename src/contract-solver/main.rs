@@ -5,9 +5,6 @@ use libpassport::{
     ops::OpSolver, reentrancy,
 };
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "std"))]
-use libpassport::return_data;
-
 use bobcat_sdk::entry::write_result_slice;
 
 use borsh::BorshDeserialize;

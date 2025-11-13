@@ -1,13 +1,6 @@
 use crate::error::*;
 
-use bobcat_sdk::{
-    call::{call_unit_opt, safe_call_bool_opt},
-    interfaces::{
-        eip20::{make_fn_transfer, make_fn_transfer_from},
-        eip2612::make_fn_permit,
-    },
-    maths::U,
-};
+use bobcat_sdk::maths::U;
 
 type Address = [u8; 20];
 
@@ -15,6 +8,14 @@ type Address = [u8; 20];
 #[allow(unused)]
 mod implem {
     use super::*;
+
+    use bobcat_sdk::{
+        call::{call_unit_opt, safe_call_bool_opt},
+        interfaces::{
+            eip20::{make_fn_transfer, make_fn_transfer_from},
+            eip2612::make_fn_permit,
+        },
+    };
 
     pub fn transfer(addr: [u8; 20], recipient: [u8; 20], amt: U) -> Result<(), Error> {
         safe_call_bool_opt(addr, &make_fn_transfer(recipient, &amt), &U::ZERO, u64::MAX)

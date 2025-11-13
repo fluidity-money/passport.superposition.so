@@ -10,6 +10,7 @@ use libpassport::{apply::apply, state_machine::StateMachine};
 use borsh::de::BorshDeserialize;
 
 #[global_allocator]
+#[cfg(target_arch = "wasm32")]
 static ALLOC: mini_alloc::MiniAlloc = mini_alloc::MiniAlloc::INIT;
 
 #[unsafe(no_mangle)]
@@ -23,3 +24,6 @@ pub unsafe extern "C" fn user_entrypoint(len: usize) -> usize {
     flush_cache();
     1
 }
+
+#[allow(unused)]
+fn main() {}

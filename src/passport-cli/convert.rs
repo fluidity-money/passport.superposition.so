@@ -5,9 +5,9 @@ use crate::{
 
 use libpassport::{
     applicative::{Applicative, ArgsBalance, ArgsOrder, SolverApplicative, UserApplicative},
+    ops::OpSolver,
     solver_context::SolverContext,
     user_context::UserContext,
-    ops::OpSolver
 };
 
 use ed25519_dalek::SigningKey;
@@ -34,7 +34,7 @@ fn _unsolved_to_app(
                 amount,
                 ms_timestamp,
             },
-        ) => ctx(accounts, n).balance(asset.0, chain, amount, ms_timestamp),
+        ) => ctx(accounts, n).balance(asset.0, chain, amount.0, ms_timestamp.0),
         RecipeUnsolved::Withdraw(n, from) => {
             let from = _unsolved_to_app(accounts, solver, *from);
             let s_sig = solver.withdraw(&from).unwrap();
@@ -52,7 +52,7 @@ fn _unsolved_to_app(
         ) => ctx(accounts, n)
             .order(
                 from_amt.0,
-                Address::from(desired_asset.0),
+                desired_asset.0,
                 desired_chain.0,
                 desired_amt.0,
                 _unsolved_to_app(accounts, solver, *from),
@@ -89,12 +89,12 @@ fn _unsolved_to_app(
     }
 }
 
-pub fn unsolved_to_solver(
-    accounts: Accounts,
-    solver: SigningKey,
-    r: RecipeUnsolved,
-) -> OpSolver {
-    let offsets = accounts.0.iter().map(|Account { offset, .. }| *offset).collect::<Vec<_>>();
+pub fn unsolved_to_solver(accounts: Accounts, solver: SigningKey, r: RecipeUnsolved) -> OpSolver {
+    let offsets = accounts
+        .0
+        .iter()
+        .map(|Account { offset, .. }| *offset)
+        .collect::<Vec<_>>();
     let ap = _unsolved_to_app(
         &accounts
             .0
