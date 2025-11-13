@@ -1,7 +1,10 @@
 use libpassport::{
     apply::{balance_amount, balance_asset, balance_owner, order_asset, order_from, order_owner},
+    call_eip20_extras,
     state_machine::*,
 };
+
+use bobcat_sdk::storage::host as storage_host;
 
 use proptest::prelude::*;
 
@@ -33,6 +36,8 @@ proptest! {
         r_ms_ts in any::<u128>(),
         (l_amt, l_ask, r_amt, r_ask) in strat_fillable_sides()
     ) {
+        storage_host::storage_clear();
+        call_eip20_extras::clear();
         let l_order = Order::Inline(
             OrderArgs {
                 desired_asset: asset_right,
