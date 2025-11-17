@@ -164,10 +164,10 @@ pub fn order_underlying_amt(owner: Address, asset: Address, o: &Order) -> R<u128
 
 pub fn order_hash<'a>(o: &'a Order) -> &'a [u8; 64] {
     match o {
-        Order::Inline(_, _, h)
-        | Order::Onchain(h)
-        | Order::CommitLeftExcessToOrder(_, h)
-        | Order::CommitRightExcessToOrder(_, h) => h,
+        Order::Inline(_, _, h) | Order::Onchain(h) => h,
+        Order::CommitLeftExcessToOrder(c, _) | Order::CommitRightExcessToOrder(c, _) => {
+            commit_hash(c)
+        }
     }
 }
 
@@ -186,10 +186,11 @@ pub fn balance_hash<'a>(b: &'a Balance) -> &'a [u8; 64] {
     match b {
         Balance::Inline(_, h)
         | Balance::Onchain(h)
-        | Balance::CommitLeftFilledToBal(_, h)
-        | Balance::CommitRightFilledToBal(_, h)
         | Balance::Join(_, _, h)
         | Balance::Cancel(_, h) => h,
+        Balance::CommitLeftFilledToBal(c, _) | Balance::CommitRightFilledToBal(c, _) => {
+            commit_hash(c)
+        }
     }
 }
 
@@ -336,8 +337,10 @@ pub fn commit(c: &Commit) -> R<()> {
     let r_desired_asset = order_desired_asset(r);
     let l_owner = order_owner(l);
     let r_owner = order_owner(r);
-    let l_filled = commit_left_amount_filled(l_owner, l_asset, c)?;
-    let r_filled = commit_right_amount_filled(r_owner, r_asset, c)?;
+    let l_unfilled = U::from(commit_left_amount_unfilled(l_owner, l_asset, c)?);
+    let r_unfilled = U::from(commit_right_amount_unfilled(r_owner, r_asset, c)?);
+    let l_filled = U::from(commit_left_amount_filled(l_owner, l_asset, c)?);
+    let r_filled = U::from(commit_right_amount_filled(r_owner, r_asset, c)?);
     if l_desired_asset == r_desired_asset {
         return Err(err_same_assets());
     }
@@ -346,10 +349,13 @@ pub fn commit(c: &Commit) -> R<()> {
     }
     order(l)?;
     order(r)?;
-    let l_filled = U::from(l_filled);
-    let r_filled = U::from(r_filled);
-    storage::order_amt::sub(&l_owner.into(), &l_asset.into(), &l_hash, &l_filled.into());
-    storage::order_amt::sub(&r_owner.into(), &r_asset.into(), &r_hash, &r_filled.into());
+    // We consume the entire amount from the underlying orders, and make a
+    // new order object on this commit for what's unfilled:
+    storage::order_amt::set(&l_owner.into(), &l_asset.into(), &l_hash, &U::ZERO);
+    storage::order_amt::set(&r_owner.into(), &r_asset.into(), &r_hash, &U::ZERO);
+    storage::order_amt::set(&l_owner.into(), &l_asset.into(), &hash, &l_unfilled);
+    storage::order_amt::set(&r_owner.into(), &r_asset.into(), &hash, &r_unfilled);
+    // Which we use to set the interim balance for later balance-like consumption here:
     storage::interim_amt::add(&l_owner.into(), &r_asset.into(), &hash, &l_filled);
     storage::interim_amt::add(&r_owner.into(), &l_asset.into(), &hash, &r_filled);
     storage::hash_asset_l::set(&hash, &l_asset.into());
@@ -372,7 +378,6 @@ pub fn order(o: &Order) -> R<()> {
     let bal_amt = order_underlying_amt(owner, from_asset, o)?;
     let desired_asset = order_desired_asset(o);
     let h: U = U(order_hash(o)[..32].try_into().unwrap());
-    dbg!("ORDER HASH", h);
     match o {
         Order::Inline(_, b, _) => {
             let b_hash: U = match **b {
@@ -388,21 +393,9 @@ pub fn order(o: &Order) -> R<()> {
             storage::order_amt::add(&owner.into(), &from_asset.into(), &h, &U::from(amt));
         }
         Order::Onchain(_) => (),
-        Order::CommitLeftExcessToOrder(c, _) => {
+        Order::CommitLeftExcessToOrder(c, _) | Order::CommitRightExcessToOrder(c, _) => {
             // The commit step already applies an order for us!
-            commit(c)?;
-            let owner = commit_left_owner(c);
-            let asset = commit_left_asset(c);
-            let amt = commit_left_amount_unfilled(owner, asset, c)?;
-            // But we do need to lift the interim balances to an order amount for this side:
-            storage::order_amt::add(&owner.into(), &asset.into(), &h, &U::from(amt));
-        }
-        Order::CommitRightExcessToOrder(c, _) => {
-            commit(c)?;
-            let owner = commit_right_owner(c);
-            let asset = commit_right_asset(c);
-            let amt = commit_right_amount_unfilled(owner, asset, c)?;
-            storage::order_amt::add(&owner.into(), &asset.into(), &h, &U::from(amt));
+            commit(c)?
         }
     };
     if from_asset == desired_asset {
