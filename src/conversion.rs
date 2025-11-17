@@ -608,7 +608,7 @@ pub fn digest_wrapped_balance(from: ApplicativeLabel, ap: &Applicative) -> Resul
         }
         Applicative::Cancel(_, _, ap) => {
             let order_hash = digest_wrapped_order(ApplicativeLabel::Cancel, ap)?;
-            Ok(chain_digests(&[Nonce::Withdraw.into()], &order_hash))
+            Ok(chain_digests(&[Nonce::Cancel.into()], &order_hash))
         }
         ap => Err(err_bad_ap_transition_digest(from, ap)),
     }
