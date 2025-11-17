@@ -372,6 +372,7 @@ pub fn order(o: &Order) -> R<()> {
     let bal_amt = order_underlying_amt(owner, from_asset, o)?;
     let desired_asset = order_desired_asset(o);
     let h: U = U(order_hash(o)[..32].try_into().unwrap());
+    dbg!("ORDER HASH", h);
     match o {
         Order::Inline(_, b, _) => {
             let b_hash: U = match **b {
@@ -387,9 +388,21 @@ pub fn order(o: &Order) -> R<()> {
             storage::order_amt::add(&owner.into(), &from_asset.into(), &h, &U::from(amt));
         }
         Order::Onchain(_) => (),
-        Order::CommitLeftExcessToOrder(c, _) | Order::CommitRightExcessToOrder(c, _) => {
+        Order::CommitLeftExcessToOrder(c, _) => {
             // The commit step already applies an order for us!
-            commit(c)?
+            commit(c)?;
+            let owner = commit_left_owner(c);
+            let asset = commit_left_asset(c);
+            let amt = commit_left_amount_unfilled(owner, asset, c)?;
+            // But we do need to lift the interim balances to an order amount for this side:
+            storage::order_amt::add(&owner.into(), &asset.into(), &h, &U::from(amt));
+        }
+        Order::CommitRightExcessToOrder(c, _) => {
+            commit(c)?;
+            let owner = commit_right_owner(c);
+            let asset = commit_right_asset(c);
+            let amt = commit_right_amount_unfilled(owner, asset, c)?;
+            storage::order_amt::add(&owner.into(), &asset.into(), &h, &U::from(amt));
         }
     };
     if from_asset == desired_asset {

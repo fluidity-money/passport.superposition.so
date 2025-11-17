@@ -110,7 +110,7 @@ macro_rules! storage {
         }
         pub fn add($param1: &U, $param2: &U, $param3: &U, x: &U) -> Option<()> {
             #[cfg(feature = "tracing")]
-            dbg!("adding", $param1, $param2, $param3, x);
+            dbg!(module_path!(), "adding", $param1, $param2, $param3, x);
             storage_checked_add(&slot_map(&slot_map(&slot_map(&SLOT, $param1), $param2), $param3), x)
         }
         pub fn sub($param1: &U, $param2: &U, $param3: &U, x: &U) -> Option<()> {
