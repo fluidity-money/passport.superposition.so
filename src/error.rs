@@ -133,6 +133,7 @@ pub enum ErrorDiscriminant {
 
     SameAssets,
 
+    /// A pair of assets were matched that weren't consistent with the desired amounts.
     BadAssetAsks,
 
     Erc20Invoke,
@@ -158,6 +159,9 @@ pub enum ErrorDiscriminant {
 
     /// During testing, there wasn't enough allowance!
     TestNotEnoughAllowance,
+
+    /// There wasn't enough liquidity for the from ask.
+    NotEnoughFromAmount,
 }
 
 #[derive(Debug, Clone, PartialEq, BorshSerialize, BorshDeserialize)]

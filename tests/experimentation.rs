@@ -192,14 +192,27 @@ impl Arbitrary for Entry {
         let bal_strat_for_ord = bal_leaf.clone();
         let ord_strat = ord_leaf.prop_recursive(4, 2, 4, move |inner| {
             prop_oneof![
-                (bal_strat_for_ord.clone(), any::<ArgsOrder>()).prop_map(
-                    |(test_balance, ord_args)| {
-                        TestOrder::Order(Box::new(TestOrderInside {
-                            from: Box::new(test_balance),
-                            args: ord_args,
-                        }))
-                    }
-                ),
+                bal_strat_for_ord.clone().prop_flat_map(|test_balance| {
+                    let bal_amount = match &test_balance {
+                        TestBalance::Balance(TestBalanceInside { args }) => args.amount.0,
+                        _ => u128::MAX, // For other variants, allow any amount
+                    };
+                    (
+                        Just(test_balance),
+                        order_from_bal(ArgsBalance {
+                            asset: Asset([0; 20]),
+                            chain: 0,
+                            amount: U128(bal_amount),
+                            ms_timestamp: U128(0),
+                        }),
+                    )
+                        .prop_map(|(test_balance, ord_args)| {
+                            TestOrder::Order(Box::new(TestOrderInside {
+                                from: Box::new(test_balance),
+                                args: ord_args,
+                            }))
+                        })
+                }),
                 c_ord_l
                     .clone()
                     .prop_map(|c| TestOrder::CommitLeftExcessToOrder(Box::new(c))),

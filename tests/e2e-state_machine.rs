@@ -1,5 +1,7 @@
 use libpassport::{
-    apply::{balance_amount, balance_asset, balance_owner, order_asset, order_from, order_owner},
+    apply::{
+        balance_amount, balance_asset, balance_owner, order_asset, order_from_amt, order_owner,
+    },
     call_eip20_extras,
     state_machine::*,
 };
@@ -82,7 +84,7 @@ proptest! {
         assert_eq!(owner_right, order_owner(&r_order));
         assert_eq!(
             l_amt,
-            order_from(
+            order_from_amt(
                 owner_left,
                 asset_left,
                 &l_order
@@ -91,7 +93,7 @@ proptest! {
         );
         assert_eq!(
             r_amt,
-           order_from(
+           order_from_amt(
                 owner_right,
                 asset_right,
                 &r_order
@@ -137,7 +139,7 @@ proptest! {
         assert_eq!(asset_right, order_asset(&right_excess_to_order));
         assert_eq!(
             l_amt - r_ask,
-            order_from(
+            order_from_amt(
                     owner_left,
                     asset_left,
                     &left_excess_to_order
@@ -146,7 +148,7 @@ proptest! {
         );
         assert_eq!(
             r_amt - l_ask,
-            order_from(
+            order_from_amt(
                     owner_right,
                     asset_right,
                     &right_excess_to_order
