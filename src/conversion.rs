@@ -220,6 +220,8 @@ fn validate_balance(
     (owner_i, owner_sig): &UserSig,
     args: &ArgsBalance,
 ) -> Result<state_machine::Balance, Error> {
+    #[cfg(feature = "tracing")]
+    dbg!("validating balance");
     let owner_id = U::from(accounts[*owner_i as usize]);
     let o = storage::find_ed25519_key(&owner_id)?;
     let d = check_sig(
@@ -234,6 +236,8 @@ fn validate_balance(
     if args.amount.0 == 0 {
         return Err(Error::from(ErrorDiscriminant::ZeroBalanceAmount));
     }
+    #[cfg(feature = "tracing")]
+    dbg!("done with balance");
     Ok(state_machine::Balance::Inline(
         state_machine::BalanceArgs {
             ms_ts: args.ms_timestamp.0,
@@ -250,6 +254,8 @@ fn validate_commit_left_filled_to_bal(
     accounts: &Vec<u64>,
     ap: &Applicative,
 ) -> Result<state_machine::Balance, Error> {
+    #[cfg(feature = "tracing")]
+    dbg!("validating commit left filled to balance");
     let commit = validate_wrapped_commit(
         solver_key,
         ApplicativeLabel::CommitLeftFilledToBalance,
@@ -259,6 +265,8 @@ fn validate_commit_left_filled_to_bal(
     let c_hash = get_commit_hash(&commit);
     let h = chain_digests(&[Nonce::CommitLeftFilledToBalance.into()], &c_hash);
     storage::ensure_hash_unseen(&h).ok_or(Error::from(ErrorDiscriminant::HashAlreadyOnchain))?;
+    #[cfg(feature = "tracing")]
+    dbg!("done with commit left filled to bal");
     Ok(state_machine::Balance::CommitLeftFilledToBal(
         Box::new(commit),
         h,
@@ -270,6 +278,8 @@ fn validate_commit_right_filled_to_bal(
     accounts: &Vec<u64>,
     ap: &Applicative,
 ) -> Result<state_machine::Balance, Error> {
+    #[cfg(feature = "tracing")]
+    dbg!("validating commit right filled to balance");
     let commit = validate_wrapped_commit(
         solver_key,
         ApplicativeLabel::CommitRightFilledToBalance,
@@ -279,6 +289,8 @@ fn validate_commit_right_filled_to_bal(
     let c_hash = get_commit_hash(&commit);
     let h = chain_digests(&[Nonce::CommitRightFilledToBalance.into()], &c_hash);
     storage::ensure_hash_unseen(&h).ok_or(Error::from(ErrorDiscriminant::HashAlreadyOnchain))?;
+    #[cfg(feature = "tracing")]
+    dbg!("done with commit right filled to bal");
     Ok(state_machine::Balance::CommitRightFilledToBal(
         Box::new(commit),
         h,
@@ -313,6 +325,8 @@ fn validate_order(
     args: &ArgsOrder,
     ap: &Applicative,
 ) -> Result<state_machine::Order, Error> {
+    #[cfg(feature = "tracing")]
+    dbg!("validating order");
     let bal = validate_wrapped_balance(solver_key, label(ap), accounts, ap)?;
     let bal_hash = get_bal_hash(&bal);
     let owner_id = U::from(accounts[*owner_i as usize]);
@@ -324,6 +338,8 @@ fn validate_order(
         &digest_inplace::<_, { size_of::<ArgsOrder>() }>(args),
         &bal_hash,
     )?;
+    #[cfg(feature = "tracing")]
+    dbg!("done with order");
     Ok(state_machine::Order::Inline(
         state_machine::OrderArgs {
             desired_asset: args.desired_asset.0,
@@ -351,6 +367,8 @@ fn validate_commit_left_excess_to_order(
     let c_hash = get_commit_hash(&commit);
     let hash = chain_digests(&[Nonce::CommitLeftExcessToOrder.into()], &c_hash);
     storage::ensure_hash_unseen(&hash).ok_or(Error::from(ErrorDiscriminant::HashAlreadyOnchain))?;
+    #[cfg(feature = "tracing")]
+    dbg!("done with commit left excess to order");
     Ok(state_machine::Order::CommitLeftExcessToOrder(
         Box::new(commit),
         hash,
@@ -371,6 +389,8 @@ fn validate_commit_right_excess_to_order(
     let c_hash = get_commit_hash(&commit);
     let hash = chain_digests(&[Nonce::CommitRightExcessToOrder.into()], &c_hash);
     storage::ensure_hash_unseen(&hash).ok_or(Error::from(ErrorDiscriminant::HashAlreadyOnchain))?;
+    #[cfg(feature = "tracing")]
+    dbg!("done with commit right excess to order");
     Ok(state_machine::Order::CommitRightExcessToOrder(
         Box::new(commit),
         hash,
@@ -406,6 +426,8 @@ fn validate_commit(
     left: &Applicative,
     right: &Applicative,
 ) -> Result<state_machine::Commit, Error> {
+    #[cfg(feature = "tracing")]
+    dbg!("validating commit");
     let l = ApplicativeLabel::Commit;
     let left_order = validate_wrapped_order(solver_key, l, accounts, left)?;
     let right_order = validate_wrapped_order(solver_key, l, accounts, right)?;
@@ -418,6 +440,8 @@ fn validate_commit(
         &digest_inplace::<_, { size_of::<ArgsCommit>() }>(args),
         &chain_digests(&left_hash, &right_hash),
     )?;
+    #[cfg(feature = "tracing")]
+    dbg!("done with commit");
     Ok(state_machine::Commit::Inline(
         state_machine::CommitArgs {
             ms_ts: args.ms_timestamp.0,
@@ -458,6 +482,8 @@ fn validate_withdraw(
     (owner_i, owner_sig): &UserSig,
     ap: &Applicative,
 ) -> Result<state_machine::Withdraw, Error> {
+    #[cfg(feature = "tracing")]
+    dbg!("validating withdraw");
     // Since the argument to the right isn't known in the type here, we
     // validate the signature, and we feed the computed digest into a
     // concatenation here.
@@ -474,6 +500,8 @@ fn validate_withdraw(
         &[Nonce::Withdraw.into()],
         &bal_hash,
     )?;
+    #[cfg(feature = "tracing")]
+    dbg!("done with withdraw");
     Ok(state_machine::Withdraw::Inline(
         Box::new(bal),
         d.finalize().into(),
@@ -487,6 +515,8 @@ fn validate_cancel(
     (owner_i, owner_sig): &UserSig,
     ap: &Applicative,
 ) -> Result<state_machine::Balance, Error> {
+    #[cfg(feature = "tracing")]
+    dbg!("validating cancel");
     let order = validate_wrapped_order(solver_key, ApplicativeLabel::Cancel, accounts, ap)?;
     let order_hash = get_order_hash(&order);
     let owner_id = U::from(accounts[*owner_i as usize]);
@@ -500,6 +530,8 @@ fn validate_cancel(
         &[Nonce::Cancel.into()],
         &order_hash,
     )?;
+    #[cfg(feature = "tracing")]
+    dbg!("done with cancel");
     Ok(state_machine::Balance::Cancel(
         Box::new(order),
         d.finalize().into(),
@@ -513,6 +545,8 @@ fn validate_join(
     left: &Applicative,
     right: &Applicative,
 ) -> Result<state_machine::Balance, Error> {
+    #[cfg(feature = "tracing")]
+    dbg!("validating join");
     let l = ApplicativeLabel::Join;
     let left_bal = validate_wrapped_balance(solver_key, l, accounts, left)?;
     let right_bal = validate_wrapped_balance(solver_key, l, accounts, right)?;
@@ -520,6 +554,8 @@ fn validate_join(
     let right_hash = get_bal_hash(&right_bal);
     let owner_id = U::from(accounts[*owner_i as usize]);
     let o = storage::find_ed25519_key(&owner_id)?;
+    #[cfg(feature = "tracing")]
+    dbg!("done with join");
     Ok(state_machine::Balance::Join(
         Box::new(left_bal),
         Box::new(right_bal),

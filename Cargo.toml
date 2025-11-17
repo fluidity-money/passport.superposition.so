@@ -67,7 +67,7 @@ subtle = { version = "2.6.1", default-features = false }
 ed25519-dalek = { version = "2.1.1", default-features = false, features = ["digest"] }
 cfg-if = "1.0.3"
 num_enum = { version = "0.7.4", default-features = false }
-bobcat-sdk  = { version = "0.6.6", features = ["borsh", "alloc", "serde", "panic-revert"] }
+bobcat-sdk  = { path = "/home/user/Documents/fluidity/bobcat-sdk/bobcat-sdk", features = ["borsh", "alloc", "serde", "panic-revert"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 proptest-derive = "0.6.0"
@@ -79,7 +79,7 @@ serde_sexpr = "0.1.0"
 
 [dev-dependencies]
 const-hex = { version = "1.12.0", features = ["alloc"] }
-bobcat-sdk  = { version = "0.6.6", features = ["borsh", "alloc", "serde", "alloy-enabled"] }
+bobcat-sdk  = { path = "/home/user/Documents/fluidity/bobcat-sdk/bobcat-sdk", features = ["std", "borsh", "alloc", "serde", "panic-revert", "alloy-enabled"] }
 
 [features]
 std = [
@@ -96,3 +96,4 @@ network-testnet = []
 network-custom = []
 storage-gen-admin = []
 storage-gen-apply = []
+tracing = ["std"]

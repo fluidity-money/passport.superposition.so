@@ -17,7 +17,7 @@ mod implem {
         },
     };
 
-    pub fn transfer(addr: [u8; 20], recipient: [u8; 20], amt: U) -> Result<(), Error> {
+    pub fn transfer(addr: Address, recipient: Address, amt: &U) -> Result<(), Error> {
         safe_call_bool_opt(addr, &make_fn_transfer(recipient, &amt), &U::ZERO, u64::MAX)
             .ok_or(Error::from(ErrorDiscriminant::Erc20Invoke))
     }

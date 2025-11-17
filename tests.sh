@@ -4,4 +4,10 @@
 
 #arbos-forge test -vv
 
-cargo nextest run --features std,errors-extra-context,storage-gen-admin,storage-gen-apply -- $@
+export \
+	PROPTEST_MAX_SHRINK_ITERS=1 \
+	RUST_BACKTRACE=1
+
+cargo nextest run \
+	--features std,errors-extra-context,storage-gen-admin,storage-gen-apply,tracing \
+	-- $@

@@ -60,12 +60,18 @@ macro_rules! storage {
             storage_load(&slot_map(&SLOT, $param1))
         }
         pub fn set($param1: &U, x: &U) {
+            #[cfg(feature = "tracing")]
+            dbg!(module_path!(), "setting", $param1, x);
             storage_store(&slot_map(&SLOT, $param1), x)
         }
         pub fn add($param1: &U, x: &U) -> Option<()> {
+            #[cfg(feature = "tracing")]
+            dbg!(module_path!(), "adding", $param1, x);
             storage_checked_add(&slot_map(&SLOT, $param1), x)
         }
         pub fn sub($param1: &U, x: &U) -> Option<()> {
+            #[cfg(feature = "tracing")]
+            dbg!(module_path!(), "subbing", $param1, x);
             storage_checked_sub(&slot_map(&SLOT, $param1), x)
         }
         pub fn get_hash($param1: &[u8; 64]) -> U {
@@ -78,12 +84,18 @@ macro_rules! storage {
             storage_load(&slot_map(&slot_map(&SLOT, $param1), $param2))
         }
         pub fn set($param1: &U, $param2: &U, x: &U) {
+            #[cfg(feature = "tracing")]
+            dbg!(module_path!(), "setting", $param1, $param2, x);
             storage_store(&slot_map(&slot_map(&SLOT, $param1), $param2), x)
         }
         pub fn add($param1: &U, $param2: &U, x: &U) -> Option<()> {
+            #[cfg(feature = "tracing")]
+            dbg!(module_path!(), "adding", $param1, $param2, x);
             storage_checked_add(&slot_map(&slot_map(&SLOT, $param1), $param2), x)
         }
         pub fn sub($param1: &U, $param2: &U, x: &U) -> Option<()> {
+            #[cfg(feature = "tracing")]
+            dbg!(module_path!(), "subbing", $param1, $param2, x);
             storage_checked_sub(&slot_map(&slot_map(&SLOT, $param1), $param2), x)
         }
     };
@@ -92,12 +104,18 @@ macro_rules! storage {
             storage_load(&slot_map(&slot_map(&slot_map(&SLOT, $param1), $param2), $param3))
         }
         pub fn set($param1: &U, $param2: &U, $param3: &U, x: &U) {
+            #[cfg(feature = "tracing")]
+            dbg!(module_path!(), "setting", $param1, $param2, $param3, x);
             storage_store(&slot_map(&slot_map(&slot_map(&SLOT, $param1), $param2), $param3), x)
         }
         pub fn add($param1: &U, $param2: &U, $param3: &U, x: &U) -> Option<()> {
+            #[cfg(feature = "tracing")]
+            dbg!("adding", $param1, $param2, $param3, x);
             storage_checked_add(&slot_map(&slot_map(&slot_map(&SLOT, $param1), $param2), $param3), x)
         }
         pub fn sub($param1: &U, $param2: &U, $param3: &U, x: &U) -> Option<()> {
+            #[cfg(feature = "tracing")]
+            dbg!(module_path!(), "subbing", $param1, $param2, $param3, x);
             storage_checked_sub(&slot_map(&slot_map(&slot_map(&SLOT, $param1), $param2), $param3), x)
         }
         pub fn get_hash($param1: &U, $param2: &U, $param3: &[u8; 64]) -> U {

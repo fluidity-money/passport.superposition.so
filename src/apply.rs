@@ -285,14 +285,24 @@ pub fn balance_cancel(b: &Balance) -> R<()> {
         unreachable!();
     };
     order(o)?;
+    let order_hash = order_hash(o);
     if amt == 0 {
         return Ok(());
     }
-    let h: [u8; 32] = h[..32].try_into().unwrap();
-    storage::hash_asset_l::set(&U(h), &asset.into());
+    storage::hash_asset_l::set(&U(h[..32].try_into().unwrap()), &asset.into());
     let amt = U::from(amt);
-    storage::interim_amt::add(&owner.into(), &asset.into(), &U(h), &amt);
-    storage::order_amt::sub(&owner.into(), &asset.into(), &U(h), &amt);
+    storage::interim_amt::add(
+        &owner.into(),
+        &asset.into(),
+        &U(h[..32].try_into().unwrap()),
+        &amt,
+    );
+    storage::order_amt::sub(
+        &owner.into(),
+        &asset.into(),
+        &U(order_hash[..32].try_into().unwrap()),
+        &amt,
+    );
     Ok(())
 }
 
@@ -381,8 +391,8 @@ pub fn order(o: &Order) -> R<()> {
     if bal_amt < amt {
         return Err(err_bad_balance_from_order());
     }
-    /* set_details_hash_asset_l(h, from_asset); FIXME */
-    /* set_hash_details_desired_asset(h, desired_asset); */
+    storage::hash_asset_l::set(&h, &from_asset.into());
+    storage::hash_asset_r::set(&h, &desired_asset.into());
     Ok(())
 }
 
