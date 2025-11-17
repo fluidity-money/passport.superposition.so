@@ -422,7 +422,6 @@ pub fn withdraw(w: &Withdraw) -> R<()> {
     storage::interim_amt::sub(&owner.into(), &asset.into(), &hash, &U::from(amt));
     storage::withdrawable::add(&owner.into(), &asset.into(), &U::from(amt));
     call_eip20_extras::transfer(asset, owner, &U::from(amt))
-        .ok_or(Error::from(ErrorDiscriminant::Erc20Invoke))
 }
 
 pub fn apply(s: StateMachine) -> R<()> {

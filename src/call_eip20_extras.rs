@@ -22,7 +22,7 @@ mod implem {
             .ok_or(Error::from(ErrorDiscriminant::Erc20Invoke))
     }
 
-    pub fn transfer_from(addr: Address, from: Address, to: Address, amt: U) -> Result<(), Error> {
+    pub fn transfer_from(addr: Address, from: Address, to: Address, amt: &U) -> Result<(), Error> {
         safe_call_bool_opt(
             addr,
             &make_fn_transfer_from(from, to, &amt),
@@ -57,11 +57,11 @@ mod implem {
 mod implem {
     use super::*;
 
-    pub fn transfer(addr: [u8; 20], recipient: [u8; 20], amt: U) -> Result<(), Error> {
+    pub fn transfer(addr: [u8; 20], recipient: [u8; 20], amt: &U) -> Result<(), Error> {
         todo!()
     }
 
-    pub fn transfer_from(addr: Address, from: Address, to: Address, amt: U) -> Result<(), Error> {
+    pub fn transfer_from(addr: Address, from: Address, to: Address, amt: &U) -> Result<(), Error> {
         todo!()
     }
 
@@ -98,21 +98,21 @@ mod implem {
             .unwrap_or_default()
     }
 
-    pub fn transfer_from(_: Address, from: Address, to: Address, amt: &U) -> Option<()> {
+    pub fn transfer_from(_: Address, from: Address, to: Address, amt: &U) -> Result<(), Error> {
         let amt = *amt;
         BALANCES.with(|b| {
             let mut b = b.borrow_mut();
-            let from_bal = b.get_mut(&from)?;
-            if *from_bal < amt {
-                return None;
+            let mut from_bal = *b.get_mut(&from).unwrap();
+            if from_bal < amt {
+                return Err(Error::from(ErrorDiscriminant::Erc20Invoke));
             }
-            *from_bal -= amt;
+            from_bal -= amt;
             b.entry(to).and_modify(|v| *v += amt).or_insert(amt);
-            Some(())
+            Ok(())
         })
     }
 
-    pub fn transfer(addr: Address, recipient: Address, amt: &U) -> Option<()> {
+    pub fn transfer(addr: Address, recipient: Address, amt: &U) -> Result<(), Error> {
         transfer_from(addr, contract_address(), recipient, amt)
     }
 

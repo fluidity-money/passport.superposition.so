@@ -1,6 +1,5 @@
 use crate::{
     call_eip20_extras,
-    error::{Error, ErrorDiscriminant},
     storage::withdrawable,
     DONE_UNIT, R,
 };
@@ -23,8 +22,7 @@ pub fn add_liq(
     let spender = contract_address();
     let value = U::from(value);
     call_eip20_extras::permit(token, owner, spender, value, deadline, v, r, s)?;
-    call_eip20_extras::transfer_from(token, owner, spender, &value)
-        .ok_or(Error::from(ErrorDiscriminant::Erc20Invoke))?;
+    call_eip20_extras::transfer_from(token, owner, spender, &value)?;
     withdrawable::add(&recipient.into(), &token.into(), &value);
     DONE_UNIT
 }
