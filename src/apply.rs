@@ -182,6 +182,17 @@ pub fn balance_asset(b: &Balance) -> Address {
     }
 }
 
+pub fn balance_hash<'a>(b: &'a Balance) -> &'a [u8; 64] {
+    match b {
+        Balance::Inline(_, h)
+        | Balance::Onchain(h)
+        | Balance::CommitLeftFilledToBal(_, h)
+        | Balance::CommitRightFilledToBal(_, h)
+        | Balance::Join(_, _, h)
+        | Balance::Cancel(_, h) => h,
+    }
+}
+
 pub fn commit_left_asset(c: &Commit) -> Address {
     match c {
         Commit::Inline(_, l, _, _) => order_asset(l),
@@ -248,10 +259,6 @@ pub fn withdraw_owner(Withdraw::Inline(b, _): &Withdraw) -> Address {
 
 pub fn withdraw_asset(Withdraw::Inline(b, _): &Withdraw) -> Address {
     balance_asset(b)
-}
-
-pub fn withdraw_hash<'a>(Withdraw::Inline(_, h): &'a Withdraw) -> &'a [u8; 64] {
-    h
 }
 
 pub fn balance_inline(b: &Balance) -> R<()> {
@@ -400,8 +407,8 @@ pub fn withdraw(w: &Withdraw) -> R<()> {
     let owner = withdraw_owner(w);
     let asset = withdraw_asset(w);
     let amt = withdraw_balance(owner, asset, w)?;
-    let hash = U(withdraw_hash(w)[..32].try_into().unwrap());
     let Withdraw::Inline(b, _) = w;
+    let hash = U(balance_hash(b)[..32].try_into().unwrap());
     balance(b)?;
     storage::interim_amt::sub(&owner.into(), &asset.into(), &hash, &U::from(amt));
     storage::withdrawable::add(&owner.into(), &asset.into(), &U::from(amt));

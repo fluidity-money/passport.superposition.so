@@ -37,7 +37,7 @@ fn test_simple_apply() {
     storage_host::storage_clear();
     call_eip20_extras::clear();
     set_msg_sender([1u8; 20]);
-    let e = Entry::MakeOrder(TestBalance::Cancel(Box::new(TestOrder::Order(Box::new(
+    let e = Entry::Withdraw(TestBalance::Cancel(Box::new(TestOrder::Order(Box::new(
         TestOrderInside {
             from: Box::new(TestBalance::Balance(TestBalanceInside {
                 args: ArgsBalance {

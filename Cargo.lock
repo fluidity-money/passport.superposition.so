@@ -147,6 +147,7 @@ version = "0.6.6"
 name = "bobcat-create"
 version = "0.6.6"
 dependencies = [
+ "array-concat",
  "bobcat-maths",
  "bobcat-proxy",
  "bobcat-storage",
