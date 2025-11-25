@@ -34,14 +34,27 @@ pub mod call_eip20_extras;
 
 pub type OurLzss = lzss::Lzss<12, 11, 0, { 1 << 12 }, { 2 << 12 }>;
 
-use bobcat_sdk::{entry::read_args_vec, storage::reentrancy_guard_const_keccak};
+use bobcat_sdk::{
+    entry::{read_args_vec, write_result_slice},
+    storage::{flush_cache, reentrancy_guard_const_keccak},
+};
+
+use borsh::BorshDeserialize;
 
 #[cfg(feature = "std")]
 use clap::Parser as ClapParser;
 
 use core::str::FromStr;
 
-pub use crate::error::{done_u64, DONE_UNIT, NOOP, R};
+pub use crate::{
+    error::{done_u64, DONE_UNIT, NOOP, R},
+    network::Network,
+    ops::{OpAdmin, OpSetter, OpSolver, OpVault},
+};
+
+use immutables::pick_solver_key;
+
+use state_machine::StateMachine;
 
 #[allow(unused_imports)]
 use alloc::boxed::Box;
@@ -74,6 +87,16 @@ impl FromStr for ArgsAddr {
         const_hex::decode_to_array::<_, 20>(x)
             .map(|x| ArgsAddr(x))
             .map_err(|_| FromStrErr)
+    }
+}
+
+cfg_if::cfg_if! {
+    if #[cfg(feature = "network-testnet")] {
+        pub const NETWORK: Network = Network::TESTNET;
+    } else if #[cfg(feature = "network-custom")] {
+        pub const NETWORK: Network = Network::CUSTOM;
+    } else {
+        pub const NETWORK: Network = Network::MAINNET;
     }
 }
 
@@ -112,4 +135,106 @@ pub fn entry_non_reentrant(len: usize, entry: impl FnOnce(&mut &[u8]) -> usize) 
         );
         c
     })
+}
+
+pub fn entry_vault(len: usize) -> usize {
+    entry_non_reentrant(len, |args| match OpVault::deserialize(args).unwrap() {
+        OpVault::MoveLiquidity => todo!(),
+    })
+}
+
+pub fn entry_setter(len: usize) -> usize {
+    entry_non_reentrant(len, |args| {
+        let r = match OpSetter::deserialize(args).unwrap() {
+            OpSetter::Dummy => DONE_UNIT,
+            OpSetter::Onboard(
+                key,
+                sig,
+                contract,
+                nonce,
+                chain,
+                token,
+                value,
+                deadline,
+                permit_v,
+                permit_r,
+                permit_s,
+            ) => onboard::onboard(
+                *key, sig, contract, nonce, chain, token, value, deadline, permit_v, permit_r,
+                permit_s,
+            ),
+            OpSetter::AddLiquidity(token, recipient, value, deadline, v, r, s_) => {
+                add_liq::add_liq(token, recipient, value, deadline, v, r, s_)
+            }
+        };
+        let rd = match r {
+            Ok(_) => 0,
+            Err(ref _reason) => {
+                #[cfg(feature = "harness-stylus-interpreter")]
+                panic!("reverted: {_reason:?}");
+                #[allow(unreachable_code)]
+                1
+            }
+        };
+        match r {
+            Ok(v) => write_result_slice(&borsh::to_vec(&v).unwrap()),
+            Err(v) => write_result_slice(&{
+                #[cfg(feature = "errors-extra-context")]
+                {
+                    borsh::to_vec(&v).unwrap()
+                }
+                #[cfg(not(feature = "errors-extra-context"))]
+                {
+                    [v.dis_u8().into()]
+                }
+            }),
+        }
+        flush_cache();
+        rd
+    })
+}
+
+pub fn entry_admin(len: usize) -> usize {
+    entry_non_reentrant(len, |args| match OpAdmin::deserialize(args).unwrap() {
+        OpAdmin::Upgrade(_, _, _, _) => todo!(),
+    })
+}
+
+pub fn entry_solver(len: usize) -> usize {
+    entry_non_reentrant(len, |args| match OpSolver::deserialize(args).unwrap() {
+        OpSolver::Solve(accounts, args) => {
+            let r = match conversion::validate(&pick_solver_key(NETWORK), &accounts, &args) {
+                Ok(v) => v,
+                Err(v) => {
+                    write_result_slice(&{
+                        #[cfg(feature = "errors-extra-context")]
+                        {
+                            borsh::to_vec(&v).unwrap()
+                        }
+                        #[cfg(not(feature = "errors-extra-context"))]
+                        {
+                            [v.dis_u8().into()]
+                        }
+                    });
+                    return 1;
+                }
+            };
+            let (r, _rd) = reentrancy::begin_apply(r);
+            write_result_slice(&_rd);
+            r
+        }
+    })
+}
+
+pub fn entry_apply(len: usize) -> usize {
+    // entry_apply is a unique entrypoint in that it's not designed for
+    // external consumption. It's used in a delegatecall chain.
+    let args = read_args_vec(len);
+    let r = apply::apply(StateMachine::deserialize(&mut args.as_slice()).unwrap());
+    match r {
+        Ok(v) => write_result_slice(&borsh::to_vec(&v).unwrap()),
+        Err(v) => write_result_slice(&[v.dis_u8()]),
+    }
+    flush_cache();
+    1
 }
