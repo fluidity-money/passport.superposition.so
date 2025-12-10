@@ -338,10 +338,10 @@ pub fn commit(c: &Commit) -> R<()> {
     let r_desired_asset = order_desired_asset(r);
     let l_owner = order_owner(l);
     let r_owner = order_owner(r);
-    let l_unfilled = U::from(commit_left_amount_unfilled(l_owner, l_asset, c)?);
-    let r_unfilled = U::from(commit_right_amount_unfilled(r_owner, r_asset, c)?);
-    let l_filled = U::from(commit_left_amount_filled(l_owner, l_asset, c)?);
-    let r_filled = U::from(commit_right_amount_filled(r_owner, r_asset, c)?);
+    let l_owner_l_unfilled = U::from(commit_left_amount_unfilled(l_owner, l_asset, c)?);
+    let r_owner_r_unfilled = U::from(commit_right_amount_unfilled(r_owner, r_asset, c)?);
+    let l_owner_r_filled = U::from(commit_left_amount_filled(l_owner, r_asset, c)?);
+    let r_owner_l_filled = U::from(commit_right_amount_filled(r_owner, l_asset, c)?);
     if l_desired_asset == r_desired_asset {
         return Err(err_same_assets());
     }
@@ -354,11 +354,11 @@ pub fn commit(c: &Commit) -> R<()> {
     // new order object on this commit for what's unfilled:
     storage::order_amt::set(&l_owner.into(), &l_asset.into(), &l_hash, &U::ZERO);
     storage::order_amt::set(&r_owner.into(), &r_asset.into(), &r_hash, &U::ZERO);
-    storage::order_amt::set(&l_owner.into(), &l_asset.into(), &hash, &l_unfilled);
-    storage::order_amt::set(&r_owner.into(), &r_asset.into(), &hash, &r_unfilled);
+    storage::order_amt::set(&l_owner.into(), &l_asset.into(), &hash, &l_owner_l_unfilled);
+    storage::order_amt::set(&r_owner.into(), &r_asset.into(), &hash, &r_owner_r_unfilled);
     // Which we use to set the interim balance for later balance-like consumption here:
-    storage::interim_amt::add(&l_owner.into(), &r_asset.into(), &hash, &l_filled);
-    storage::interim_amt::add(&r_owner.into(), &l_asset.into(), &hash, &r_filled);
+    storage::interim_amt::add(&l_owner.into(), &r_asset.into(), &hash, &l_owner_r_filled);
+    storage::interim_amt::add(&r_owner.into(), &l_asset.into(), &hash, &r_owner_l_filled);
     storage::hash_asset_l::set(&hash, &l_asset.into());
     storage::hash_asset_r::set(&hash, &r_asset.into());
     storage::hash_owner_r::set(&hash, &r_owner.into());
