@@ -81,19 +81,7 @@ pub fn balance_amount(owner: Address, asset: Address, b: &Balance) -> R<u128> {
     }
 }
 
-pub fn commit_left_amount_filled(owner: Address, l_asset: Address, c: &Commit) -> R<u128> {
-    match c {
-        Commit::Inline(_, l, r, _) => Ok(u128::min(
-            order_desired_amount(owner, l_asset, r)?,
-            order_from_amt(owner, l_asset, l)?,
-        )),
-        Commit::Onchain(h) => {
-            Ok(storage::interim_amt::get_hash(&owner.into(), &l_asset.into(), h).into())
-        }
-    }
-}
-
-pub fn commit_right_amount_filled(owner: Address, r_asset: Address, c: &Commit) -> R<u128> {
+pub fn commit_left_amount_filled(owner: Address, r_asset: Address, c: &Commit) -> R<u128> {
     match c {
         Commit::Inline(_, l, r, _) => Ok(u128::min(
             order_desired_amount(owner, r_asset, l)?,
@@ -101,6 +89,18 @@ pub fn commit_right_amount_filled(owner: Address, r_asset: Address, c: &Commit) 
         )),
         Commit::Onchain(h) => {
             Ok(storage::interim_amt::get_hash(&owner.into(), &r_asset.into(), h).into())
+        }
+    }
+}
+
+pub fn commit_right_amount_filled(owner: Address, l_asset: Address, c: &Commit) -> R<u128> {
+    match c {
+        Commit::Inline(_, l, r, _) => Ok(u128::min(
+            order_desired_amount(owner, l_asset, r)?,
+            order_from_amt(owner, l_asset, l)?,
+        )),
+        Commit::Onchain(h) => {
+            Ok(storage::interim_amt::get_hash(&owner.into(), &l_asset.into(), h).into())
         }
     }
 }
@@ -117,8 +117,8 @@ pub fn order_desired_amount(owner: Address, asset: Address, c: &Order) -> R<u128
 pub fn commit_left_amount_unfilled(owner: Address, asset: Address, o: &Commit) -> R<u128> {
     match o {
         Commit::Inline(_, l, r, _) => {
-            Ok(order_desired_amount(owner, asset, r)?
-                .saturating_sub(order_from_amt(owner, asset, l)?))
+            Ok(order_from_amt(owner, asset, l)?
+                .saturating_sub(order_desired_amount(owner, asset, r)?))
         }
         Commit::Onchain(h) => {
             let owner = storage::hash_owner_l::get_hash(h);
@@ -131,8 +131,8 @@ pub fn commit_left_amount_unfilled(owner: Address, asset: Address, o: &Commit) -
 pub fn commit_right_amount_unfilled(owner: Address, asset: Address, o: &Commit) -> R<u128> {
     match o {
         Commit::Inline(_, l, r, _) => {
-            Ok(order_desired_amount(owner, asset, l)?
-                .saturating_sub(order_from_amt(owner, asset, r)?))
+            Ok(order_from_amt(owner, asset, r)?
+                .saturating_sub(order_desired_amount(owner, asset, l)?))
         }
         Commit::Onchain(h) => {
             let owner = storage::hash_owner_r::get_hash(h);
