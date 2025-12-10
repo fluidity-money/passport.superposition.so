@@ -274,7 +274,6 @@ pub fn balance_inline(b: &Balance) -> R<()> {
     let h: [u8; 32] = h[..32].try_into().unwrap();
     storage::interim_amt::add(&owner.into(), &asset.into(), &U(h), &U::from(amt));
     storage::hash_asset_l::set(&U(h), &asset.into());
-    storage::withdrawable::sub(&owner.into(), &asset.into(), &U::from(amt));
     Ok(())
 }
 
@@ -419,8 +418,8 @@ pub fn withdraw(w: &Withdraw) -> R<()> {
     let Withdraw::Inline(b, _) = w;
     let hash = U(balance_hash(b)[..32].try_into().unwrap());
     balance(b)?;
+    storage::withdrawable::sub(&owner.into(), &asset.into(), &U::from(amt));
     storage::interim_amt::sub(&owner.into(), &asset.into(), &hash, &U::from(amt));
-    storage::withdrawable::add(&owner.into(), &asset.into(), &U::from(amt));
     call_eip20_extras::transfer(asset, owner, &U::from(amt))
 }
 
