@@ -29,10 +29,12 @@ pub mod ops;
 
 pub mod add_liq;
 pub mod onboard;
+pub mod view;
 
 pub mod call_eip20_extras;
 
 pub type OurLzss = lzss::Lzss<12, 11, 0, { 1 << 12 }, { 2 << 12 }>;
+pub use lzss::{SliceReader, VecWriter};
 
 use bobcat_sdk::{
     entry::{read_args_vec, write_result_slice},
@@ -46,8 +48,9 @@ use clap::Parser as ClapParser;
 
 use core::str::FromStr;
 
+use crate::view::view_withdrawable;
 pub use crate::{
-    error::{done_u64, DONE_UNIT, NOOP, R},
+    error::{DONE_UNIT, NOOP, R, done_u64},
     network::Network,
     ops::{OpAdmin, OpSetter, OpSolver, OpVault},
 };
@@ -147,6 +150,7 @@ pub fn entry_setter(len: usize) -> usize {
     entry_non_reentrant(len, |args| {
         let r = match OpSetter::deserialize(args).unwrap() {
             OpSetter::Dummy => DONE_UNIT,
+            OpSetter::ViewWithdrawable(owner, asset) => view_withdrawable(&owner, &asset),
             OpSetter::Onboard(
                 key,
                 sig,
@@ -236,5 +240,5 @@ pub fn entry_apply(len: usize) -> usize {
         Err(v) => write_result_slice(&[v.dis_u8()]),
     }
     flush_cache();
-    1
+    0
 }

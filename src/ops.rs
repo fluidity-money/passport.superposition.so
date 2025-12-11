@@ -69,7 +69,7 @@ pub enum OpSetter {
         [u8; 64], // Verifying signature
         [u8; 20], // Contract
         u16,      // Nonce
-        u64,     // Chain
+        u64,      // Chain
         [u8; 20], // Token
         u128,     // Value
         U,        // Deadline
@@ -86,6 +86,10 @@ pub enum OpSetter {
         u8,       // V
         U,        // R
         U,        // S
+    ),
+    ViewWithdrawable(
+        U, // Owner
+        U, // Asset
     ),
 }
 

@@ -14,8 +14,14 @@ pub enum Res {
     /// A u64 number was returned alongside correct execution.
     DoneU64(u64),
 
-    /// A number was returned alongside correct execution.
-    DoneU128(u128)
+    /// A u128 number was returned alongside correct execution.
+    DoneU128(u128),
+
+    /// A U256 number was returned alongside correct execution.
+    DoneU256(bobcat_sdk::maths::U),
+
+    // An address was returned alongside correct execution
+    DoneAddress([u8; 20]),
 }
 
 impl From<Res> for Vec<u8> {

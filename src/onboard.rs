@@ -1,18 +1,23 @@
 use crate::{
+    R,
+    add_liq::add_liq,
     done_u64,
     error::{Error, ErrorDiscriminant},
     sigs::make_onboarding_sig,
     storage::*,
-    add_liq::add_liq,
-    R,
 };
 
 use ed25519_dalek::{Signature, VerifyingKey};
 
 use bobcat_sdk::{
-    entry::{chain_id, contract_address, msg_sender},
+    cd::const_keccak256,
+    entry::{contract_address, msg_sender},
+    events::emit,
     maths::U,
+    prelude::chain_id,
 };
+
+const TOPIC_ONBOARD: U = const_keccak256(b"Onboard(address,uint256)");
 
 pub fn onboard(
     key: [u8; 32],
@@ -51,5 +56,6 @@ pub fn onboard(
     ed25519_keys::set(&key_count, &U::from(key));
     ed25519_owners::set(&key_count, &U::from(owner));
     add_liq(token, owner, value, deadline, permit_v, permit_r, permit_s)?;
+    emit!(TOPIC_ONBOARD, owner, key_count);
     done_u64(key_count.into())
 }
