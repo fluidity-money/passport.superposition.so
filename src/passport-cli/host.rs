@@ -10,18 +10,18 @@ use super::{
 };
 
 use libpassport::{
+    OurLzss,
     applicative::EdSig,
     error::Error,
     facet::Facet,
     ops::{OpSetter, OpSolver},
     result::Res,
     sigs::make_onboarding_sig,
-    OurLzss,
 };
 
 use bobcat_sdk::maths::U;
 
-use borsh::{ser::BorshSerialize, BorshDeserialize};
+use borsh::{BorshDeserialize, ser::BorshSerialize};
 
 use lzss::{SliceReader, VecWriter};
 
@@ -29,6 +29,9 @@ use ed25519_dalek::{Signer, SigningKey};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ArgsAddr(pub [u8; 20]);
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ArgsU(pub [u8; 32]);
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct FromStrErr;
@@ -48,6 +51,22 @@ impl FromStr for ArgsAddr {
         const_hex::decode_to_array::<_, 20>(x)
             .map(|x| ArgsAddr(x))
             .map_err(|_| FromStrErr)
+    }
+}
+
+impl FromStr for ArgsU {
+    type Err = FromStrErr;
+
+    fn from_str(x: &str) -> Result<Self, Self::Err> {
+        const_hex::decode_to_array::<_, 32>(x)
+            .map(|x| ArgsU(x))
+            .map_err(|_| FromStrErr)
+    }
+}
+
+impl From<ArgsU> for U {
+    fn from(value: ArgsU) -> Self {
+        Self(value.0)
     }
 }
 
@@ -90,14 +109,11 @@ enum Args {
         value: u128,
         deadline: u128,
         permit_v: u8,
-        #[arg(value_parser = ArgsAddr::from_str)]
-        permit_r: U,
-        #[arg(value_parser = ArgsAddr::from_str)]
-        permit_s: U,
+        permit_r: ArgsU,
+        permit_s: ArgsU,
     },
     SetterOnboardNoKey {
-        #[arg(value_parser = ArgsAddr::from_str)]
-        verifying_key: U,
+        verifying_key: ArgsU,
         verifying_sig: EdSig,
         contract: ArgsAddr,
         nonce: u16,
@@ -106,21 +122,19 @@ enum Args {
         value: u128,
         deadline: u128,
         permit_v: u8,
-        #[arg(value_parser = ArgsAddr::from_str)]
-        permit_r: U,
-        #[arg(value_parser = ArgsAddr::from_str)]
-        permit_s: U,
+        permit_r: ArgsU,
+        permit_s: ArgsU,
     },
     SetterAddLiquidity {
         token: ArgsAddr,
         recipient: ArgsAddr,
         value: u128,
-        #[arg(value_parser = ArgsAddr::from_str)]
+        #[arg(value_parser = ArgsU::from_str)]
         deadline: U,
         v: u8,
-        #[arg(value_parser = ArgsAddr::from_str)]
+        #[arg(value_parser = ArgsU::from_str)]
         r: U,
-        #[arg(value_parser = ArgsAddr::from_str)]
+        #[arg(value_parser = ArgsU::from_str)]
         s: U,
     },
     DecodeRes,
@@ -245,21 +259,16 @@ fn setter_onboard_with_key(
     value: u128,
     deadline: u128,
     permit_v: u8,
-    permit_r: U,
-    permit_s: U,
+    permit_r: ArgsU,
+    permit_s: ArgsU,
 ) {
     let key = SigningKey::from_bytes(&signing_key.0);
     let sig: EdSig = key
-        .sign(&make_onboarding_sig(
-            &owner.0,
-            &contract.0,
-            nonce,
-            chain,
-        ))
+        .sign(&make_onboarding_sig(&owner.0, &contract.0, nonce, chain))
         .to_bytes()
         .into();
     setter_onboard_no_key(
-        U(key.verifying_key().to_bytes()),
+        ArgsU(key.verifying_key().to_bytes()),
         sig,
         contract,
         nonce,
@@ -274,7 +283,7 @@ fn setter_onboard_with_key(
 }
 
 fn setter_onboard_no_key(
-    verifying_key: U,
+    verifying_key: ArgsU,
     verifying_sig: EdSig,
     contract: ArgsAddr,
     nonce: u16,
@@ -283,14 +292,14 @@ fn setter_onboard_no_key(
     value: u128,
     deadline: u128,
     permit_v: u8,
-    permit_r: U,
-    permit_s: U,
+    permit_r: ArgsU,
+    permit_s: ArgsU,
 ) {
     println!(
         "{}{}",
         const_hex::encode(&[Facet::UserSetter.into()]),
         compress(OpSetter::Onboard(
-            verifying_key,
+            verifying_key.into(),
             verifying_sig.into(),
             contract.0,
             nonce,
@@ -299,8 +308,8 @@ fn setter_onboard_no_key(
             value,
             U::from(deadline),
             permit_v,
-            permit_r,
-            permit_s
+            permit_r.into(),
+            permit_s.into()
         ))
     );
 }
@@ -388,7 +397,7 @@ pub fn entry() {
         ),
         Args::DecodeRes => decode_res(),
         Args::DecodeErr => decode_err(),
-Args::        DecodeErrExtraContext  => decode_err_extra_context(),
+        Args::DecodeErrExtraContext => decode_err_extra_context(),
         _ => unimplemented!(),
     }
 }
