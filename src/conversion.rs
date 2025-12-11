@@ -240,7 +240,7 @@ fn validate_balance(
     dbg!("done with balance");
     Ok(state_machine::Balance::Inline(
         state_machine::BalanceArgs {
-            ms_ts: args.ms_timestamp.0,
+            ms_ts: args.ms_timestamp,
             owner: storage::find_ed25519_addr(&owner_id)?,
             asset: args.asset.0,
             amt: args.amount.0,
@@ -444,7 +444,7 @@ fn validate_commit(
     dbg!("done with commit");
     Ok(state_machine::Commit::Inline(
         state_machine::CommitArgs {
-            ms_ts: args.ms_timestamp.0,
+            ms_ts: args.ms_timestamp,
         },
         Box::new(left_order),
         Box::new(right_order),
@@ -780,7 +780,7 @@ fn test_signing_assumptions() {
         ]),
         chain: 123123123,
         amount: U128(226069396470166194839733876294202945097),
-        ms_timestamp: U128(123),
+        ms_timestamp: 123,
     };
     let signer_priv = SigningKey::from_bytes(&[1u8; 32]);
     let sig = sign_balance(&signer_priv, &args);

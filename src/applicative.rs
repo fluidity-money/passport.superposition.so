@@ -220,7 +220,7 @@ pub struct ArgsBalance {
     pub asset: Asset,
     pub chain: u64,
     pub amount: U128,
-    pub ms_timestamp: U128,
+    pub ms_timestamp: u32,
 }
 
 /// In the Applicative form, the arguments for the Order are slightly
@@ -259,7 +259,7 @@ pub struct ArgsOrder {
     )
 )]
 pub struct ArgsCommit {
-    pub ms_timestamp: U128,
+    pub ms_timestamp: u32,
 }
 
 /// Simple label for debugging purposes when a contextual error takes
@@ -372,8 +372,7 @@ impl std::fmt::Display for Applicative {
 /// User friendly trait for construction of Applicative with types
 /// included in a side effectful way.
 pub trait UserApplicative {
-    fn balance(&self, asset: Address, chain: u64, amount: u128, ms_timestamp: u128)
-        -> Applicative;
+    fn balance(&self, asset: Address, chain: u64, amount: u128, ms_timestamp: u32) -> Applicative;
 
     fn withdraw(
         &self,
@@ -411,7 +410,7 @@ pub trait SolverApplicative {
 
     fn commit(
         &self,
-        ms_timestamp: u128,
+        ms_timestamp: u32,
         left: &Applicative,
         right: &Applicative,
     ) -> Result<SolverSig, Error>;

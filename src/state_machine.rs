@@ -6,7 +6,7 @@ pub type Hash = [u8; 64];
 
 #[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize)]
 pub struct BalanceArgs {
-    pub ms_ts: u128,
+    pub ms_ts: u32,
     pub owner: [u8; 20],
     pub asset: [u8; 20],
     pub amt: u128,
@@ -24,7 +24,7 @@ pub enum Balance {
 
 #[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize)]
 pub struct CommitArgs {
-    pub ms_ts: u128,
+    pub ms_ts: u32,
 }
 
 #[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize)]

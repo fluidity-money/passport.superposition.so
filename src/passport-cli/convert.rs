@@ -34,7 +34,7 @@ fn _unsolved_to_app(
                 amount,
                 ms_timestamp,
             },
-        ) => ctx(accounts, n).balance(asset.0, chain, amount.0, ms_timestamp.0),
+        ) => ctx(accounts, n).balance(asset.0, chain, amount.0, ms_timestamp),
         RecipeUnsolved::Withdraw(n, from) => {
             let from = _unsolved_to_app(accounts, solver, *from);
             let s_sig = solver.withdraw(&from).unwrap();
@@ -66,7 +66,7 @@ fn _unsolved_to_app(
         RecipeUnsolved::Commit(args, left, right) => {
             let left = _unsolved_to_app(accounts, solver, *left);
             let right = _unsolved_to_app(accounts, solver, *right);
-            let s_sig = solver.commit(args.ms_timestamp.0, &left, &right).unwrap();
+            let s_sig = solver.commit(args.ms_timestamp, &left, &right).unwrap();
             Applicative::Commit(s_sig, args, Box::new(left), Box::new(right))
         }
         RecipeUnsolved::CommitLeftFilledToBalance(n, from) => ctx(accounts, n)

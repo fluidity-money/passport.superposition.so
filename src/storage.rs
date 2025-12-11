@@ -161,7 +161,7 @@ pub fn find_ed25519_addr(i: &U) -> Result<Address, Error> {
 pub fn ensure_hash_unseen(hash: &[u8; 64]) -> Option<()> {
     let hash: [u8; 32] = hash[..32].try_into().unwrap();
     if hash_owner_l::get(&U(hash)).is_some() {
-        return None
+        return None;
     }
     Some(())
 }

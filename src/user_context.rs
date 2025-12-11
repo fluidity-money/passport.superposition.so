@@ -39,13 +39,13 @@ impl UserApplicative for UserContext {
         asset: Address,
         chain: u64,
         amount: u128,
-        ms_timestamp: u128,
+        ms_timestamp: u32,
     ) -> Applicative {
         let args = ArgsBalance {
             asset: Asset(asset),
-            chain: chain,
+            chain,
             amount: U128(amount),
-            ms_timestamp: U128(ms_timestamp),
+            ms_timestamp,
         };
         Applicative::Balance((self.place, sign_balance(&self.signer, &args)), args)
     }
