@@ -6,9 +6,9 @@ use serde::{Deserialize as SerdeDeserialize, Serialize as SerdeSerialize};
 
 use borsh::{BorshDeserialize, BorshSerialize};
 
-use alloc::boxed::Box;
+use alloc::{boxed::Box, vec::Vec};
 
-use crate::error::Error;
+use crate::error::{Error, ErrorDiscriminant, ErrorInner};
 
 pub type Address = [u8; 20];
 
@@ -223,6 +223,23 @@ pub struct ArgsBalance {
     pub ms_timestamp: u32,
 }
 
+#[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq, Debug)]
+#[cfg_attr(
+    feature = "std",
+    derive(
+        arbitrary::Arbitrary,
+        proptest_derive::Arbitrary,
+        SerdeDeserialize,
+        SerdeSerialize
+    )
+)]
+pub struct CompressedArgsBalance {
+    pub asset: u8,
+    pub chain: u64,
+    pub amount: U128,
+    pub ms_timestamp: u32,
+}
+
 /// In the Applicative form, the arguments for the Order are slightly
 /// different to also include the amount the user wants to liquidate.
 /// Since the Balance should be entirely spent, during the indirection
@@ -243,6 +260,26 @@ pub struct ArgsOrder {
     /// previous balance on this operation.
     pub from_amt: U128,
     pub desired_asset: Asset,
+    pub desired_chain: U128,
+    /// Desired amount of the other asset to fill for.
+    pub desired_amt: U128,
+}
+
+#[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq, Debug)]
+#[cfg_attr(
+    feature = "std",
+    derive(
+        arbitrary::Arbitrary,
+        proptest_derive::Arbitrary,
+        SerdeDeserialize,
+        SerdeSerialize
+    )
+)]
+pub struct CompressedArgsOrder {
+    /// From amount that the user is willing to consume from the
+    /// previous balance on this operation.
+    pub from_amt: U128,
+    pub desired_asset: u8,
     pub desired_chain: U128,
     /// Desired amount of the other asset to fill for.
     pub desired_amt: U128,
@@ -293,6 +330,134 @@ pub struct DppmMintArgs;
 #[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq, Debug)]
 #[cfg_attr(feature = "std", derive(SerdeDeserialize, SerdeSerialize))]
 pub struct DppmBurnArgs;
+
+#[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq, Debug)]
+#[cfg_attr(feature = "std", derive(SerdeDeserialize, SerdeSerialize))]
+pub enum CompressedApplicative {
+    Balance(UserSig, CompressedArgsBalance),
+    Withdraw(
+        SolverSig,
+        UserSig,
+        Option<VaultSig>,
+        Box<CompressedApplicative>,
+    ),
+    Order(UserSig, CompressedArgsOrder, Box<CompressedApplicative>),
+    Cancel(SolverSig, UserSig, Box<CompressedApplicative>),
+    Commit(
+        SolverSig,
+        ArgsCommit,
+        Box<CompressedApplicative>,
+        Box<CompressedApplicative>,
+    ),
+    CommitLeftFilledToBalance(Box<CompressedApplicative>),
+    CommitRightFilledToBalance(Box<CompressedApplicative>),
+    CommitLeftExcessToOrder(Box<CompressedApplicative>),
+    CommitRightExcessToOrder(Box<CompressedApplicative>),
+    Join(
+        UserSig,
+        Box<CompressedApplicative>,
+        Box<CompressedApplicative>,
+    ),
+}
+
+impl CompressedApplicative {
+    fn get_asset(assets: &Vec<Asset>, i: usize) -> Result<Asset, Error> {
+        Ok(assets
+            .get(i)
+            .ok_or(Error {
+                typ: ErrorDiscriminant::BadUnpack,
+                #[cfg(feature = "errors-extra-context")]
+                inner: Box::new(ErrorInner::default()),
+            })?
+            .clone())
+    }
+    pub fn decompress(self, assets: &Vec<Asset>) -> Result<Applicative, Error> {
+        match self {
+            CompressedApplicative::Balance(
+                sig,
+                CompressedArgsBalance {
+                    asset: asset_index,
+                    chain,
+                    amount,
+                    ms_timestamp,
+                },
+            ) => {
+                let asset = Self::get_asset(assets, asset_index.into())?;
+                let args = ArgsBalance {
+                    asset,
+                    chain,
+                    amount,
+                    ms_timestamp,
+                };
+                Ok(Applicative::Balance(sig, args))
+            }
+            CompressedApplicative::Withdraw(solver_sig, user_sig, vault_sig, c_appl) => {
+                let appl = c_appl.decompress(assets)?;
+                Ok(Applicative::Withdraw(
+                    solver_sig,
+                    user_sig,
+                    vault_sig,
+                    Box::new(appl),
+                ))
+            }
+            CompressedApplicative::Order(
+                user_sig,
+                CompressedArgsOrder {
+                    from_amt,
+                    desired_asset: desired_asset_index,
+                    desired_chain,
+                    desired_amt,
+                },
+                c_appl,
+            ) => {
+                let appl = c_appl.decompress(assets)?;
+                let desired_asset = Self::get_asset(assets, desired_asset_index.into())?;
+                let args = ArgsOrder {
+                    from_amt,
+                    desired_asset,
+                    desired_chain,
+                    desired_amt,
+                };
+                Ok(Applicative::Order(user_sig, args, Box::new(appl)))
+            }
+            CompressedApplicative::Cancel(solver_sig, user_sig, c_appl) => {
+                let appl = c_appl.decompress(assets)?;
+                Ok(Applicative::Cancel(solver_sig, user_sig, Box::new(appl)))
+            }
+            CompressedApplicative::Commit(solver_sig, args, c_left, c_right) => {
+                let left = c_left.decompress(assets)?;
+                let right = c_right.decompress(assets)?;
+                Ok(Applicative::Commit(
+                    solver_sig,
+                    args,
+                    Box::new(left),
+                    Box::new(right),
+                ))
+            }
+            CompressedApplicative::CommitLeftFilledToBalance(c_appl) => {
+                let appl = c_appl.decompress(assets)?;
+                Ok(Applicative::CommitLeftFilledToBalance(Box::new(appl)))
+            }
+            CompressedApplicative::CommitRightFilledToBalance(c_appl) => {
+                let appl = c_appl.decompress(assets)?;
+                Ok(Applicative::CommitRightFilledToBalance(Box::new(appl)))
+            }
+            CompressedApplicative::CommitLeftExcessToOrder(c_appl) => {
+                let appl = c_appl.decompress(assets)?;
+                Ok(Applicative::CommitLeftExcessToOrder(Box::new(appl)))
+            }
+            CompressedApplicative::CommitRightExcessToOrder(c_appl) => {
+                let appl = c_appl.decompress(assets)?;
+                Ok(Applicative::CommitRightExcessToOrder(Box::new(appl)))
+            }
+            CompressedApplicative::Join(user_sig, c_left, c_right) => {
+                let left = c_left.decompress(assets)?;
+                let right = c_right.decompress(assets)?;
+                Ok(Applicative::Join(user_sig, Box::new(left), Box::new(right)))
+            }
+        }
+    }
+}
 
 /// User friendly higher level form of the state_machine internal type
 /// that does conversions to the internal type in a way that's more

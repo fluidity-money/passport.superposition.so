@@ -3,7 +3,7 @@
 // converting to a derived state, which the program interrogates to
 // transfer ownership and partial amounts.
 
-use crate::applicative::Applicative;
+use crate::applicative::{Applicative, Asset, CompressedApplicative};
 
 use alloc::vec::Vec;
 
@@ -23,6 +23,24 @@ pub enum OpSolver {
     // on-chain state. The first argument to the Solve function is the location
     // of the VerifyingKey in the mapping of the keys on-chain.
     Solve(Vec<u64>, Applicative),
+}
+
+#[derive(BorshDeserialize, BorshSerialize, Clone, PartialEq, Debug)]
+#[cfg_attr(feature = "std", derive(SerdeDeserialize, SerdeSerialize))]
+pub enum CompressedOpSolver {
+    Solve(Vec<Asset>, Vec<u64>, CompressedApplicative),
+}
+
+impl TryFrom<CompressedOpSolver> for OpSolver {
+    type Error = crate::error::Error;
+    fn try_from(value: CompressedOpSolver) -> Result<Self, Self::Error> {
+        match value {
+            CompressedOpSolver::Solve(assets, accounts, c_appl) => Ok(OpSolver::Solve(
+                accounts,
+                CompressedApplicative::decompress(c_appl, &assets)?,
+            )),
+        }
+    }
 }
 
 #[cfg(feature = "std")]

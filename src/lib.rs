@@ -48,12 +48,12 @@ use clap::Parser as ClapParser;
 
 use core::str::FromStr;
 
-use crate::view::view_withdrawable;
 pub use crate::{
     error::{DONE_UNIT, NOOP, R, done_u64},
     network::Network,
     ops::{OpAdmin, OpSetter, OpSolver, OpVault},
 };
+use crate::{ops::CompressedOpSolver, view::view_withdrawable};
 
 use immutables::pick_solver_key;
 
@@ -205,27 +205,30 @@ pub fn entry_admin(len: usize) -> usize {
 }
 
 pub fn entry_solver(len: usize) -> usize {
-    entry_non_reentrant(len, |args| match OpSolver::deserialize(args).unwrap() {
-        OpSolver::Solve(accounts, args) => {
-            let r = match conversion::validate(&pick_solver_key(NETWORK), &accounts, &args) {
-                Ok(v) => v,
-                Err(v) => {
-                    write_result_slice(&{
-                        #[cfg(feature = "errors-extra-context")]
-                        {
-                            borsh::to_vec(&v).unwrap()
-                        }
-                        #[cfg(not(feature = "errors-extra-context"))]
-                        {
-                            [v.dis_u8().into()]
-                        }
-                    });
-                    return 1;
-                }
-            };
-            let (r, _rd) = reentrancy::begin_apply(r);
-            write_result_slice(&_rd);
-            r
+    entry_non_reentrant(len, |args| {
+        let c = CompressedOpSolver::deserialize(args).unwrap();
+        match OpSolver::try_from(c).unwrap() {
+            OpSolver::Solve(accounts, args) => {
+                let r = match conversion::validate(&pick_solver_key(NETWORK), &accounts, &args) {
+                    Ok(v) => v,
+                    Err(v) => {
+                        write_result_slice(&{
+                            #[cfg(feature = "errors-extra-context")]
+                            {
+                                borsh::to_vec(&v).unwrap()
+                            }
+                            #[cfg(not(feature = "errors-extra-context"))]
+                            {
+                                [v.dis_u8().into()]
+                            }
+                        });
+                        return 1;
+                    }
+                };
+                let (r, _rd) = reentrancy::begin_apply(r);
+                write_result_slice(&_rd);
+                r
+            }
         }
     })
 }
