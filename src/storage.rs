@@ -1,5 +1,3 @@
-use ed25519_dalek::VerifyingKey;
-
 use bobcat_sdk::maths::*;
 
 use crate::error::{Error, ErrorDiscriminant};
@@ -140,12 +138,13 @@ storage! {
     hash_desired_amt(hash)
 }
 
-pub fn find_ed25519_key(i: &U) -> Result<VerifyingKey, Error> {
+pub fn find_ed25519_key(i: &U) -> Result<U, Error> {
     let v = ed25519_keys::get(i);
     if v.is_zero() {
         Err(Error::from(ErrorDiscriminant::AccountIdNotFound))
     } else {
-        VerifyingKey::from_bytes(&v.0).map_err(|_| Error::from(ErrorDiscriminant::BadVerifyingKey))
+        // NOTE this doesn't ensure the key is valid
+        Ok(v)
     }
 }
 

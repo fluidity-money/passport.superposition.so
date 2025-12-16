@@ -10,10 +10,11 @@ use alloc::vec::Vec;
 use borsh::BorshSerialize;
 
 use bobcat_sdk::maths::U;
+use bobcat_sdk::precompiles::superposition::edphverify;
 
-use ed25519_dalek::{DigestSigner, DigestVerifier, Signature, SigningKey, VerifyingKey};
+use ed25519_dalek::{DigestSigner, SigningKey};
 
-use sha2::{digest::Digest, Sha512};
+use sha2::{Sha512, digest::Digest};
 
 use alloc::boxed::Box;
 
@@ -40,7 +41,7 @@ pub type ValidateCarry = Result<Sha512, Error>;
 
 fn check_sig(
     from: ApplicativeLabel,
-    verifying_key: &VerifyingKey,
+    verifying_key: &U,
     sig: &EdSig,
     msg: &[u8],
     prev_digest: &[u8],
@@ -48,25 +49,25 @@ fn check_sig(
     let d = Sha512::default()
         .chain_update(msg)
         .chain_update(prev_digest);
-    verifying_key
-        .verify_digest(
-            d.clone(),
-            &Signature::from_slice(sig.into()).map_err(|_| err_sig(from))?,
-        )
-        .map_err(|_| {
-            // When it comes to returning the error here, we can do so since the
-            // caller will revert so we can be excessive with the penalties of
-            // encoding a message.
-            err_verify(from)
-        })?;
+    if !edphverify(
+        d.clone().finalize().into(),
+        *verifying_key,
+        sig.0,
+        // &Signature::from_slice(sig.into()).map_err(|_| err_sig(from))?,
+    ) {
+        // When it comes to returning the error here, we can do so since the
+        // caller will revert so we can be excessive with the penalties of
+        // encoding a message.
+        return Err(err_verify(from));
+    }
     Ok(d)
 }
 
 fn check_sig_two(
     from: ApplicativeLabel,
-    verifying_key1: &VerifyingKey,
+    verifying_key1: &U,
     sig1: &EdSig,
-    verifying_key2: &VerifyingKey,
+    verifying_key2: &U,
     sig2: &EdSig,
     msg: &[u8],
     prev_digest: &[u8],
@@ -74,20 +75,12 @@ fn check_sig_two(
     let d = Sha512::default()
         .chain_update(msg)
         .chain_update(prev_digest);
-    verifying_key2
-        .verify_prehashed_strict(
-            d.clone(),
-            None,
-            &Signature::from_slice(sig2.into()).map_err(|_| err_sig(from))?,
-        )
-        .map_err(|_| err_verify_two(from, 2))?;
-    verifying_key1
-        .verify_prehashed_strict(
-            d.clone(),
-            None,
-            &Signature::from_slice(sig1.into()).map_err(|_| err_sig(from))?,
-        )
-        .map_err(|_| err_verify_two(from, 1))?;
+    if !edphverify(d.clone().finalize().into(), *verifying_key2, sig2.0) {
+        return Err(err_verify_two(from, 2));
+    }
+    if !edphverify(d.clone().finalize().into(), *verifying_key1, sig1.0) {
+        return Err(err_verify_two(from, 1));
+    }
     Ok(d)
 }
 
@@ -250,7 +243,7 @@ fn validate_balance(
 }
 
 fn validate_commit_left_filled_to_bal(
-    solver_key: &VerifyingKey,
+    solver_key: &U,
     accounts: &Vec<u64>,
     ap: &Applicative,
 ) -> Result<state_machine::Balance, Error> {
@@ -274,7 +267,7 @@ fn validate_commit_left_filled_to_bal(
 }
 
 fn validate_commit_right_filled_to_bal(
-    solver_key: &VerifyingKey,
+    solver_key: &U,
     accounts: &Vec<u64>,
     ap: &Applicative,
 ) -> Result<state_machine::Balance, Error> {
@@ -298,7 +291,7 @@ fn validate_commit_right_filled_to_bal(
 }
 
 fn validate_wrapped_balance(
-    solver_key: &VerifyingKey,
+    solver_key: &U,
     from: ApplicativeLabel,
     accounts: &Vec<u64>,
     ap: &Applicative,
@@ -319,7 +312,7 @@ fn validate_wrapped_balance(
 }
 
 fn validate_order(
-    solver_key: &VerifyingKey,
+    solver_key: &U,
     accounts: &Vec<u64>,
     (owner_i, owner_sig): &UserSig,
     args: &ArgsOrder,
@@ -354,7 +347,7 @@ fn validate_order(
 }
 
 fn validate_commit_left_excess_to_order(
-    solver_key: &VerifyingKey,
+    solver_key: &U,
     accounts: &Vec<u64>,
     ap: &Applicative,
 ) -> Result<state_machine::Order, Error> {
@@ -376,7 +369,7 @@ fn validate_commit_left_excess_to_order(
 }
 
 fn validate_commit_right_excess_to_order(
-    solver_key: &VerifyingKey,
+    solver_key: &U,
     accounts: &Vec<u64>,
     ap: &Applicative,
 ) -> Result<state_machine::Order, Error> {
@@ -398,7 +391,7 @@ fn validate_commit_right_excess_to_order(
 }
 
 fn validate_wrapped_order(
-    solver_key: &VerifyingKey,
+    solver_key: &U,
     from: ApplicativeLabel,
     accounts: &Vec<u64>,
     ap: &Applicative,
@@ -419,7 +412,7 @@ fn validate_wrapped_order(
 /// validates the signature and the state transition, allowing the state
 /// machine to do the checking of the amounts and constraints.
 fn validate_commit(
-    solver_key: &VerifyingKey,
+    solver_key: &U,
     accounts: &Vec<u64>,
     solver_sig: &EdSig,
     args: &ArgsCommit,
@@ -458,7 +451,7 @@ fn validate_commit(
 /// system. So the translation function knows how to manipulate this.
 /// Does not do any validation except validate the contained value.
 fn validate_wrapped_commit(
-    solver_key: &VerifyingKey,
+    solver_key: &U,
     from: ApplicativeLabel,
     accounts: &Vec<u64>,
     ap: &Applicative,
@@ -476,7 +469,7 @@ fn validate_wrapped_commit(
 /// CommitLeftExcessToBalance, CommitRightExcessToBalance, and Balance to
 /// an amount that should be redeemed to the user by the contract.
 fn validate_withdraw(
-    solver_key: &VerifyingKey,
+    solver_key: &U,
     accounts: &Vec<u64>,
     solver_sig: &EdSig,
     (owner_i, owner_sig): &UserSig,
@@ -509,7 +502,7 @@ fn validate_withdraw(
 }
 
 fn validate_cancel(
-    solver_key: &VerifyingKey,
+    solver_key: &U,
     accounts: &Vec<u64>,
     solver_sig: &EdSig,
     (owner_i, owner_sig): &UserSig,
@@ -539,7 +532,7 @@ fn validate_cancel(
 }
 
 fn validate_join(
-    solver_key: &VerifyingKey,
+    solver_key: &U,
     accounts: &Vec<u64>,
     (owner_i, owner_sig): &UserSig,
     left: &Applicative,
@@ -574,7 +567,7 @@ fn validate_join(
 /// Entrypoint validation function for a Applicative type during its
 /// validation stage.
 pub fn validate(
-    solver_key: &VerifyingKey,
+    solver_key: &U,
     accounts: &Vec<u64>,
     ap: &Applicative,
 ) -> Result<StateMachine, Error> {
@@ -762,7 +755,7 @@ proptest! {
         let s = make_sig(&p, &msg, &prev_digest).unwrap();
         check_sig(
             ApplicativeLabel::Balance,
-            &p.verifying_key(),
+            &U(p.verifying_key().to_bytes()),
             &s,
             &msg,
             &prev_digest
@@ -786,7 +779,7 @@ fn test_signing_assumptions() {
     let sig = sign_balance(&signer_priv, &args);
     check_sig(
         ApplicativeLabel::Balance,
-        &signer_priv.verifying_key(),
+        &U(signer_priv.verifying_key().to_bytes()),
         &sig,
         &serialise_inplace::<_, { size_of::<ArgsBalance>() }>(&args),
         &[],
