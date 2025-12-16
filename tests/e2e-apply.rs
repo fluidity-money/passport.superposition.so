@@ -63,7 +63,7 @@ fn test_apply_withdraw_both_balances() {
     let asset_right = Asset([2; 20]);
     let chain: u64 = 1;
     let desired_chain = U128(chain.into());
-    let ms_timestamp = U128(1);
+    let ms_timestamp = 1;
     let amount_left = U128(15);
     let amount_right = U128(10);
     // Trade 15 of asset_left for 10 of asset_right
@@ -140,7 +140,7 @@ fn test_apply_withdraw_both_balances() {
     .unwrap();
 }
 
-fn make_commit(left: TestOrder, right: TestOrder, ms_timestamp: U128) -> TestCommit {
+fn make_commit(left: TestOrder, right: TestOrder, ms_timestamp: u32) -> TestCommit {
     TestCommit::Commit(Box::new(TestCommitInside {
         args: ArgsCommit {
             ms_timestamp: ms_timestamp.clone(),
@@ -154,7 +154,7 @@ fn nest(depth: u64, signer_priv_key: [u8; 32]) -> TestCommit {
     let asset_right = Asset([2; 20]);
     let chain: u64 = 1;
     let desired_chain = U128(chain.into());
-    let ms_timestamp = U128(1);
+    let ms_timestamp = 1;
     let amount_left = U128(15);
     let amount_right = U128(10);
     let args_order_left = ArgsOrder {

@@ -63,12 +63,12 @@ enum S {
 }
 
 fn any_balance_no_zero(side: S) -> impl Strategy<Value = ArgsBalance> {
-    (1..u64::MAX, 1..u128::MAX, any::<u128>()).prop_map(move |(chain, amount, ms_timestamp)| {
+    (1..u64::MAX, 1..u128::MAX, any::<u32>()).prop_map(move |(chain, amount, ms_timestamp)| {
         ArgsBalance {
             asset: Asset(if side == S::Left { [1; 20] } else { [2; 20] }),
             chain,
             amount: U128(amount),
-            ms_timestamp: U128(ms_timestamp),
+            ms_timestamp,
         }
     })
 }
@@ -203,7 +203,7 @@ impl Arbitrary for Entry {
                             asset: Asset([0; 20]),
                             chain: 0,
                             amount: U128(bal_amount),
-                            ms_timestamp: U128(0),
+                            ms_timestamp: 0,
                         }),
                     )
                         .prop_map(|(test_balance, ord_args)| {
@@ -276,7 +276,7 @@ pub fn convert_test_balance<T: UserApplicative, S: SolverApplicative>(
                     amount,
                     ms_timestamp,
                 },
-        }) => Ok(user_app.balance(Address::from(asset.0), *chain, amount.0, ms_timestamp.0)),
+        }) => Ok(user_app.balance(Address::from(asset.0), *chain, amount.0, *ms_timestamp)),
         TestBalance::CommitLeftFilledToBalance(test_commit) => {
             let converted_commit = convert_test_commit(user_app, solver_app, test_commit)?;
             user_app.commit_left_filled_to_balance(converted_commit)
@@ -330,14 +330,14 @@ fn convert_test_commit<T: UserApplicative, S: SolverApplicative>(
             let left_converted = convert_test_order(user_app, solver_app, &commit_inside.left)?;
             let right_converted = convert_test_order(user_app, solver_app, &commit_inside.right)?;
             let solver_sig = solver_app.commit(
-                commit_inside.args.ms_timestamp.0,
+                commit_inside.args.ms_timestamp,
                 &left_converted,
                 &right_converted,
             )?;
             Ok(Applicative::Commit(
                 solver_sig,
                 ArgsCommit {
-                    ms_timestamp: commit_inside.args.ms_timestamp.clone(),
+                    ms_timestamp: commit_inside.args.ms_timestamp,
                 },
                 Box::new(left_converted),
                 Box::new(right_converted),

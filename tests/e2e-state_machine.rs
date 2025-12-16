@@ -40,8 +40,8 @@ proptest! {
         asset_right in any::<[u8; 20]>(),
         owner_left in any::<[u8; 20]>(),
         owner_right in any::<[u8; 20]>(),
-        l_ms_ts in any::<u128>(),
-        r_ms_ts in any::<u128>(),
+        l_ms_ts in any::<u32>(),
+        r_ms_ts in any::<u32>(),
         (l_amt, l_ask, r_amt, r_ask) in strat_fillable_sides()
     ) {
         storage_host::storage_clear();

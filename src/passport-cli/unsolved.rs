@@ -64,7 +64,7 @@ fn test_print_unsolved_recipe() {
                     "Alex".to_string(),
                     Box::new(RecipeUnsolved::Commit(
                         ArgsCommit {
-                            ms_timestamp: U128(0)
+                            ms_timestamp: 0
                         },
                         Box::new(RecipeUnsolved::Order(
                             "Alex".to_string(),
@@ -80,7 +80,7 @@ fn test_print_unsolved_recipe() {
                                     asset: asset_a.clone(),
                                     chain: 123,
                                     amount: U128(126508738668270503307039462831516350703),
-                                    ms_timestamp: U128(88720005195802133222596758088858595407),
+                                    ms_timestamp: 88720005,
                                 },
                             )),
                         )),
@@ -98,7 +98,7 @@ fn test_print_unsolved_recipe() {
                                     asset: asset_b,
                                     chain: 123,
                                     amount: U128(56961730660561917068169863894177734718),
-                                    ms_timestamp: U128(11835655638720700881890814969174336643),
+                                    ms_timestamp: 1183565563,
                                 },
                             )),
                         )),
