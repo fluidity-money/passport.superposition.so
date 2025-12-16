@@ -21,10 +21,6 @@ use alloc::boxed::Box;
 #[cfg(not(target_arch = "wasm32"))]
 use proptest::prelude::*;
 
-fn err_sig(from: ApplicativeLabel) -> Error {
-    Error::from(ErrorDiscriminant::BadSignatureCreation).app(from)
-}
-
 fn err_verify(from: ApplicativeLabel) -> Error {
     Error::from(ErrorDiscriminant::BadStrictVerify).app(from)
 }

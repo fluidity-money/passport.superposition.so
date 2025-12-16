@@ -11,7 +11,9 @@ use borsh::{BorshDeserialize, BorshSerialize};
 
 use alloc::{boxed::Box, vec::Vec};
 
-use crate::error::{Error, ErrorDiscriminant, ErrorInner};
+#[cfg(feature = "errors-extra-context")]
+use crate::error::ErrorInner;
+use crate::error::{Error, ErrorDiscriminant};
 
 pub type Address = [u8; 20];
 
