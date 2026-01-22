@@ -1,11 +1,17 @@
+use std::collections::HashMap;
+
 use libpassport::{add_liq::add_liq, applicative::*, call_eip20_extras, error::*};
 
-use bobcat_sdk::{entry::msg_sender, maths::U};
+use bobcat_sdk::{
+    entry::{impls::set_msg_sender, msg_sender},
+    maths::U,
+};
 
 use proptest::prelude::*;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct TestBalanceInside {
+    pub owner: Address,
     pub args: ArgsBalance,
 }
 
@@ -108,6 +114,7 @@ fn commit_leaf_with_matching_orders() -> impl Strategy<Value = TestCommit> {
                         any::<u128>(),
                         1..left_bal.amount.0,
                         any::<ArgsCommit>(),
+                        any::<Address>(),
                     )
                         .prop_map(
                             move |(
@@ -118,10 +125,12 @@ fn commit_leaf_with_matching_orders() -> impl Strategy<Value = TestCommit> {
                                 right_desired_chain,
                                 right_desired_amt,
                                 args,
+                                owner,
                             )| {
                                 let left_order = TestOrder::Order(Box::new(TestOrderInside {
                                     from: Box::new(TestBalance::Balance(TestBalanceInside {
                                         args: left_bal.clone(),
+                                        owner,
                                     })),
                                     args: ArgsOrder {
                                         from_amt: U128(left_from_amt),
@@ -134,6 +143,7 @@ fn commit_leaf_with_matching_orders() -> impl Strategy<Value = TestCommit> {
                                 let right_order = TestOrder::Order(Box::new(TestOrderInside {
                                     from: Box::new(TestBalance::Balance(TestBalanceInside {
                                         args: right_bal.clone(),
+                                        owner,
                                     })),
                                     args: ArgsOrder {
                                         from_amt: U128(right_from_amt),
@@ -160,105 +170,118 @@ impl Arbitrary for Entry {
     type Strategy = BoxedStrategy<Self>;
 
     fn arbitrary_with(_: Self::Parameters) -> Self::Strategy {
-        let bal_leaf = any_balance_no_zero(S::Left)
-            .prop_map(|args| TestBalance::Balance(TestBalanceInside { args }))
-            .boxed();
-        let ord_leaf = any_balance_no_zero(S::Left)
-            .prop_flat_map(move |bal_args| {
-                order_from_bal(bal_args.clone()).prop_map(move |ord_args| {
-                    TestOrder::Order(Box::new(TestOrderInside {
-                        from: Box::new(TestBalance::Balance(TestBalanceInside {
-                            args: bal_args.clone(),
-                        })),
-                        args: ord_args,
-                    }))
-                })
-            })
-            .boxed();
-        let commit_leaf = commit_leaf_with_matching_orders();
-        let commit_strat = commit_leaf.prop_recursive(4, 2, 4, |inner| {
-            (any::<ArgsCommit>(), inner.clone(), inner)
-                .prop_map(|(args, left_c, right_c)| {
-                    TestCommit::Commit(Box::new(TestCommitInside {
-                        args,
-                        left: Box::new(TestOrder::CommitLeftExcessToOrder(Box::new(left_c))),
-                        right: Box::new(TestOrder::CommitRightExcessToOrder(Box::new(right_c))),
-                    }))
-                })
-                .boxed()
-        });
-        let c_ord_l = commit_strat.clone();
-        let c_ord_r = commit_strat.clone();
-        let bal_strat_for_ord = bal_leaf.clone();
-        let ord_strat = ord_leaf.prop_recursive(4, 2, 4, move |inner| {
-            prop_oneof![
-                bal_strat_for_ord.clone().prop_flat_map(|test_balance| {
-                    let bal_amount = match &test_balance {
-                        TestBalance::Balance(TestBalanceInside { args }) => args.amount.0,
-                        _ => u128::MAX, // For other variants, allow any amount
-                    };
-                    (
-                        Just(test_balance),
-                        order_from_bal(ArgsBalance {
-                            asset: Asset([0; 20]),
-                            chain: 0,
-                            amount: U128(bal_amount),
-                            ms_timestamp: 0,
-                        }),
-                    )
-                        .prop_map(|(test_balance, ord_args)| {
+        any::<Address>()
+            .prop_flat_map(move |owner| {
+                let bal_leaf = any_balance_no_zero(S::Left)
+                    .prop_map(move |args| TestBalance::Balance(TestBalanceInside { args, owner }))
+                    .boxed();
+                let ord_leaf = any_balance_no_zero(S::Left)
+                    .prop_flat_map(move |bal_args| {
+                        order_from_bal(bal_args.clone()).prop_map(move |ord_args| {
                             TestOrder::Order(Box::new(TestOrderInside {
-                                from: Box::new(test_balance),
+                                from: Box::new(TestBalance::Balance(TestBalanceInside {
+                                    args: bal_args.clone(),
+                                    owner,
+                                })),
                                 args: ord_args,
                             }))
                         })
-                }),
-                c_ord_l
-                    .clone()
-                    .prop_map(|c| TestOrder::CommitLeftExcessToOrder(Box::new(c))),
-                c_ord_r
-                    .clone()
-                    .prop_map(|c| TestOrder::CommitRightExcessToOrder(Box::new(c))),
-                inner,
-            ]
+                    })
+                    .boxed();
+                let commit_leaf = commit_leaf_with_matching_orders();
+                let commit_strat = commit_leaf.prop_recursive(4, 2, 4, |inner| {
+                    (any::<ArgsCommit>(), inner.clone(), inner)
+                        .prop_map(|(args, left_c, right_c)| {
+                            TestCommit::Commit(Box::new(TestCommitInside {
+                                args,
+                                left: Box::new(TestOrder::CommitLeftExcessToOrder(Box::new(
+                                    left_c,
+                                ))),
+                                right: Box::new(TestOrder::CommitRightExcessToOrder(Box::new(
+                                    right_c,
+                                ))),
+                            }))
+                        })
+                        .boxed()
+                });
+                let c_ord_l = commit_strat.clone();
+                let c_ord_r = commit_strat.clone();
+                let bal_strat_for_ord = bal_leaf.clone();
+                let ord_strat = ord_leaf.prop_recursive(4, 2, 4, move |inner| {
+                    prop_oneof![
+                        bal_strat_for_ord.clone().prop_flat_map(|test_balance| {
+                            let bal_amount = match &test_balance {
+                                TestBalance::Balance(TestBalanceInside { args, owner }) => {
+                                    args.amount.0
+                                }
+                                _ => u128::MAX, // For other variants, allow any amount
+                            };
+                            (
+                                Just(test_balance),
+                                order_from_bal(ArgsBalance {
+                                    asset: Asset([0; 20]),
+                                    chain: 0,
+                                    amount: U128(bal_amount),
+                                    ms_timestamp: 0,
+                                }),
+                            )
+                                .prop_map(
+                                    |(test_balance, ord_args)| {
+                                        TestOrder::Order(Box::new(TestOrderInside {
+                                            from: Box::new(test_balance),
+                                            args: ord_args,
+                                        }))
+                                    },
+                                )
+                        }),
+                        c_ord_l
+                            .clone()
+                            .prop_map(|c| TestOrder::CommitLeftExcessToOrder(Box::new(c))),
+                        c_ord_r
+                            .clone()
+                            .prop_map(|c| TestOrder::CommitRightExcessToOrder(Box::new(c))),
+                        inner,
+                    ]
+                    .boxed()
+                });
+                let c_bal = commit_strat.clone();
+                let ord_for_cancel = ord_strat.clone();
+                let bal_strat = bal_leaf.prop_recursive(4, 2, 4, move |inner| {
+                    prop_oneof![
+                        c_bal
+                            .clone()
+                            .prop_map(|c| TestBalance::CommitLeftFilledToBalance(Box::new(c))),
+                        c_bal
+                            .clone()
+                            .prop_map(|c| TestBalance::CommitRightFilledToBalance(Box::new(c))),
+                        ord_for_cancel
+                            .clone()
+                            .prop_map(|o| TestBalance::Cancel(Box::new(o))),
+                        inner,
+                    ]
+                    .boxed()
+                });
+                prop_oneof![
+                    bal_strat.clone().prop_map(Entry::Balance),
+                    bal_strat.clone().prop_map(Entry::Withdraw),
+                    bal_strat.clone().prop_map(Entry::MakeOrder),
+                    ord_strat.clone().prop_map(Entry::Order),
+                    ord_strat.clone().prop_map(Entry::Cancel),
+                    commit_strat.clone().prop_map(Entry::Commit),
+                    commit_strat
+                        .clone()
+                        .prop_map(Entry::CommitLeftFilledToBalance),
+                    commit_strat
+                        .clone()
+                        .prop_map(Entry::CommitRightFilledToBalance),
+                    commit_strat
+                        .clone()
+                        .prop_map(Entry::CommitLeftExcessToOrder),
+                    commit_strat.prop_map(Entry::CommitRightExcessToOrder),
+                ]
+                .boxed()
+            })
             .boxed()
-        });
-        let c_bal = commit_strat.clone();
-        let ord_for_cancel = ord_strat.clone();
-        let bal_strat = bal_leaf.prop_recursive(4, 2, 4, move |inner| {
-            prop_oneof![
-                c_bal
-                    .clone()
-                    .prop_map(|c| TestBalance::CommitLeftFilledToBalance(Box::new(c))),
-                c_bal
-                    .clone()
-                    .prop_map(|c| TestBalance::CommitRightFilledToBalance(Box::new(c))),
-                ord_for_cancel
-                    .clone()
-                    .prop_map(|o| TestBalance::Cancel(Box::new(o))),
-                inner,
-            ]
-            .boxed()
-        });
-        prop_oneof![
-            bal_strat.clone().prop_map(Entry::Balance),
-            bal_strat.clone().prop_map(Entry::Withdraw),
-            bal_strat.clone().prop_map(Entry::MakeOrder),
-            ord_strat.clone().prop_map(Entry::Order),
-            ord_strat.clone().prop_map(Entry::Cancel),
-            commit_strat.clone().prop_map(Entry::Commit),
-            commit_strat
-                .clone()
-                .prop_map(Entry::CommitLeftFilledToBalance),
-            commit_strat
-                .clone()
-                .prop_map(Entry::CommitRightFilledToBalance),
-            commit_strat
-                .clone()
-                .prop_map(Entry::CommitLeftExcessToOrder),
-            commit_strat.prop_map(Entry::CommitRightExcessToOrder),
-        ]
-        .boxed()
     }
 }
 
@@ -266,6 +289,7 @@ pub fn convert_test_balance<T: UserApplicative, S: SolverApplicative>(
     user_app: &T,
     solver_app: &S,
     test_balance: &TestBalance,
+    owners: &HashMap<Address, &T>,
 ) -> Result<Applicative, Error> {
     match test_balance {
         TestBalance::Balance(TestBalanceInside {
@@ -276,17 +300,22 @@ pub fn convert_test_balance<T: UserApplicative, S: SolverApplicative>(
                     amount,
                     ms_timestamp,
                 },
-        }) => Ok(user_app.balance(Address::from(asset.0), *chain, amount.0, *ms_timestamp)),
+            owner,
+        }) => {
+            let user_app = owners.get(owner).unwrap_or(&user_app);
+            let app = user_app.balance(Address::from(asset.0), *chain, amount.0, *ms_timestamp);
+            Ok(app)
+        }
         TestBalance::CommitLeftFilledToBalance(test_commit) => {
-            let converted_commit = convert_test_commit(user_app, solver_app, test_commit)?;
+            let converted_commit = convert_test_commit(user_app, solver_app, test_commit, owners)?;
             user_app.commit_left_filled_to_balance(converted_commit)
         }
         TestBalance::CommitRightFilledToBalance(test_commit) => {
-            let converted_commit = convert_test_commit(user_app, solver_app, test_commit)?;
+            let converted_commit = convert_test_commit(user_app, solver_app, test_commit, owners)?;
             user_app.commit_right_filled_to_balance(converted_commit)
         }
         TestBalance::Cancel(test_order) => {
-            let converted_order = convert_test_order(user_app, solver_app, test_order)?;
+            let converted_order = convert_test_order(user_app, solver_app, test_order, owners)?;
             user_app.cancel(solver_app.cancel(&converted_order)?, converted_order)
         }
     }
@@ -296,10 +325,12 @@ pub fn convert_test_order<T: UserApplicative, S: SolverApplicative>(
     user_app: &T,
     solver_app: &S,
     test_order: &TestOrder,
+    owners: &HashMap<Address, &T>,
 ) -> Result<Applicative, Error> {
     match test_order {
         TestOrder::Order(order_inside) => {
-            let converted_from = convert_test_balance(user_app, solver_app, &order_inside.from)?;
+            let converted_from =
+                convert_test_balance(user_app, solver_app, &order_inside.from, owners)?;
             let args = &order_inside.args;
             user_app.order(
                 args.from_amt.0,
@@ -310,11 +341,11 @@ pub fn convert_test_order<T: UserApplicative, S: SolverApplicative>(
             )
         }
         TestOrder::CommitLeftExcessToOrder(test_commit) => {
-            let converted_commit = convert_test_commit(user_app, solver_app, test_commit)?;
+            let converted_commit = convert_test_commit(user_app, solver_app, test_commit, owners)?;
             user_app.commit_left_excess_to_order(converted_commit)
         }
         TestOrder::CommitRightExcessToOrder(test_commit) => {
-            let converted_commit = convert_test_commit(user_app, solver_app, test_commit)?;
+            let converted_commit = convert_test_commit(user_app, solver_app, test_commit, owners)?;
             user_app.commit_right_excess_to_order(converted_commit)
         }
     }
@@ -324,11 +355,14 @@ fn convert_test_commit<T: UserApplicative, S: SolverApplicative>(
     user_app: &T,
     solver_app: &S,
     test_commit: &TestCommit,
+    owners: &HashMap<Address, &T>,
 ) -> Result<Applicative, Error> {
     match test_commit {
         TestCommit::Commit(commit_inside) => {
-            let left_converted = convert_test_order(user_app, solver_app, &commit_inside.left)?;
-            let right_converted = convert_test_order(user_app, solver_app, &commit_inside.right)?;
+            let left_converted =
+                convert_test_order(user_app, solver_app, &commit_inside.left, owners)?;
+            let right_converted =
+                convert_test_order(user_app, solver_app, &commit_inside.right, owners)?;
             let solver_sig = solver_app.commit(
                 commit_inside.args.ms_timestamp,
                 &left_converted,
@@ -350,11 +384,15 @@ pub fn convert<T: UserApplicative, S: SolverApplicative>(
     user_app: &T,
     solver_app: &S,
     entry: &Entry,
+    owners: &HashMap<Address, &T>,
 ) -> Result<Applicative, Error> {
     match entry {
-        Entry::Balance(test_balance) => convert_test_balance(user_app, solver_app, test_balance),
+        Entry::Balance(test_balance) => {
+            convert_test_balance(user_app, solver_app, test_balance, owners)
+        }
         Entry::Withdraw(test_balance) => {
-            let converted_balance = convert_test_balance(user_app, solver_app, test_balance)?;
+            let converted_balance =
+                convert_test_balance(user_app, solver_app, test_balance, owners)?;
             let solver_sig = solver_app.withdraw(&converted_balance)?;
             user_app.withdraw(solver_sig, converted_balance, None)
         }
@@ -363,39 +401,42 @@ pub fn convert<T: UserApplicative, S: SolverApplicative>(
             Address::default(),
             0,
             0,
-            convert_test_balance(user_app, solver_app, test_balance)?,
+            convert_test_balance(user_app, solver_app, test_balance, owners)?,
         ),
-        Entry::Order(test_order) => convert_test_order(user_app, solver_app, test_order),
+        Entry::Order(test_order) => convert_test_order(user_app, solver_app, test_order, owners),
         Entry::Cancel(test_order) => {
-            let converted_order = convert_test_order(user_app, solver_app, test_order)?;
+            let converted_order = convert_test_order(user_app, solver_app, test_order, owners)?;
             let solver_sig = solver_app.cancel(&converted_order)?;
             user_app.cancel(solver_sig, converted_order)
         }
-        Entry::Commit(test_commit) => convert_test_commit(user_app, solver_app, test_commit),
+        Entry::Commit(test_commit) => {
+            convert_test_commit(user_app, solver_app, test_commit, owners)
+        }
         Entry::CommitLeftFilledToBalance(test_commit) => {
-            let converted_commit = convert_test_commit(user_app, solver_app, test_commit)?;
+            let converted_commit = convert_test_commit(user_app, solver_app, test_commit, owners)?;
             user_app.commit_left_filled_to_balance(converted_commit)
         }
         Entry::CommitRightFilledToBalance(test_commit) => {
-            let converted_commit = convert_test_commit(user_app, solver_app, test_commit)?;
+            let converted_commit = convert_test_commit(user_app, solver_app, test_commit, owners)?;
             user_app.commit_right_filled_to_balance(converted_commit)
         }
         Entry::CommitLeftExcessToOrder(test_commit) => {
-            let converted_commit = convert_test_commit(user_app, solver_app, test_commit)?;
+            let converted_commit = convert_test_commit(user_app, solver_app, test_commit, owners)?;
             user_app.commit_left_excess_to_order(converted_commit)
         }
         Entry::CommitRightExcessToOrder(test_commit) => {
-            let converted_commit = convert_test_commit(user_app, solver_app, test_commit)?;
+            let converted_commit = convert_test_commit(user_app, solver_app, test_commit, owners)?;
             user_app.commit_right_excess_to_order(converted_commit)
         }
     }
 }
 
-fn starting_amts_balance(v: &mut Vec<(Address, u128)>, b: &TestBalance) {
+fn starting_amts_balance(v: &mut Vec<(Address, u128, Address)>, b: &TestBalance) {
     match b {
         TestBalance::Balance(TestBalanceInside {
             args: ArgsBalance { asset, amount, .. },
-        }) => v.push((Address::from(asset.0), amount.0)),
+            owner,
+        }) => v.push((Address::from(asset.0), amount.0, *owner)),
         TestBalance::CommitLeftFilledToBalance(c) | TestBalance::CommitRightFilledToBalance(c) => {
             starting_amts_commit(v, &*c)
         }
@@ -403,7 +444,7 @@ fn starting_amts_balance(v: &mut Vec<(Address, u128)>, b: &TestBalance) {
     }
 }
 
-fn starting_amts_order(v: &mut Vec<(Address, u128)>, o: &TestOrder) {
+fn starting_amts_order(v: &mut Vec<(Address, u128, Address)>, o: &TestOrder) {
     match o {
         TestOrder::Order(o) => starting_amts_balance(v, &*o.from),
         TestOrder::CommitLeftExcessToOrder(c) | TestOrder::CommitRightExcessToOrder(c) => {
@@ -412,12 +453,12 @@ fn starting_amts_order(v: &mut Vec<(Address, u128)>, o: &TestOrder) {
     }
 }
 
-fn starting_amts_commit(v: &mut Vec<(Address, u128)>, TestCommit::Commit(c): &TestCommit) {
+fn starting_amts_commit(v: &mut Vec<(Address, u128, Address)>, TestCommit::Commit(c): &TestCommit) {
     starting_amts_order(v, &*c.left);
     starting_amts_order(v, &*c.right);
 }
 
-fn _starting_amts(v: &mut Vec<(Address, u128)>, e: &Entry) {
+fn _starting_amts(v: &mut Vec<(Address, u128, Address)>, e: &Entry) {
     match e {
         Entry::Balance(b) | Entry::Withdraw(b) | Entry::MakeOrder(b) => starting_amts_balance(v, b),
         Entry::Order(o) | Entry::Cancel(o) => starting_amts_order(v, o),
@@ -429,17 +470,26 @@ fn _starting_amts(v: &mut Vec<(Address, u128)>, e: &Entry) {
     }
 }
 
-pub fn starting_amts(e: &Entry) -> Vec<(Address, u128)> {
+pub fn starting_amts(e: &Entry) -> Vec<(Address, u128, Address)> {
     let mut v = Vec::new();
     _starting_amts(&mut v, e);
     v
 }
 
-pub fn apply_balances(v: Vec<(Address, u128)>) -> Result<(), Error> {
-    for (asset, amt) in v {
+pub fn apply_balances(v: Vec<(Address, u128, Address)>) -> Result<(), Error> {
+    for (asset, amt, _) in v {
         let sender = msg_sender();
         call_eip20_extras::give(sender.into(), amt.into());
         add_liq(asset, sender, amt, U::ZERO, 0, U::ZERO, U::ZERO)?;
+    }
+    Ok(())
+}
+
+pub fn apply_balances_owner(v: Vec<(Address, u128, Address)>) -> Result<(), Error> {
+    for (asset, amt, owner) in v {
+        call_eip20_extras::give(owner.into(), amt.into());
+        set_msg_sender(owner);
+        add_liq(asset, owner, amt, U::ZERO, 0, U::ZERO, U::ZERO)?;
     }
     Ok(())
 }
