@@ -1,4 +1,4 @@
-use borsh::{BorshSerialize, BorshDeserialize};
+use borsh::{BorshDeserialize, BorshSerialize};
 
 use alloc::boxed::Box;
 

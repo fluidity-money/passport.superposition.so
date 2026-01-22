@@ -53,7 +53,10 @@ pub use crate::{
     network::Network,
     ops::{OpAdmin, OpSetter, OpSolver, OpVault},
 };
-use crate::{ops::CompressedOpSolver, view::view_withdrawable};
+use crate::{
+    ops::CompressedOpSolver,
+    view::{view_owner, view_withdrawable},
+};
 
 use immutables::pick_solver_key;
 
@@ -151,6 +154,7 @@ pub fn entry_setter(len: usize) -> usize {
         let r = match OpSetter::deserialize(args).unwrap() {
             OpSetter::Dummy => DONE_UNIT,
             OpSetter::ViewWithdrawable(owner, asset) => view_withdrawable(&owner, &asset),
+            OpSetter::ViewOwner(id) => view_owner(&id),
             OpSetter::Onboard(
                 key,
                 sig,
