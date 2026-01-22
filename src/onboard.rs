@@ -17,7 +17,7 @@ use bobcat_sdk::{
     prelude::chain_id,
 };
 
-const TOPIC_ONBOARD: U = const_keccak256(b"Onboard(address,uint256)");
+const TOPIC_ONBOARD: U = const_keccak256(b"Onboard(address,uint64)");
 
 pub fn onboard(
     key: [u8; 32],
