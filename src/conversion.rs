@@ -143,7 +143,7 @@ fn serialise_inplace<T: BorshSerialize, const CAP: usize>(x: &T) -> Scratch<CAP>
     b
 }
 
-fn digest_inplace<T: BorshSerialize, const CAP: usize>(x: &T) -> [u8; 64] {
+pub fn digest_inplace<T: BorshSerialize, const CAP: usize>(x: &T) -> [u8; 64] {
     Sha512::default()
         .chain_update(serialise_inplace::<_, CAP>(x))
         .finalize()
@@ -478,6 +478,7 @@ fn validate_withdraw(
     // concatenation here.
     let bal = validate_wrapped_balance(solver_key, label(ap), accounts, ap)?;
     let bal_hash = get_bal_hash(&bal);
+    // ID of the original owner of the balance
     let owner_id = U::from(accounts[*owner_i as usize]);
     let o = storage::find_ed25519_key(&owner_id)?;
     let d = check_sig_two(
