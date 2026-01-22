@@ -27,14 +27,14 @@ pub fn err_bad_balance_from_order() -> Error {
 
 pub fn commit_left_owner(c: &Commit) -> Address {
     match c {
-        Commit::Inline(_, o, _, _) => order_owner(o),
+        Commit::Inline(_, l, _, _) => order_owner(l),
         Commit::Onchain(h) => storage::hash_owner_l::get_hash(h).into(),
     }
 }
 
 pub fn commit_right_owner(c: &Commit) -> Address {
     match c {
-        Commit::Inline(_, _, o, _) => order_owner(o),
+        Commit::Inline(_, _, r, _) => order_owner(r),
         Commit::Onchain(h) => storage::hash_owner_r::get_hash(h).into(),
     }
 }
@@ -273,7 +273,9 @@ pub fn balance_inline(b: &Balance) -> R<()> {
     };
     let h: [u8; 32] = h[..32].try_into().unwrap();
     storage::interim_amt::add(&owner.into(), &asset.into(), &U(h), &U::from(amt));
+    storage::withdrawable::sub(&owner.into(), &asset.into(), &U::from(amt));
     storage::hash_asset_l::set(&U(h), &asset.into());
+    storage::hash_owner_l::set(&U(h), &owner.into());
     Ok(())
 }
 
@@ -408,6 +410,7 @@ pub fn order(o: &Order) -> R<()> {
     }
     storage::hash_asset_l::set(&h, &from_asset.into());
     storage::hash_asset_r::set(&h, &desired_asset.into());
+    storage::hash_owner_l::set(&h, &owner.into());
     Ok(())
 }
 
@@ -418,7 +421,6 @@ pub fn withdraw(w: &Withdraw) -> R<()> {
     let Withdraw::Inline(b, _) = w;
     let hash = U(balance_hash(b)[..32].try_into().unwrap());
     balance(b)?;
-    storage::withdrawable::sub(&owner.into(), &asset.into(), &U::from(amt));
     storage::interim_amt::sub(&owner.into(), &asset.into(), &hash, &U::from(amt));
     call_eip20_extras::transfer(asset, owner, &U::from(amt))
 }
