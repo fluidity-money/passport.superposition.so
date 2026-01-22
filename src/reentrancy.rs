@@ -8,6 +8,9 @@ use bobcat_sdk::{
     storage::{flush_cache, storage_load},
 };
 
+#[cfg(not(target_arch = "wasm32"))]
+use crate::apply::apply;
+
 use alloc::vec::Vec;
 
 pub const SLOT_APPLY: U = const_slot_off_curve(b"passport.superposition.impl.apply");
@@ -21,14 +24,13 @@ pub fn begin_apply(s: StateMachine) -> (usize, Vec<u8>) {
         u64::MAX,
         0,
     );
-    if !rc {
-        (1, v)
-    } else {
-        (0, v)
-    }
+    if !rc { (1, v) } else { (0, v) }
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-pub fn begin_apply(_s: StateMachine) -> (usize, Vec<u8>) {
-    todo!()
+pub fn begin_apply(s: StateMachine) -> (usize, Vec<u8>) {
+    match apply(s) {
+        Ok(()) => (0, Vec::new()),
+        Err(e) => (1, e.into()),
+    }
 }
