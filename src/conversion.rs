@@ -221,7 +221,10 @@ fn validate_balance(
         &[],
     )?;
     let h = d.finalize().into();
-    storage::ensure_hash_unseen(&h).ok_or(Error::from(ErrorDiscriminant::HashAlreadyOnchain))?;
+    storage::hash_unseen(&h).ok_or(Error {
+        typ: ErrorDiscriminant::HashAlreadyOnchain,
+        hash: Some(h),
+    })?;
     if args.amount.0 == 0 {
         return Err(Error::from(ErrorDiscriminant::ZeroBalanceAmount));
     }

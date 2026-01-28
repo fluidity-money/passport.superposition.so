@@ -172,7 +172,6 @@ pub struct ErrorInner {
     pub app: Option<ApplicativeLabel>,
     pub side: Option<u8>,
     pub app_to: Option<ApplicativeLabel>,
-    pub hash: Option<[u8; 64]>,
     pub asset_left: Option<String>,
     pub asset_right: Option<String>,
     pub desired_left: Option<String>,
@@ -188,7 +187,6 @@ impl Default for ErrorInner {
             app: None,
             side: None,
             app_to: None,
-            hash: None,
             asset_left: None,
             asset_right: None,
             desired_left: None,
@@ -200,6 +198,7 @@ impl Default for ErrorInner {
 #[derive(PartialEq, Clone, BorshSerialize, BorshDeserialize)]
 pub struct Error {
     pub typ: ErrorDiscriminant,
+    pub hash: Option<[u8; 64]>,
     #[cfg(feature = "errors-extra-context")]
     pub inner: Box<ErrorInner>,
 }
