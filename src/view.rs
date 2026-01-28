@@ -1,7 +1,7 @@
 use crate::{
     R,
     error::Res,
-    storage::{ed25519_owners, withdrawable},
+    storage::{ed25519_owners, hash_owner_l, withdrawable},
 };
 use bobcat_sdk::maths::U;
 
@@ -11,4 +11,8 @@ pub fn view_withdrawable(owner: &U, asset: &U) -> R {
 
 pub fn view_owner(id: &U) -> R {
     Ok(Res::DoneAddress(ed25519_owners::get(&id).into()))
+}
+
+pub fn view_hash_owner(hash: &U) -> R {
+    Ok(Res::DoneAddress(hash_owner_l::get(&hash).into()))
 }

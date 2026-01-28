@@ -112,6 +112,9 @@ pub enum OpSetter {
     ViewOwner(
         U, // Index
     ),
+    ViewHashOwner(
+        U, // Hash
+    ),
 }
 
 #[derive(BorshDeserialize, BorshSerialize, Clone, PartialEq, Debug)]
