@@ -6,6 +6,11 @@ use std::collections::HashMap;
 
 #[cfg(feature = "std")]
 use serde::{Deserialize as SerdeDeserialize, Serialize as SerdeSerialize};
+#[cfg(feature = "std")]
+use serde_big_array::BigArray;
+
+#[cfg(feature = "std")]
+use crate::conversion::digest_inplace;
 
 use borsh::{BorshDeserialize, BorshSerialize};
 
@@ -14,7 +19,7 @@ use alloc::{boxed::Box, vec::Vec};
 #[cfg(feature = "errors-extra-context")]
 use crate::error::ErrorInner;
 use crate::{
-    conversion::digest_inplace,
+    conversion::{self},
     error::{Error, ErrorDiscriminant},
 };
 
@@ -343,6 +348,8 @@ pub struct DppmBurnArgs;
 #[cfg_attr(feature = "std", derive(SerdeDeserialize, SerdeSerialize))]
 pub enum CompressedApplicative {
     Balance(UserSig, CompressedArgsBalance),
+    #[cfg_attr(feature = "std", serde(with = "BigArray"))]
+    BalanceOnchain(conversion::Hash),
     Withdraw(
         SolverSig,
         UserSig,
@@ -350,6 +357,8 @@ pub enum CompressedApplicative {
         Box<CompressedApplicative>,
     ),
     Order(UserSig, CompressedArgsOrder, Box<CompressedApplicative>),
+    #[cfg_attr(feature = "std", serde(with = "BigArray"))]
+    OrderOnchain(conversion::Hash),
     Cancel(SolverSig, UserSig, Box<CompressedApplicative>),
     Commit(
         SolverSig,
@@ -357,6 +366,8 @@ pub enum CompressedApplicative {
         Box<CompressedApplicative>,
         Box<CompressedApplicative>,
     ),
+    #[cfg_attr(feature = "std", serde(with = "BigArray"))]
+    CommitOnchain(conversion::Hash),
     CommitLeftFilledToBalance(Box<CompressedApplicative>),
     CommitRightFilledToBalance(Box<CompressedApplicative>),
     CommitLeftExcessToOrder(Box<CompressedApplicative>),
@@ -623,6 +634,8 @@ impl CompressedApplicative {
 pub enum Applicative {
     /// Starting point of the conversion to the other types.
     Balance(UserSig, ArgsBalance),
+    #[cfg_attr(feature = "std", serde(with = "BigArray"))]
+    BalanceOnchain(conversion::Hash),
     /// Withdraw a Balance from the system. The solver signature is needed
     /// alongside the user's signature to be able to testify there are no
     /// unspent UTXOs. The signature only needs to be the signed value
@@ -635,6 +648,8 @@ pub enum Applicative {
     /// and the hash from the balance.
     /// (Balance|CommitLeftFilledToBalance|CommitRightFilledToBalance|Join)
     Order(UserSig, ArgsOrder, Box<Applicative>),
+    #[cfg_attr(feature = "std", serde(with = "BigArray"))]
+    OrderOnchain(conversion::Hash),
     /// Cancel an order using a user's signature as well as the matching
     /// engine's signature.
     Cancel(SolverSig, UserSig, Box<Applicative>),
@@ -644,6 +659,8 @@ pub enum Applicative {
     /// matching engine's signature.
     // Args * Order * Order => Commit
     Commit(SolverSig, ArgsCommit, Box<Applicative>, Box<Applicative>),
+    #[cfg_attr(feature = "std", serde(with = "BigArray"))]
+    CommitOnchain(conversion::Hash),
     // Convert the left side of a Commit to a balance, to be reused.
     CommitLeftFilledToBalance(Box<Applicative>),
     // Commit the right side of the Commit results to a balance.
@@ -661,10 +678,13 @@ impl From<&Applicative> for ApplicativeLabel {
     fn from(x: &Applicative) -> Self {
         match x {
             Applicative::Balance(_, _) => ApplicativeLabel::Balance,
+            Applicative::BalanceOnchain(_) => ApplicativeLabel::Balance,
             Applicative::Withdraw(_, _, _, _) => ApplicativeLabel::Withdraw,
             Applicative::Order(_, _, _) => ApplicativeLabel::Order,
+            Applicative::OrderOnchain(_) => ApplicativeLabel::Order,
             Applicative::Cancel(_, _, _) => ApplicativeLabel::Cancel,
             Applicative::Commit(_, _, _, _) => ApplicativeLabel::Commit,
+            Applicative::CommitOnchain(_) => ApplicativeLabel::Commit,
             Applicative::CommitLeftFilledToBalance(_) => {
                 ApplicativeLabel::CommitLeftFilledToBalance
             }

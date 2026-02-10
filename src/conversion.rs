@@ -326,6 +326,7 @@ fn validate_wrapped_balance(
 ) -> Result<state_machine::Balance, Error> {
     match ap {
         Applicative::Balance(sig, args) => validate_balance(accounts, sig, args),
+        Applicative::BalanceOnchain(hash) => validate_onchain_balance(hash),
         Applicative::CommitLeftFilledToBalance(ap) => {
             validate_commit_left_filled_to_bal(solver_key, accounts, ap)
         }
@@ -452,6 +453,7 @@ fn validate_wrapped_order(
 ) -> Result<state_machine::Order, Error> {
     match ap {
         Applicative::Order(sig, args, ap) => validate_order(solver_key, accounts, sig, args, ap),
+        Applicative::OrderOnchain(hash) => validate_onchain_order(hash),
         Applicative::CommitLeftExcessToOrder(ap) => {
             validate_commit_left_excess_to_order(solver_key, accounts, ap)
         }
@@ -534,6 +536,7 @@ fn validate_wrapped_commit(
         Applicative::Commit(sig, args, left, right) => {
             validate_commit(solver_key, accounts, sig, args, left, right)
         }
+        Applicative::CommitOnchain(hash) => validate_onchain_commit(hash),
         _ => Err(err_bad_ap_transition_validate(from, ap)),
     }
 }
@@ -650,18 +653,25 @@ pub fn validate(
         Applicative::Balance(sig, args) => Ok(StateMachine::Balance(validate_balance(
             accounts, sig, args,
         )?)),
+        Applicative::BalanceOnchain(hash) => {
+            Ok(StateMachine::Balance(validate_onchain_balance(hash)?))
+        }
         Applicative::Withdraw(solver_sig, user_sig, _, ap) => Ok(StateMachine::Withdraw(
             validate_withdraw(solver_key, accounts, solver_sig, user_sig, ap)?,
         )),
         Applicative::Order(user_sig, args, ap) => Ok(StateMachine::Order(validate_order(
             solver_key, accounts, user_sig, args, ap,
         )?)),
+        Applicative::OrderOnchain(hash) => Ok(StateMachine::Order(validate_onchain_order(hash)?)),
         Applicative::Cancel(solver_sig, user_sig, ap) => Ok(StateMachine::Balance(
             validate_cancel(solver_key, accounts, solver_sig, user_sig, ap)?,
         )),
         Applicative::Commit(solver_sig, args, ap1, ap2) => Ok(StateMachine::Commit(
             validate_commit(solver_key, accounts, solver_sig, args, ap1, ap2)?,
         )),
+        Applicative::CommitOnchain(hash) => {
+            Ok(StateMachine::Commit(validate_onchain_commit(hash)?))
+        }
         Applicative::CommitLeftFilledToBalance(ap) => Ok(StateMachine::Balance(
             validate_commit_left_filled_to_bal(solver_key, accounts, ap)?,
         )),
@@ -694,6 +704,7 @@ pub fn digest_wrapped_balance(from: ApplicativeLabel, ap: &Applicative) -> Resul
         Applicative::Balance(_, args) => {
             Ok(digest_inplace::<_, { size_of::<ArgsBalance>() }>(args))
         }
+        Applicative::BalanceOnchain(h) => Ok(*h),
         Applicative::CommitLeftFilledToBalance(ap) => {
             let commit_hash =
                 digest_wrapped_commit(ApplicativeLabel::CommitLeftFilledToBalance, ap)?;
@@ -728,6 +739,7 @@ pub fn digest_order(args: &ArgsOrder, ap: &Applicative) -> Result<[u8; 64], Erro
 fn digest_wrapped_order(from: ApplicativeLabel, ap: &Applicative) -> Result<[u8; 64], Error> {
     match ap {
         Applicative::Order(_, args, ap) => digest_order(args, ap),
+        Applicative::OrderOnchain(h) => Ok(*h),
         Applicative::CommitLeftExcessToOrder(ap) => {
             let commit_hash = digest_wrapped_commit(ApplicativeLabel::CommitLeftExcessToOrder, ap)?;
             Ok(chain_digests(
@@ -748,16 +760,16 @@ fn digest_wrapped_order(from: ApplicativeLabel, ap: &Applicative) -> Result<[u8;
 }
 
 fn digest_wrapped_commit(from: ApplicativeLabel, ap: &Applicative) -> Result<[u8; 64], Error> {
-    if let Applicative::Commit(_, args, left, right) = ap {
-        Ok(chain_digests(
+    match ap {
+        Applicative::Commit(_, args, left, right) => Ok(chain_digests(
             &digest_inplace::<_, { size_of::<ArgsCommit>() }>(args),
             &chain_digests(
                 &digest_wrapped_order(from, left)?,
                 &digest_wrapped_order(from, right)?,
             ),
-        ))
-    } else {
-        Err(err_bad_ap_transition_digest(from, ap))
+        )),
+        Applicative::CommitOnchain(h) => Ok(*h),
+        _ => Err(err_bad_ap_transition_digest(from, ap)),
     }
 }
 
