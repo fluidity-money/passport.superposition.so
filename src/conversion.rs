@@ -166,7 +166,7 @@ fn err_bad_ap_transition_validate(from: ApplicativeLabel, to: &Applicative) -> E
         .app_to(label(to))
 }
 
-fn chain_digests(x: &[u8], y: &[u8]) -> [u8; 64] {
+pub fn chain_digests(x: &[u8], y: &[u8]) -> [u8; 64] {
     Sha512::default()
         .chain_update(x)
         .chain_update(y)
@@ -221,10 +221,14 @@ fn validate_balance(
         &[],
     )?;
     let h = d.finalize().into();
-    storage::hash_unseen(&h).ok_or(Error {
-        typ: ErrorDiscriminant::HashAlreadyOnchain,
-        hash: Some(h),
-    })?;
+    storage::hash_unseen(&h).ok_or(
+        Error {
+            typ: ErrorDiscriminant::HashAlreadyOnchain,
+            hash: Some(h),
+            ..Default::default()
+        }
+        .ctx(ApplyContext::ApplyBalanceInline),
+    )?;
     if args.amount.0 == 0 {
         return Err(Error::from(ErrorDiscriminant::ZeroBalanceAmount));
     }
@@ -239,6 +243,17 @@ fn validate_balance(
         },
         h,
     ))
+}
+
+fn validate_onchain_balance(hash: &Hash) -> Result<state_machine::Balance, Error> {
+    #[cfg(feature = "tracing")]
+    dbg!("validating onchain balance");
+    if storage::hash_unseen(hash).is_some() {
+        return Err(Error::from(ErrorDiscriminant::HashNotOnchain));
+    };
+    #[cfg(feature = "tracing")]
+    dbg!("done with onchain balance");
+    Ok(state_machine::Balance::Onchain(*hash))
 }
 
 fn validate_commit_left_filled_to_bal(
@@ -256,7 +271,14 @@ fn validate_commit_left_filled_to_bal(
     )?;
     let c_hash = get_commit_hash(&commit);
     let h = chain_digests(&[Nonce::CommitLeftFilledToBalance.into()], &c_hash);
-    storage::ensure_hash_unseen(&h).ok_or(Error::from(ErrorDiscriminant::HashAlreadyOnchain))?;
+    storage::hash_unseen(&h).ok_or(
+        Error {
+            typ: ErrorDiscriminant::HashAlreadyOnchain,
+            hash: Some(h),
+            ..Default::default()
+        }
+        .ctx(ApplyContext::ApplyCommitLeftAmtFilled),
+    )?;
     #[cfg(feature = "tracing")]
     dbg!("done with commit left filled to bal");
     Ok(state_machine::Balance::CommitLeftFilledToBal(
@@ -280,7 +302,14 @@ fn validate_commit_right_filled_to_bal(
     )?;
     let c_hash = get_commit_hash(&commit);
     let h = chain_digests(&[Nonce::CommitRightFilledToBalance.into()], &c_hash);
-    storage::ensure_hash_unseen(&h).ok_or(Error::from(ErrorDiscriminant::HashAlreadyOnchain))?;
+    storage::hash_unseen(&h).ok_or(
+        Error {
+            typ: ErrorDiscriminant::HashAlreadyOnchain,
+            hash: Some(h),
+            ..Default::default()
+        }
+        .ctx(ApplyContext::ApplyCommitRightAmtFilled),
+    )?;
     #[cfg(feature = "tracing")]
     dbg!("done with commit right filled to bal");
     Ok(state_machine::Balance::CommitRightFilledToBal(
@@ -330,6 +359,15 @@ fn validate_order(
         &digest_inplace::<_, { size_of::<ArgsOrder>() }>(args),
         &bal_hash,
     )?;
+    let h = d.finalize().into();
+    storage::hash_unseen(&h).ok_or(
+        Error {
+            typ: ErrorDiscriminant::HashAlreadyOnchain,
+            hash: Some(h),
+            ..Default::default()
+        }
+        .ctx(ApplyContext::ApplyOrder),
+    )?;
     #[cfg(feature = "tracing")]
     dbg!("done with order");
     Ok(state_machine::Order::Inline(
@@ -341,8 +379,19 @@ fn validate_order(
             ord_partial_fill_okay: true, // TODO
         },
         Box::new(bal),
-        d.finalize().into(),
+        h,
     ))
+}
+
+fn validate_onchain_order(hash: &Hash) -> Result<state_machine::Order, Error> {
+    #[cfg(feature = "tracing")]
+    dbg!("validating onchain order");
+    if storage::hash_unseen(&hash).is_some() {
+        return Err(Error::from(ErrorDiscriminant::HashNotOnchain));
+    };
+    #[cfg(feature = "tracing")]
+    dbg!("done with onchain order");
+    Ok(state_machine::Order::Onchain(*hash))
 }
 
 fn validate_commit_left_excess_to_order(
@@ -358,7 +407,10 @@ fn validate_commit_left_excess_to_order(
     )?;
     let c_hash = get_commit_hash(&commit);
     let hash = chain_digests(&[Nonce::CommitLeftExcessToOrder.into()], &c_hash);
-    storage::ensure_hash_unseen(&hash).ok_or(Error::from(ErrorDiscriminant::HashAlreadyOnchain))?;
+    storage::hash_unseen(&hash).ok_or(
+        Error::from(ErrorDiscriminant::HashAlreadyOnchain)
+            .ctx(ApplyContext::ApplyCommitLeftAmtFilled),
+    )?;
     #[cfg(feature = "tracing")]
     dbg!("done with commit left excess to order");
     Ok(state_machine::Order::CommitLeftExcessToOrder(
@@ -380,7 +432,10 @@ fn validate_commit_right_excess_to_order(
     )?;
     let c_hash = get_commit_hash(&commit);
     let hash = chain_digests(&[Nonce::CommitRightExcessToOrder.into()], &c_hash);
-    storage::ensure_hash_unseen(&hash).ok_or(Error::from(ErrorDiscriminant::HashAlreadyOnchain))?;
+    storage::hash_unseen(&hash).ok_or(
+        Error::from(ErrorDiscriminant::HashAlreadyOnchain)
+            .ctx(ApplyContext::ApplyCommitRightAmtFilled),
+    )?;
     #[cfg(feature = "tracing")]
     dbg!("done with commit right excess to order");
     Ok(state_machine::Order::CommitRightExcessToOrder(
@@ -432,6 +487,15 @@ fn validate_commit(
         &digest_inplace::<_, { size_of::<ArgsCommit>() }>(args),
         &chain_digests(&left_hash, &right_hash),
     )?;
+    let h = d.finalize().into();
+    storage::hash_unseen(&h).ok_or(
+        Error {
+            typ: ErrorDiscriminant::HashAlreadyOnchain,
+            hash: Some(h),
+            ..Default::default()
+        }
+        .ctx(ApplyContext::ApplyCommit),
+    )?;
     #[cfg(feature = "tracing")]
     dbg!("done with commit");
     Ok(state_machine::Commit::Inline(
@@ -440,8 +504,19 @@ fn validate_commit(
         },
         Box::new(left_order),
         Box::new(right_order),
-        d.finalize().into(),
+        h,
     ))
+}
+
+fn validate_onchain_commit(hash: &Hash) -> Result<state_machine::Commit, Error> {
+    #[cfg(feature = "tracing")]
+    dbg!("validating onchain commit");
+    if storage::hash_unseen(&hash).is_some() {
+        return Err(Error::from(ErrorDiscriminant::HashNotOnchain));
+    };
+    #[cfg(feature = "tracing")]
+    dbg!("done with onchain commit");
+    Ok(state_machine::Commit::Onchain(*hash))
 }
 
 /// Validate the interior commit. Does not contain any
@@ -481,7 +556,7 @@ fn validate_withdraw(
     // concatenation here.
     let bal = validate_wrapped_balance(solver_key, label(ap), accounts, ap)?;
     let bal_hash = get_bal_hash(&bal);
-    // ID of the original owner of the balance
+    // ID of the owner of the wrapped balance (i.e. the withdrawer)
     let owner_id = U::from(accounts[*owner_i as usize]);
     let o = storage::find_ed25519_key(&owner_id)?;
     let d = check_sig_two(

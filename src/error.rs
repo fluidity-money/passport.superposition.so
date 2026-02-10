@@ -145,6 +145,9 @@ pub enum ErrorDiscriminant {
     /// The hash was already seen onchain!
     HashAlreadyOnchain,
 
+    /// The hash was not onchain even though it should have been.
+    HashNotOnchain,
+
     /// The token has no code!
     TokenNoCode,
 
@@ -231,6 +234,7 @@ impl<'a> arbitrary::Arbitrary<'a> for Error {
     fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
         Ok(Error {
             typ: ErrorDiscriminant::arbitrary(u)?,
+            hash: None,
             #[cfg(feature = "errors-extra-context")]
             inner: Box::new(ErrorInner {
                 context: None,
@@ -239,7 +243,6 @@ impl<'a> arbitrary::Arbitrary<'a> for Error {
                 app: None,
                 side: None,
                 app_to: None,
-                hash: None,
                 asset_left: None,
                 asset_right: None,
                 desired_left: None,
@@ -317,15 +320,6 @@ impl Error {
     }
 
     #[allow(unused_mut)]
-    pub fn hash(mut self, _h: [u8; 64]) -> Self {
-        #[cfg(feature = "errors-extra-context")]
-        {
-            self.inner.hash = Some(_h);
-        }
-        self
-    }
-
-    #[allow(unused_mut)]
     pub fn asset_left(mut self, _a: Address) -> Self {
         #[cfg(feature = "errors-extra-context")]
         {
@@ -366,6 +360,7 @@ impl Default for Error {
     fn default() -> Self {
         Error {
             typ: ErrorDiscriminant::Unknown,
+            hash: None,
             #[cfg(feature = "errors-extra-context")]
             inner: Box::new(ErrorInner::default()),
         }
