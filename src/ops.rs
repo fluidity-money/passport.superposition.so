@@ -112,7 +112,10 @@ pub enum OpSetter {
     ViewOwner(
         U, // Index
     ),
-    ViewHashOwner(
+    ViewHashOwnerLeft(
+        U, // Hash
+    ),
+    ViewHashOwnerRight(
         U, // Hash
     ),
 }

@@ -55,7 +55,7 @@ pub use crate::{
 };
 use crate::{
     ops::CompressedOpSolver,
-    view::{view_hash_owner, view_owner, view_withdrawable},
+    view::{view_hash_owner_l, view_hash_owner_r, view_owner, view_withdrawable},
 };
 
 use immutables::pick_solver_key;
@@ -155,7 +155,8 @@ pub fn entry_setter(len: usize) -> usize {
             OpSetter::Dummy => DONE_UNIT,
             OpSetter::ViewWithdrawable(owner, asset) => view_withdrawable(&owner, &asset),
             OpSetter::ViewOwner(id) => view_owner(&id),
-            OpSetter::ViewHashOwner(hash) => view_hash_owner(&hash),
+            OpSetter::ViewHashOwnerLeft(hash) => view_hash_owner_l(&hash),
+            OpSetter::ViewHashOwnerRight(hash) => view_hash_owner_r(&hash),
             OpSetter::Onboard(
                 key,
                 sig,
