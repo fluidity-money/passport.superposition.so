@@ -381,148 +381,6 @@ pub enum CompressedApplicative {
 
 pub type BalanceHash = [u8; 64];
 impl CompressedApplicative {
-    #[cfg(feature = "std")]
-    fn raw_compress(
-        assets: &mut Vec<Asset>,
-        owners: &mut Vec<u64>,
-        asset_indices: &mut HashMap<Asset, u8>,
-        owner_indices: &mut HashMap<u64, u8>,
-        hashes: &HashMap<BalanceHash, u64>,
-        appl: Applicative,
-    ) -> Self {
-        match appl {
-            Applicative::Balance(user_sig, args) => {
-                let ArgsBalance {
-                    ref asset,
-                    chain,
-                    ref amount,
-                    ms_timestamp,
-                } = args;
-                let asset_index = asset_indices.entry(asset.clone()).or_insert_with(|| {
-                    assets.push(asset.clone());
-                    (assets.len() - 1) as u8
-                });
-                let h = digest_inplace::<_, { size_of::<ArgsBalance>() }>(&args);
-                let owner = hashes
-                    .get(&h)
-                    .expect("hash for ArgsBalance {args} not found");
-                let owner_index = owner_indices.entry(*owner).or_insert_with(|| {
-                    owners.push(owner.clone());
-                    (owners.len() - 1) as u8
-                });
-                let user_sig = (*owner_index, user_sig.1);
-                let c_args = CompressedArgsBalance {
-                    asset: *asset_index,
-                    chain,
-                    amount: amount.clone(),
-                    ms_timestamp,
-                };
-                CompressedApplicative::Balance(user_sig, c_args)
-            }
-            Applicative::Withdraw(solver_sig, user_sig, vault_sig, appl) => {
-                let c_appl =
-                    Self::raw_compress(assets, owners, asset_indices, owner_indices, hashes, *appl);
-                CompressedApplicative::Withdraw(solver_sig, user_sig, vault_sig, Box::new(c_appl))
-            }
-            Applicative::Order(
-                user_sig,
-                ArgsOrder {
-                    from_amt,
-                    desired_asset,
-                    desired_chain,
-                    desired_amt,
-                },
-                appl,
-            ) => {
-                let index = asset_indices
-                    .entry(desired_asset.clone())
-                    .or_insert_with(|| {
-                        assets.push(desired_asset.clone());
-                        (assets.len() - 1) as u8
-                    });
-                let c_args = CompressedArgsOrder {
-                    from_amt,
-                    desired_asset: *index,
-                    desired_chain,
-                    desired_amt,
-                };
-                let c_appl =
-                    Self::raw_compress(assets, owners, asset_indices, owner_indices, hashes, *appl);
-                CompressedApplicative::Order(user_sig, c_args, Box::new(c_appl))
-            }
-            Applicative::Cancel(solver_sig, user_sig, appl) => {
-                let c_appl =
-                    Self::raw_compress(assets, owners, asset_indices, owner_indices, hashes, *appl);
-                CompressedApplicative::Cancel(solver_sig, user_sig, Box::new(c_appl))
-            }
-            Applicative::Commit(solver_sig, args, left, right) => {
-                let c_left =
-                    Self::raw_compress(assets, owners, asset_indices, owner_indices, hashes, *left);
-                let c_right = Self::raw_compress(
-                    assets,
-                    owners,
-                    asset_indices,
-                    owner_indices,
-                    hashes,
-                    *right,
-                );
-                CompressedApplicative::Commit(solver_sig, args, Box::new(c_left), Box::new(c_right))
-            }
-            Applicative::CommitLeftFilledToBalance(appl) => {
-                let c_appl =
-                    Self::raw_compress(assets, owners, asset_indices, owner_indices, hashes, *appl);
-                CompressedApplicative::CommitLeftFilledToBalance(Box::new(c_appl))
-            }
-            Applicative::CommitRightFilledToBalance(appl) => {
-                let c_appl =
-                    Self::raw_compress(assets, owners, asset_indices, owner_indices, hashes, *appl);
-                CompressedApplicative::CommitRightFilledToBalance(Box::new(c_appl))
-            }
-            Applicative::CommitLeftExcessToOrder(appl) => {
-                let c_appl =
-                    Self::raw_compress(assets, owners, asset_indices, owner_indices, hashes, *appl);
-                CompressedApplicative::CommitLeftExcessToOrder(Box::new(c_appl))
-            }
-            Applicative::CommitRightExcessToOrder(appl) => {
-                let c_appl =
-                    Self::raw_compress(assets, owners, asset_indices, owner_indices, hashes, *appl);
-                CompressedApplicative::CommitRightExcessToOrder(Box::new(c_appl))
-            }
-            Applicative::Join(user_sig, left, right) => {
-                let c_left =
-                    Self::raw_compress(assets, owners, asset_indices, owner_indices, hashes, *left);
-                let c_right = Self::raw_compress(
-                    assets,
-                    owners,
-                    asset_indices,
-                    owner_indices,
-                    hashes,
-                    *right,
-                );
-                CompressedApplicative::Join(user_sig, Box::new(c_left), Box::new(c_right))
-            }
-        }
-    }
-    #[cfg(feature = "std")]
-    pub fn compress(
-        appl: Applicative,
-        hashes: &HashMap<BalanceHash, u64>,
-    ) -> (Self, Vec<Asset>, Vec<u64>) {
-        let mut assets = Vec::new();
-        let mut owners = Vec::new();
-        let mut asset_indicies = HashMap::new();
-        let mut owner_indicies = HashMap::new();
-        let c = Self::raw_compress(
-            &mut assets,
-            &mut owners,
-            &mut asset_indicies,
-            &mut owner_indicies,
-            hashes,
-            appl,
-        );
-        (c, assets, owners)
-    }
-
     fn get_asset(assets: &Vec<Asset>, i: usize) -> Result<Asset, Error> {
         Ok(assets
             .get(i)
@@ -530,6 +388,7 @@ impl CompressedApplicative {
                 typ: ErrorDiscriminant::BadUnpack,
                 #[cfg(feature = "errors-extra-context")]
                 inner: Box::new(ErrorInner::default()),
+                ..Default::default()
             })?
             .clone())
     }
@@ -553,6 +412,7 @@ impl CompressedApplicative {
                 };
                 Ok(Applicative::Balance(sig, args))
             }
+            CompressedApplicative::BalanceOnchain(h) => Ok(Applicative::BalanceOnchain(h)),
             CompressedApplicative::Withdraw(solver_sig, user_sig, vault_sig, c_appl) => {
                 let appl = c_appl.decompress(assets)?;
                 Ok(Applicative::Withdraw(
@@ -582,6 +442,7 @@ impl CompressedApplicative {
                 };
                 Ok(Applicative::Order(user_sig, args, Box::new(appl)))
             }
+            CompressedApplicative::OrderOnchain(h) => Ok(Applicative::OrderOnchain(h)),
             CompressedApplicative::Cancel(solver_sig, user_sig, c_appl) => {
                 let appl = c_appl.decompress(assets)?;
                 Ok(Applicative::Cancel(solver_sig, user_sig, Box::new(appl)))
@@ -596,6 +457,7 @@ impl CompressedApplicative {
                     Box::new(right),
                 ))
             }
+            CompressedApplicative::CommitOnchain(h) => Ok(Applicative::CommitOnchain(h)),
             CompressedApplicative::CommitLeftFilledToBalance(c_appl) => {
                 let appl = c_appl.decompress(assets)?;
                 Ok(Applicative::CommitLeftFilledToBalance(Box::new(appl)))
