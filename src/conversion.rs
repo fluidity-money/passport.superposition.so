@@ -1,3 +1,5 @@
+use core::ops::Deref;
+
 use crate::{
     applicative::*,
     error::*,
@@ -7,7 +9,11 @@ use crate::{
 
 use alloc::vec::Vec;
 
-use borsh::BorshSerialize;
+use borsh::{BorshDeserialize, BorshSerialize};
+#[cfg(feature = "std")]
+use serde::{Deserialize as SerdeDeserialize, Serialize as SerdeSerialize};
+#[cfg(feature = "std")]
+use serde_big_array::BigArray;
 
 use bobcat_sdk::maths::U;
 use bobcat_sdk::precompiles::superposition::edphverify;
@@ -31,7 +37,52 @@ fn err_verify_two(from: ApplicativeLabel, x: u8) -> Error {
         .side(x)
 }
 
-pub type Hash = [u8; 64];
+#[derive(Debug, Clone, Copy, PartialEq, BorshSerialize, BorshDeserialize)]
+#[cfg_attr(
+    feature = "std",
+    derive(std::cmp::Eq, std::hash::Hash, SerdeDeserialize, SerdeSerialize)
+)]
+pub struct Hash(#[cfg_attr(feature = "std", serde(with = "BigArray"))] [u8; 64]);
+
+impl From<[u8; 64]> for Hash {
+    fn from(value: [u8; 64]) -> Self {
+        Self(value)
+    }
+}
+
+impl From<Hash> for [u8; 64] {
+    fn from(value: Hash) -> Self {
+        value.0
+    }
+}
+
+impl TryFrom<Vec<u8>> for Hash {
+    type Error = Vec<u8>;
+    fn try_from(value: Vec<u8>) -> Result<Self, Self::Error> {
+        let h: [u8; 64] = value.try_into()?;
+        Ok(Self(h))
+    }
+}
+
+impl From<&[u8; 64]> for Hash {
+    fn from(value: &[u8; 64]) -> Self {
+        Self(*value)
+    }
+}
+
+#[cfg(feature = "std")]
+impl std::fmt::Display for Hash {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", const_hex::encode(self.0))
+    }
+}
+
+impl Deref for Hash {
+    type Target = [u8; 64];
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 pub type ValidateCarry = Result<Sha512, Error>;
 
@@ -182,7 +233,7 @@ fn get_bal_hash(st: &state_machine::Balance) -> Hash {
         | Balance::CommitRightFilledToBal(_, h)
         | Balance::Onchain(h)
         | Balance::Cancel(_, h)
-        | Balance::Join(_, _, h) => *h,
+        | Balance::Join(_, _, h) => h.into(),
     }
 }
 
@@ -192,14 +243,14 @@ fn get_order_hash(st: &state_machine::Order) -> Hash {
         Order::Inline(_, _, h)
         | Order::Onchain(h)
         | Order::CommitLeftExcessToOrder(_, h)
-        | Order::CommitRightExcessToOrder(_, h) => *h,
+        | Order::CommitRightExcessToOrder(_, h) => h.into(),
     }
 }
 
 fn get_commit_hash(st: &state_machine::Commit) -> Hash {
     use state_machine::Commit;
     match st {
-        Commit::Inline(_, _, _, h) | Commit::Onchain(h) => *h,
+        Commit::Inline(_, _, _, h) | Commit::Onchain(h) => h.into(),
     }
 }
 
@@ -253,7 +304,7 @@ fn validate_onchain_balance(hash: &Hash) -> Result<state_machine::Balance, Error
     };
     #[cfg(feature = "tracing")]
     dbg!("done with onchain balance");
-    Ok(state_machine::Balance::Onchain(*hash))
+    Ok(state_machine::Balance::Onchain(**hash))
 }
 
 fn validate_commit_left_filled_to_bal(
@@ -270,7 +321,7 @@ fn validate_commit_left_filled_to_bal(
         ap,
     )?;
     let c_hash = get_commit_hash(&commit);
-    let h = chain_digests(&[Nonce::CommitLeftFilledToBalance.into()], &c_hash);
+    let h = chain_digests(&[Nonce::CommitLeftFilledToBalance.into()], &c_hash.0);
     storage::hash_unseen(&h).ok_or(
         Error {
             typ: ErrorDiscriminant::HashAlreadyOnchain,
@@ -301,7 +352,7 @@ fn validate_commit_right_filled_to_bal(
         ap,
     )?;
     let c_hash = get_commit_hash(&commit);
-    let h = chain_digests(&[Nonce::CommitRightFilledToBalance.into()], &c_hash);
+    let h = chain_digests(&[Nonce::CommitRightFilledToBalance.into()], &c_hash.0);
     storage::hash_unseen(&h).ok_or(
         Error {
             typ: ErrorDiscriminant::HashAlreadyOnchain,
@@ -358,7 +409,7 @@ fn validate_order(
         &o,
         owner_sig,
         &digest_inplace::<_, { size_of::<ArgsOrder>() }>(args),
-        &bal_hash,
+        &bal_hash.0,
     )?;
     let h = d.finalize().into();
     storage::hash_unseen(&h).ok_or(
@@ -392,7 +443,7 @@ fn validate_onchain_order(hash: &Hash) -> Result<state_machine::Order, Error> {
     };
     #[cfg(feature = "tracing")]
     dbg!("done with onchain order");
-    Ok(state_machine::Order::Onchain(*hash))
+    Ok(state_machine::Order::Onchain(**hash))
 }
 
 fn validate_commit_left_excess_to_order(
@@ -407,7 +458,7 @@ fn validate_commit_left_excess_to_order(
         ap,
     )?;
     let c_hash = get_commit_hash(&commit);
-    let hash = chain_digests(&[Nonce::CommitLeftExcessToOrder.into()], &c_hash);
+    let hash = chain_digests(&[Nonce::CommitLeftExcessToOrder.into()], &c_hash.0);
     storage::hash_unseen(&hash).ok_or(
         Error::from(ErrorDiscriminant::HashAlreadyOnchain)
             .ctx(ApplyContext::ApplyCommitLeftAmtFilled),
@@ -432,7 +483,7 @@ fn validate_commit_right_excess_to_order(
         ap,
     )?;
     let c_hash = get_commit_hash(&commit);
-    let hash = chain_digests(&[Nonce::CommitRightExcessToOrder.into()], &c_hash);
+    let hash = chain_digests(&[Nonce::CommitRightExcessToOrder.into()], &c_hash.0);
     storage::hash_unseen(&hash).ok_or(
         Error::from(ErrorDiscriminant::HashAlreadyOnchain)
             .ctx(ApplyContext::ApplyCommitRightAmtFilled),
@@ -487,7 +538,7 @@ fn validate_commit(
         solver_key,
         solver_sig,
         &digest_inplace::<_, { size_of::<ArgsCommit>() }>(args),
-        &chain_digests(&left_hash, &right_hash),
+        &chain_digests(&left_hash.0, &right_hash.0),
     )?;
     let h = d.finalize().into();
     storage::hash_unseen(&h).ok_or(
@@ -518,7 +569,7 @@ fn validate_onchain_commit(hash: &Hash) -> Result<state_machine::Commit, Error> 
     };
     #[cfg(feature = "tracing")]
     dbg!("done with onchain commit");
-    Ok(state_machine::Commit::Onchain(*hash))
+    Ok(state_machine::Commit::Onchain(**hash))
 }
 
 /// Validate the interior commit. Does not contain any
@@ -569,7 +620,7 @@ fn validate_withdraw(
         &o,
         owner_sig,
         &[Nonce::Withdraw.into()],
-        &bal_hash,
+        &bal_hash.0,
     )?;
     #[cfg(feature = "tracing")]
     dbg!("done with withdraw");
@@ -599,7 +650,7 @@ fn validate_cancel(
         &o,
         owner_sig,
         &[Nonce::Cancel.into()],
-        &order_hash,
+        &order_hash.0,
     )?;
     #[cfg(feature = "tracing")]
     dbg!("done with cancel");
@@ -635,7 +686,7 @@ fn validate_join(
             &o,
             owner_sig,
             &[Nonce::Join.into()],
-            &chain_digests(&left_hash, &right_hash),
+            &chain_digests(&left_hash.0, &right_hash.0),
         )?
         .finalize()
         .into(),
@@ -704,7 +755,7 @@ pub fn digest_wrapped_balance(from: ApplicativeLabel, ap: &Applicative) -> Resul
         Applicative::Balance(_, args) => {
             Ok(digest_inplace::<_, { size_of::<ArgsBalance>() }>(args))
         }
-        Applicative::BalanceOnchain(h) => Ok(*h),
+        Applicative::BalanceOnchain(h) => Ok(**h),
         Applicative::CommitLeftFilledToBalance(ap) => {
             let commit_hash =
                 digest_wrapped_commit(ApplicativeLabel::CommitLeftFilledToBalance, ap)?;
@@ -739,7 +790,7 @@ pub fn digest_order(args: &ArgsOrder, ap: &Applicative) -> Result<[u8; 64], Erro
 fn digest_wrapped_order(from: ApplicativeLabel, ap: &Applicative) -> Result<[u8; 64], Error> {
     match ap {
         Applicative::Order(_, args, ap) => digest_order(args, ap),
-        Applicative::OrderOnchain(h) => Ok(*h),
+        Applicative::OrderOnchain(h) => Ok(**h),
         Applicative::CommitLeftExcessToOrder(ap) => {
             let commit_hash = digest_wrapped_commit(ApplicativeLabel::CommitLeftExcessToOrder, ap)?;
             Ok(chain_digests(
@@ -768,7 +819,7 @@ fn digest_wrapped_commit(from: ApplicativeLabel, ap: &Applicative) -> Result<[u8
                 &digest_wrapped_order(from, right)?,
             ),
         )),
-        Applicative::CommitOnchain(h) => Ok(*h),
+        Applicative::CommitOnchain(h) => Ok(**h),
         _ => Err(err_bad_ap_transition_digest(from, ap)),
     }
 }

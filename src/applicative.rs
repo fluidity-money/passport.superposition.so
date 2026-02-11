@@ -348,7 +348,6 @@ pub struct DppmBurnArgs;
 #[cfg_attr(feature = "std", derive(SerdeDeserialize, SerdeSerialize))]
 pub enum CompressedApplicative {
     Balance(UserSig, CompressedArgsBalance),
-    #[cfg_attr(feature = "std", serde(with = "BigArray"))]
     BalanceOnchain(conversion::Hash),
     Withdraw(
         SolverSig,
@@ -357,7 +356,6 @@ pub enum CompressedApplicative {
         Box<CompressedApplicative>,
     ),
     Order(UserSig, CompressedArgsOrder, Box<CompressedApplicative>),
-    #[cfg_attr(feature = "std", serde(with = "BigArray"))]
     OrderOnchain(conversion::Hash),
     Cancel(SolverSig, UserSig, Box<CompressedApplicative>),
     Commit(
@@ -366,7 +364,6 @@ pub enum CompressedApplicative {
         Box<CompressedApplicative>,
         Box<CompressedApplicative>,
     ),
-    #[cfg_attr(feature = "std", serde(with = "BigArray"))]
     CommitOnchain(conversion::Hash),
     CommitLeftFilledToBalance(Box<CompressedApplicative>),
     CommitRightFilledToBalance(Box<CompressedApplicative>),
@@ -379,7 +376,6 @@ pub enum CompressedApplicative {
     ),
 }
 
-pub type BalanceHash = [u8; 64];
 impl CompressedApplicative {
     fn get_asset(assets: &Vec<Asset>, i: usize) -> Result<Asset, Error> {
         Ok(assets
@@ -496,7 +492,6 @@ impl CompressedApplicative {
 pub enum Applicative {
     /// Starting point of the conversion to the other types.
     Balance(UserSig, ArgsBalance),
-    #[cfg_attr(feature = "std", serde(with = "BigArray"))]
     BalanceOnchain(conversion::Hash),
     /// Withdraw a Balance from the system. The solver signature is needed
     /// alongside the user's signature to be able to testify there are no
@@ -510,7 +505,6 @@ pub enum Applicative {
     /// and the hash from the balance.
     /// (Balance|CommitLeftFilledToBalance|CommitRightFilledToBalance|Join)
     Order(UserSig, ArgsOrder, Box<Applicative>),
-    #[cfg_attr(feature = "std", serde(with = "BigArray"))]
     OrderOnchain(conversion::Hash),
     /// Cancel an order using a user's signature as well as the matching
     /// engine's signature.
@@ -521,7 +515,6 @@ pub enum Applicative {
     /// matching engine's signature.
     // Args * Order * Order => Commit
     Commit(SolverSig, ArgsCommit, Box<Applicative>, Box<Applicative>),
-    #[cfg_attr(feature = "std", serde(with = "BigArray"))]
     CommitOnchain(conversion::Hash),
     // Convert the left side of a Commit to a balance, to be reused.
     CommitLeftFilledToBalance(Box<Applicative>),
