@@ -10,10 +10,6 @@ use crate::{
 use alloc::vec::Vec;
 
 use borsh::{BorshDeserialize, BorshSerialize};
-#[cfg(feature = "std")]
-use serde::{Deserialize as SerdeDeserialize, Serialize as SerdeSerialize};
-#[cfg(feature = "std")]
-use serde_big_array::BigArray;
 
 use bobcat_sdk::maths::U;
 use bobcat_sdk::precompiles::superposition::edphverify;
@@ -38,11 +34,34 @@ fn err_verify_two(from: ApplicativeLabel, x: u8) -> Error {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, BorshSerialize, BorshDeserialize)]
-#[cfg_attr(
-    feature = "std",
-    derive(std::cmp::Eq, std::hash::Hash, SerdeDeserialize, SerdeSerialize)
-)]
-pub struct Hash(#[cfg_attr(feature = "std", serde(with = "BigArray"))] [u8; 64]);
+#[cfg_attr(feature = "std", derive(std::cmp::Eq, std::hash::Hash))]
+pub struct Hash([u8; 64]);
+
+#[cfg(feature = "std")]
+impl<'de> serde::de::Deserialize<'de> for Hash {
+    fn deserialize<D>(d: D) -> Result<Self, D::Error>
+    where
+        D: serde::de::Deserializer<'de>,
+    {
+        Ok(
+            const_hex::decode_to_array(&<std::string::String as serde::Deserialize>::deserialize(
+                d,
+            )?)
+            .map_err(serde::de::Error::custom)?
+            .into(),
+        )
+    }
+}
+
+#[cfg(feature = "std")]
+impl serde::Serialize for Hash {
+    fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        s.serialize_str(&const_hex::encode(&self.0))
+    }
+}
 
 impl From<[u8; 64]> for Hash {
     fn from(value: [u8; 64]) -> Self {

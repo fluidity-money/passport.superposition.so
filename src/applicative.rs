@@ -2,15 +2,7 @@
 // internal representation during the program's simulation.
 
 #[cfg(feature = "std")]
-use std::collections::HashMap;
-
-#[cfg(feature = "std")]
 use serde::{Deserialize as SerdeDeserialize, Serialize as SerdeSerialize};
-#[cfg(feature = "std")]
-use serde_big_array::BigArray;
-
-#[cfg(feature = "std")]
-use crate::conversion::digest_inplace;
 
 use borsh::{BorshDeserialize, BorshSerialize};
 
