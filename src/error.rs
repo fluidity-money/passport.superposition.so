@@ -377,6 +377,7 @@ impl core::fmt::Debug for Error {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
         let mut d = f.debug_struct("Error");
         d.field("typ", &self.typ);
+        d.field("hash", &self.hash);
         #[cfg(feature = "errors-extra-context")]
         d.field("inner", &self.inner);
         d.finish()
