@@ -12,11 +12,11 @@ use alloc::vec::Vec;
 use borsh::{BorshDeserialize, BorshSerialize};
 
 use bobcat_sdk::maths::U;
-use bobcat_sdk::precompiles::superposition::edphverify;
+use bobcat_sdk::precompiles::superposition::edphverify_post;
 
 use ed25519_dalek::{DigestSigner, SigningKey};
 
-use sha2::{Sha512, digest::Digest};
+use sha2::{digest::Digest, Sha512};
 
 use alloc::boxed::Box;
 
@@ -115,7 +115,7 @@ fn check_sig(
     let d = Sha512::default()
         .chain_update(msg)
         .chain_update(prev_digest);
-    if !edphverify(
+    if !edphverify_post(
         d.clone().finalize().into(),
         *verifying_key,
         sig.0,
@@ -141,10 +141,10 @@ fn check_sig_two(
     let d = Sha512::default()
         .chain_update(msg)
         .chain_update(prev_digest);
-    if !edphverify(d.clone().finalize().into(), *verifying_key2, sig2.0) {
+    if !edphverify_post(d.clone().finalize().into(), *verifying_key2, sig2.0) {
         return Err(err_verify_two(from, 2));
     }
-    if !edphverify(d.clone().finalize().into(), *verifying_key1, sig1.0) {
+    if !edphverify_post(d.clone().finalize().into(), *verifying_key1, sig1.0) {
         return Err(err_verify_two(from, 1));
     }
     Ok(d)
