@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.20;
 
 //0xffdea0388ca4a843ade7b3e2c2bc13081b779a3f6d573e3cdda653f4db50c868
