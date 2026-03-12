@@ -110,4 +110,5 @@ panic = ["bobcat-sdk/panic-revert"]
 web = [
 	"bobcat-sdk/alloy-enabled",
 	"bobcat-sdk/dont-define-symbols",
+	"bobcat-sdk/ed25519-dalek",
 ]
