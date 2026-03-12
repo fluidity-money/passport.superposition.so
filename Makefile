@@ -40,7 +40,8 @@ wasm: \
 build: wasm passport-cli
 
 ${RELEASE_WASM}/contract-solver.wasm: $(shell find src -type f -name '*.rs')
-	@${CARGO_BIN_WASM32}
+	@${CARGO_BIN_WASM32} \
+		--features panic
 
 release-wasm: ${RELEASE_WASM}/contract-solver.wasm
 

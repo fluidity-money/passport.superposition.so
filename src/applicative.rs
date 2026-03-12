@@ -33,7 +33,7 @@ pub enum ErrFromStrApplicative {
     BadSigLength,
 }
 
-#[cfg(feature = "std")]
+#[cfg(feature = "derive-extras")]
 impl std::fmt::Display for ErrFromStrApplicative {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}", self)
@@ -150,7 +150,11 @@ pub type SolverSig = EdSig;
 #[derive(BorshSerialize, BorshDeserialize, Clone, PartialEq, Debug)]
 #[cfg_attr(
     feature = "std",
-    derive(arbitrary::Arbitrary, proptest_derive::Arbitrary, Hash, Eq)
+    derive(arbitrary::Arbitrary, proptest_derive::Arbitrary)
+)]
+#[cfg_attr(
+    feature = "derive-extras",
+    derive(Hash, Eq)
 )]
 pub struct Asset(pub [u8; 20]);
 
