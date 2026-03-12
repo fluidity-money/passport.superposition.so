@@ -16,7 +16,7 @@ use bobcat_sdk::precompiles::superposition::edphverify_post;
 
 use ed25519_dalek::{DigestSigner, SigningKey};
 
-use sha2::{digest::Digest, Sha512};
+use sha2::{Sha512, digest::Digest};
 
 use alloc::boxed::Box;
 
@@ -34,7 +34,7 @@ fn err_verify_two(from: ApplicativeLabel, x: u8) -> Error {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, BorshSerialize, BorshDeserialize)]
-#[cfg_attr(feature = "std", derive(std::cmp::Eq, std::hash::Hash))]
+#[cfg_attr(feature = "derive-extras", derive(std::cmp::Eq, std::hash::Hash))]
 pub struct Hash([u8; 64]);
 
 #[cfg(feature = "std")]
@@ -89,7 +89,7 @@ impl From<&[u8; 64]> for Hash {
     }
 }
 
-#[cfg(feature = "std")]
+#[cfg(feature = "derive-extras")]
 impl std::fmt::Display for Hash {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", const_hex::encode(self.0))
